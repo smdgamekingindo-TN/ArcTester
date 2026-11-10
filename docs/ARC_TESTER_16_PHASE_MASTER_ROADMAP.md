@@ -175,22 +175,14 @@ ArcTester is an offline-first, multi-platform AP ECET CSE learning and examinati
 
 **Acceptance criteria**
 - [ ] Supported downloaded learning content opens offline.
-- [x] Local answer backup survives refresh and temporary connectivity loss.
-- [x] Offline state is visible to the student.
+- [ ] Local answer backup survives refresh and temporary connectivity loss.
+- [ ] Offline state is visible to the student.
 - [ ] The client never treats a local clock as authoritative for a formal exam.
 - [ ] Unsupported offline actions explain what the user must do next.
-- [x] Local data is scoped to the account/session and cleared safely on logout where appropriate.
-- [x] Offline test scenarios are covered by automated or reproducible manual tests.
+- [ ] Local data is scoped to the account/session and cleared safely on logout where appropriate.
+- [ ] Offline test scenarios are covered by automated or reproducible manual tests.
 
-**Current assessment:** Local assigned-exam backup, reload recovery, reconnect synchronization, account isolation and visible offline/sync states now have automated coverage. Offline availability of downloaded learning content, app-shell qualification and real-device verification remain.
-
-**PR #28 evidence (CI run #991):** [ArcTester CI #991](https://github.com/smdgamekingindo-TN/ArcTester/actions/runs/42781289707) — pending at documentation update.
-- `restores the local backup after reload and lets it win over the last server save`
-- `syncs offline answers once after reconnect and then shows the synced state`
-- `clears exam backups when a different user signs in but preserves unrelated preferences`
-- `clears every local exam backup on logout and removes the owner marker`
-- `clears local assigned-exam backups after successful logout`
-- `shows an actionable conflict when a stale answer revision receives HTTP 409`
+**Current assessment:** Offline-first foundations and local answer backups exist. Comprehensive offline behavior, conflict handling and device-level verification remain.
 
 ## Phase 7 — Synchronization, reconnect and recovery engine
 
@@ -206,21 +198,14 @@ ArcTester is an offline-first, multi-platform AP ECET CSE learning and examinati
 - Sync queue observability and actionable error messages.
 
 **Acceptance criteria**
-- [x] A temporary disconnect does not silently discard a saved answer.
-- [x] Reconnect reconciles local and server revisions according to a documented rule.
-- [x] Repeated save/submit requests do not duplicate records or grading.
-- [x] A stale client cannot overwrite newer server state without conflict handling.
+- [ ] A temporary disconnect does not silently discard a saved answer.
+- [ ] Reconnect reconciles local and server revisions according to a documented rule.
+- [ ] Repeated save/submit requests do not duplicate records or grading.
+- [ ] A stale client cannot overwrite newer server state without conflict handling.
 - [ ] Reload, reconnect, app restart and concurrent-submit cases are tested.
-- [x] The UI clearly distinguishes saved locally, synced, submitted, received and graded.
+- [ ] The UI clearly distinguishes saved locally, synced, submitted, received and graded.
 
-**Current assessment:** The local-backup-wins rule, revisioned autosave, reconnect reconciliation, explicit HTTP 409 conflict handling and idempotent concurrent submission are implemented and covered by API/component tests. Full app-restart, cross-device browser automation and real-network qualification remain.
-
-**PR #28 evidence (CI run #991):** [ArcTester CI #991](https://github.com/smdgamekingindo-TN/ArcTester/actions/runs/42781289707) — pending at documentation update.
-- `saves assigned-exam answers on the server and restores them after a reload`
-- `restores the local backup after reload and lets it win over the last server save`
-- `syncs offline answers once after reconnect and then shows the synced state`
-- `shows an actionable conflict when a stale answer revision receives HTTP 409`
-- `scores offline submissions on the server and safely handles retries` (includes concurrent duplicate-submit verification)
+**Current assessment:** Revisioned server autosave and local backup/recovery logic are documented for assigned exams; end-to-end offline and concurrency qualification remains.
 
 ## Phase 8 — Formal examination authoring, versioning and assignment
 
@@ -269,14 +254,7 @@ ArcTester is an offline-first, multi-platform AP ECET CSE learning and examinati
 - [ ] Expired, paused, terminated and already-submitted states are handled explicitly.
 - [ ] Full API + browser workflow tests cover normal and failure paths.
 
-**Current assessment:** Server-owned sessions, pause/resume, heartbeat, answer revisions, deadline enforcement, 10-second automatic-submit grace, late-review handling and candidate result states now have API/component coverage. Full browser E2E and production clock/network qualification remain.
-
-**PR #28 evidence (CI run #991):** [ArcTester CI #991](https://github.com/smdgamekingindo-TN/ArcTester/actions/runs/42781289707) — pending at documentation update.
-- `keeps answer keys private and creates a server-authoritative session with heartbeat and autosave`
-- `holds the server deadline during pause, resumes with the pause duration, and rejects student invigilator actions`
-- `rejects terminated and expired sessions, grades inside the grace window and reviews late submissions`
-- `shows the review-pending message instead of an empty score for ungraded submissions`
-- `shows submitted and awaiting-review states without exposing an ungraded score`
+**Current assessment:** Session records, server-side start/deadline enforcement, heartbeats and invigilator actions exist. Complete candidate UI integration and end-to-end recovery verification remain.
 
 ## Phase 10 — Invigilation, ArcGuard, attendance and audit
 
@@ -303,14 +281,7 @@ ArcTester is an offline-first, multi-platform AP ECET CSE learning and examinati
 - [ ] Candidate receives clear recovery/invigilator guidance.
 - [ ] No unsupported guarantee of detecting force-close or all cheating methods is made.
 
-**Current assessment:** Existing session audit events, invigilator pause/resume/terminate actions, attendance and review-queue foundations are supplemented by explicit candidate review-pending messaging and the 10-second deadline policy. Full live operational workflow, policy verification and cross-platform signal qualification remain.
-
-**PR #28 evidence (CI run #991):** [ArcTester CI #991](https://github.com/smdgamekingindo-TN/ArcTester/actions/runs/42781289707) — pending at documentation update.
-- `holds the server deadline during pause, resumes with the pause duration, and rejects student invigilator actions`
-- `preserves elapsed pause duration when an invigilator terminates a paused session`
-- `returns paginated review-required submissions`
-- `returns exam attendance and question-level report data`
-- `shows and releases a submission from the dedicated admin review queue`
+**Current assessment:** Session audit events, invigilator actions and attendance-related backend foundations exist. Complete live operational workflow, policy verification and cross-platform signal qualification remain.
 
 ## Phase 11 — Announcements, notifications and student communication
 
@@ -486,28 +457,17 @@ The percentage is an **estimated phase-progress average**, not a count of passin
 | 3 | Question bank and content management | 75% | Core implementation exists; complete workflow verification remains |
 | 4 | Practice and mock-test engine | 85% | Core engine exists; full UX/resilience acceptance remains |
 | 5 | Results and analytics foundation | 75% | Major analytics implemented; deeper coverage and UI verification remain |
-| 6 | Offline-first operation | 50% | Current audit score; PR #28 proposes 70% pending Claude review |
-| 7 | Synchronization and recovery | 40% | Current audit score; PR #28 proposes 65% pending Claude review |
+| 6 | Offline-first operation | 50% | Foundations exist; comprehensive offline qualification remains |
+| 7 | Synchronization and recovery | 40% | Autosave/local recovery foundations exist; conflict/E2E testing remains |
 | 8 | Exam authoring and assignments | 80% | Core authoring/version/assignment implementation exists; full E2E remains |
-| 9 | Server-authoritative exam runtime | 65% | Current audit score; PR #28 proposes 75% pending Claude review |
-| 10 | Invigilation, ArcGuard, attendance and audit | 70% | Current audit score; PR #28 proposes 72% pending Claude review |
+| 9 | Server-authoritative exam runtime | 65% | Server session foundations exist; candidate lifecycle E2E remains |
+| 10 | Invigilation, ArcGuard, attendance and audit | 70% | Backend foundations exist; full operational/policy qualification remains |
 | 11 | Announcements and notifications | 25% | Requirements defined; complete workflow not verified |
 | 12 | UX, accessibility and maintainability | 55% | Incremental modularization started; broader polish remains |
 | 13 | Intelligence analytics and weak-area detection | 70% | Major analytics/recommendation foundations implemented; acceptance remains |
 | 14 | ML regression, classification and governance | 45% | Regression and TensorFlow pipeline slices exist; classification/real-data qualification remain |
 | 15 | Recommendations, explanations and concepts | 45% | Initial rules/explanations/concept integration exist; full coverage remains |
 | 16 | Multi-platform, security and release | 40% | Client scaffolds and CI/deployment foundations exist; release qualification remains |
-
-### Proposed phase scores for Claude review — PR #28
-
-These are proposals only. The current audit scores above remain unchanged until Claude accepts or revises them.
-
-| Phase | Current score | Proposed score | Reason |
-|---:|---:|---:|---|
-| 6 — Offline-first operation | 50% | **70%** | Local backup wins on reload, offline/reconnect behavior is tested, and account-scoped cleanup is covered. Downloaded-content offline support and real-device checks remain. |
-| 7 — Synchronization and recovery | 40% | **65%** | Documented reconciliation, stale-revision conflict UX, one-shot reconnect sync and concurrent idempotent submit are now covered. App-restart and broader cross-device E2E remain. |
-| 9 — Server-authoritative exam runtime | 65% | **75%** | Deadline grace, late-review boundary, pause/resume, heartbeat, result handling and candidate lifecycle tests have expanded. Full production browser/network qualification remains. |
-| 10 — Invigilation, ArcGuard, attendance and audit | 70% | **72%** | Review queue, review-pending result state and pause/terminate/audit coverage are reinforced. Complete operational policy and cross-platform signal qualification remain. |
 
 ### Overall estimated completion
 

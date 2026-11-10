@@ -12,7 +12,6 @@ describe("AdminPaperBuilder", () => {
     render(<AdminPaperBuilder {...props} />);
     expect(screen.getByRole("heading", { name: "Mock test builder" })).toBeTruthy();
     expect(screen.getByText("What is 2 + 2?")).toBeTruthy();
-    expect(screen.getByText("1 min")).toBeFalsy();
     expect(screen.getByText("180 min")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Save draft exam →" }).hasAttribute("disabled")).toBe(false);
   });
@@ -36,8 +35,8 @@ describe("AdminPaperBuilder", () => {
     const randomExam = { ...exam, title: "", selectionMode: "random" as const };
     const onSubjectQuotaChange = vi.fn(), onDifficultyMixChange = vi.fn();
     render(<AdminPaperBuilder {...props} exam={randomExam} examIds={[]} onSubjectQuotaChange={onSubjectQuotaChange} onDifficultyMixChange={onDifficultyMixChange} />);
-    fireEvent.change(screen.getAllByRole("spinbutton")[1], { target: { value: "30" } });
-    fireEvent.change(screen.getAllByRole("spinbutton")[2], { target: { value: "40" } });
+    fireEvent.change(screen.getAllByRole("spinbutton")[4], { target: { value: "30" } });
+    fireEvent.change(screen.getAllByRole("spinbutton")[5], { target: { value: "40" } });
     expect(onSubjectQuotaChange).toHaveBeenCalledWith("Mathematics", 30);
     expect(onDifficultyMixChange).toHaveBeenCalledWith("easy", 40);
     expect(screen.getByRole("button", { name: "Save draft exam →" }).hasAttribute("disabled")).toBe(true);

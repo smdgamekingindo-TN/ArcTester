@@ -994,37 +994,18 @@ export default function App() {
             })}
           </section>
         ) : activePage === "notifications" ? (
-          <section className="student-notifications-page">
-            <div className="page-heading">
-              <div><p className="eyebrow">STUDENT COMMUNICATION</p><h1>Notification inbox</h1><p className="muted">New exam assignments, graded results and submissions awaiting review.</p></div>
-              <button className="ghost" onClick={() => void refreshNotifications().catch((cause) => setError((cause as Error).message))}>Refresh</button>
-            </div>
-            {studentNotifications.length === 0 ? <div className="panel empty-state"><h2>No notifications yet</h2><p className="muted">New assignments and exam results will appear here.</p></div> : studentNotifications.map((item) => (
-              <article className="panel notification-row" key={item.id}>
-                <div className="announcement-meta"><span className={item.readAt ? "status status-used" : "status status-pending"}>{item.readAt ? "READ" : "UNREAD"}</span><small>{new Date(item.createdAt).toLocaleString()}</small></div>
-                <h2>{item.title}</h2><p>{item.message}</p>
-                <div className="row">
-                  <button className="ghost" onClick={() => openStudentNotification(item.id)}>Open</button>
-                  {!item.readAt ? <button className="ghost" onClick={() => void markNotificationRead(item.id)}>Mark as read</button> : null}
-                </div>
-              </article>
-            ))}
-          </section>
+          <StudentNotificationsInbox
+            items={studentNotifications}
+            onRefresh={() => void refreshNotifications().catch((cause) => setError((cause as Error).message))}
+            onRead={(id) => void markNotificationRead(id)}
+            onOpen={(id) => void openStudentNotification(id)}
+          />
         ) : activePage === "announcements" ? (
-          <section className="student-announcements">
-            <div className="page-heading">
-              <div><p className="eyebrow">STUDENT COMMUNICATION</p><h1>Announcements</h1><p className="muted">Notices published by your ArcTester administrator.</p></div>
-              <button className="ghost" onClick={() => void refreshAnnouncements().catch((cause) => setError((cause as Error).message))}>Refresh</button>
-            </div>
-            {announcements.length === 0 ? <div className="panel empty-state"><h2>No announcements yet</h2><p className="muted">New notices from your administrator will appear here automatically.</p></div> : announcements.map((item) => (
-              <article className="panel announcement-row" key={item.id}>
-                <div className="announcement-meta"><span className={item.seenAt ? "status status-used" : "status status-pending"}>{item.seenAt ? "SEEN" : "UNREAD"}</span><small>{new Date(item.publishedAt).toLocaleString()}</small></div>
-                <h2>{item.title}</h2><p>{item.message}</p>
-                {item.expiresAt ? <small className="muted">Expires {new Date(item.expiresAt).toLocaleString()}</small> : null}
-                {item.acknowledgedAt ? <small className="muted" role="status">Acknowledged {new Date(item.acknowledgedAt).toLocaleString()}</small> : <button className="ghost" onClick={() => void acknowledgeAnnouncement(item.id)}>Acknowledge</button>}
-              </article>
-            ))}
-          </section>
+          <StudentAnnouncementsInbox
+            items={announcements}
+            onRefresh={() => void refreshAnnouncements().catch((cause) => setError((cause as Error).message))}
+            onAcknowledge={(id) => void acknowledgeAnnouncement(id)}
+          />
         ) : (
           <>
             <section hidden={activePage !== "dashboard"} className="welcome panel" id="dashboard">

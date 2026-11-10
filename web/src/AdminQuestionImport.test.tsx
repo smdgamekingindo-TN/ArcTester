@@ -13,6 +13,16 @@ describe("AdminQuestionImport", () => {
     expect(screen.getByPlaceholderText(/File contents appear here/)).toBeTruthy();
   });
 
+  it("opens the file picker with Enter and Space from the keyboard", () => {
+    const clickSpy = vi.spyOn(HTMLInputElement.prototype, "click").mockImplementation(() => {});
+    render(<AdminQuestionImport {...props} />);
+    const dropZone = screen.getByRole("button", { name: "Choose CSV or JSON file" });
+    fireEvent.keyDown(dropZone, { key: "Enter" });
+    fireEvent.keyDown(dropZone, { key: " " });
+    expect(clickSpy).toHaveBeenCalledTimes(2);
+    clickSpy.mockRestore();
+  });
+
   it("delegates format, text, preview and template actions", () => {
     const handlers = { onTextChange: vi.fn(), onFormatChange: vi.fn(), onPreview: vi.fn(), onDownloadTemplate: vi.fn(), onLoadExample: vi.fn() };
     render(<AdminQuestionImport {...props} {...handlers} />);

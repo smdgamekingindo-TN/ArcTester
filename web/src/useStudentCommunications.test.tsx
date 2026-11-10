@@ -41,7 +41,7 @@ describe("useStudentCommunications", () => {
       userRole: "STUDENT",
       userId: 1,
       activePage: "notifications",
-      request,
+      request: request as unknown as StudentCommunicationsRequest,
       setError: vi.fn(),
       setBusy: vi.fn(),
     }));

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { mergeAssignedExamAnswers } from "../lib/answerRecovery";
 import { classifyAssignmentHeartbeatFailure } from "./assignedExamHeartbeat";
 import { safeStorage } from "./safeStorage";
+import { getBrowserDeviceFingerprint } from "./deviceFingerprint";
 import { getRemainingPracticeSeconds } from "./practiceTimer";
 import AuthScreen from "./AuthScreen";
 import { createApiClient } from "./apiClient";
@@ -73,17 +74,7 @@ type Result = {
   }[];
 };
 
-function browserDeviceFingerprint(): string {
-  const key = "arctester-device-fingerprint";
-  const existing = safeStorage.getItem(key);
-  if (existing) return existing;
-  const fingerprint =
-    typeof crypto !== "undefined" && "randomUUID" in crypto
-      ? crypto.randomUUID()
-      : `web-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
-  safeStorage.setItem(key, fingerprint);
-  return fingerprint;
-}
+
 
 
 
@@ -179,7 +170,7 @@ export default function App() {
       body: JSON.stringify({
         deviceName: "Web browser",
         platform: "web",
-        fingerprint: browserDeviceFingerprint(),
+        fingerprint: getBrowserDeviceFingerprint(safeStorage),
       }),
     }).catch((cause) => setError((cause as Error).message));
     request<Bank>("/bank")

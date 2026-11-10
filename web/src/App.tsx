@@ -6,6 +6,7 @@ import type { FormEvent } from "react";
 import AdminWorkspace from "./AdminWorkspace";
 import StudentNavigation, { type StudentPage } from "./StudentNavigation";
 import StudentAnnouncementDialog from "./StudentAnnouncementDialog";
+import StudentNotificationBanner from "./StudentNotificationBanner";
 import StudentProgress, { DashboardProgressSummary } from "./StudentProgress";
 
 const API = (import.meta.env.VITE_API_URL || "http://localhost:4000").replace(/\/+$/, "");
@@ -21,7 +22,8 @@ type Invitation = {
   status: "PENDING" | "USED" | "REVOKED" | "EXPIRED";
 };
 type CreatedInvitation = { id: string; email: string; token: string; expiresAt: string };
-type Announcement = { id: string; title: string; message: string; createdAt: string; publishedAt: string; expiresAt: string | null; seenAt?: string | null };
+type Announcement = { id: string; title: string; message: string; createdAt: string; publishedAt: string; expiresAt: string | null; seenAt?: string | null; acknowledgedAt?: string | null };
+type StudentNotification = { id: string; kind: string; title: string; message: string; href: string; createdAt: string; readAt: string | null; expiresAt: string | null };
 type Question = {
   id: number;
   subject: string;
@@ -88,6 +90,7 @@ export default function App() {
   const [invitationToken, setInvitationToken] = useState("");
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [activeAnnouncements, setActiveAnnouncements] = useState<Announcement[]>([]);
+  const [studentNotifications, setStudentNotifications] = useState<StudentNotification[]>([]);
   const [inviteEmail, setInviteEmail] = useState("");
   const [createdInvitation, setCreatedInvitation] = useState<CreatedInvitation | null>(null);
   const [assignedExams, setAssignedExams] = useState<AssignedExam[]>([]);
@@ -174,6 +177,29 @@ export default function App() {
   }, [user]);
 
   useEffect(() => {
+    if (user?.role !== "STUDENT") {
+      setStudentNotifications([]);
+      return;
+    }
+    let cancelled = false;
+    const refreshNotifications = () => {
+      request<{ notifications: StudentNotification[] }>("/notifications?unread=true")
+        .then(({ notifications: items }) => {
+          if (!cancelled) setStudentNotifications(Array.isArray(items) ? items : []);
+        })
+        .catch(() => {
+          // Notification delivery is supplementary; keep the core student workspace usable.
+        });
+    };
+    refreshNotifications();
+    const interval = window.setInterval(refreshNotifications, 30_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [user]);
+
+  useEffect(() => {
     if (user?.role !== "STUDENT" || !["dashboard", "announcements"].includes(activePage)) return;
     request<{ announcements: Announcement[] }>("/announcements")
       .then(({ announcements: items }) => setAnnouncements(Array.isArray(items) ? items : []))
@@ -245,6 +271,15 @@ export default function App() {
       });
     return () => { cancelled = true; };
   }, [user, test, result]);
+
+  async function markStudentNotificationRead(id: string) {
+    try {
+      await request(`/notifications/${id}/read`, { method: "POST", body: JSON.stringify({}) });
+      setStudentNotifications((items) => items.filter((item) => item.id !== id));
+    } catch (cause) {
+      setError((cause as Error).message);
+    }
+  }
 
   async function dismissAnnouncement(id: string) {
     try {
@@ -1169,6 +1204,12 @@ export default function App() {
         )}
         {error && <p className="error">{error}</p>}
       </main>
+      {studentNotifications[0] && (
+        <StudentNotificationBanner
+          notification={studentNotifications[0]}
+          onRead={(id) => void markStudentNotificationRead(id)}
+        />
+      )}
       {activeAnnouncements[0] && (
         <StudentAnnouncementDialog
           announcement={activeAnnouncements[0]}

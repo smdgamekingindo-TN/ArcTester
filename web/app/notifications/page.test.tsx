@@ -72,7 +72,7 @@ describe("student notification inbox", () => {
 
     expect(await screen.findByRole("heading", { name: "New exam assigned" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Exam result available" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Open" })).toHaveAttribute("href", "/assignments");
+    expect(screen.getAllByRole("link", { name: "Open" })[0]).toHaveAttribute("href", "/assignments");
 
     fireEvent.click(screen.getAllByRole("button", { name: "Mark as read" })[0]);
     await waitFor(() => expect(screen.getByText("Read")).toBeInTheDocument());

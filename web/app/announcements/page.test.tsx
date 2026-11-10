@@ -68,7 +68,7 @@ describe("student announcements page", () => {
     fireEvent.click(screen.getByRole("button", { name: "Acknowledge" }));
     expect(await screen.findByRole("status")).toHaveTextContent("Acknowledged");
     expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining("/announcements/notice-1/read"),
+      expect.stringContaining("/announcements/notice-1/acknowledge"),
       expect.objectContaining({ method: "POST", credentials: "include" })
     );
     expect(fetchMock).toHaveBeenCalledWith(

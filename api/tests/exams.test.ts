@@ -318,7 +318,7 @@ describe("versioned exam management", () => {
   });
 
   describe("PostgreSQL formal exam lifecycle", () => {
-    let fixture: { examId: string; assignments: Array<{ id: string; studentId: number }>; studentIds: number[]; cookies: string[]; questionSnapshotId: string; lateAssignmentId?: string };
+    let fixture: { examId: string; assignments: Array<{ id: string; studentId: number }>; studentIds: number[]; cookies: string[]; questionSnapshotId: string; lateAssignmentId?: string } | null = null;
     const emails = ["lifecycle-a@arctester.test", "lifecycle-b@arctester.test", "lifecycle-c@arctester.test", "lifecycle-d@arctester.test"];
     beforeAll(async () => {
       const question = await server.db.question.findFirstOrThrow({ where: { text: "Which structure follows FIFO?" } });

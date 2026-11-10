@@ -141,6 +141,18 @@ export default function AssignedExams() {
   const revision = useRef(0);
   const answersRef = useRef<Record<string, number>>({});
   const submitting = useRef(false);
+  const clockAnchorRef = useRef<ServerClockAnchor | null>(null);
+  const remainingRef = useRef(0);
+
+  function updateClockAnchor(anchor: ServerClockAnchor | null) {
+    clockAnchorRef.current = anchor;
+    setClockAnchor(anchor);
+  }
+
+  function updateRemaining(value: number) {
+    remainingRef.current = value;
+    setRemaining(value);
+  }
 
   async function load() {
     try {
@@ -203,14 +215,14 @@ export default function AssignedExams() {
       setActive(packageResponse.package);
       setActiveId(id);
       setSession(serverSession);
-      setClockAnchor(createServerClockAnchor(serverSession, performance.now()));
+      updateClockAnchor(createServerClockAnchor(serverSession, performance.now()));
       setHeldSeconds(null);
       setPaused(false);
       setAttemptUuid(backup?.attemptUuid ?? createUuid());
       setAnswers(merged);
       answersRef.current = merged;
       revision.current = restored.revision;
-      setRemaining(remainingServerSeconds(createServerClockAnchor(serverSession, performance.now()), performance.now()));
+      updateRemaining(remainingServerSeconds(createServerClockAnchor(serverSession, performance.now()), performance.now()));
       setSyncState("saved locally");
       setOffline(!navigator.onLine);
     } catch (caught) {
@@ -241,7 +253,7 @@ export default function AssignedExams() {
       const message = (caught as Error).message;
       if (/paused|no active exam session/i.test(message)) {
         setPaused(true);
-        setHeldSeconds(clockAnchor ? holdServerClock(clockAnchor, performance.now()) : remaining);
+        setHeldSeconds(clockAnchorRef.current ? holdServerClock(clockAnchorRef.current, performance.now()) : remainingRef.current);
       } else if (/failed|network|fetch/i.test(message)) {
         setOffline(true);
       } else {
@@ -253,7 +265,7 @@ export default function AssignedExams() {
   useEffect(() => {
     if (!active || !session || result || paused) return;
     const timer = window.setInterval(() => {
-      if (clockAnchor) setRemaining(remainingServerSeconds(clockAnchor, performance.now()));
+      if (clockAnchorRef.current) updateRemaining(remainingServerSeconds(clockAnchorRef.current, performance.now()));
     }, 250);
     return () => window.clearInterval(timer);
   }, [active, session, result, paused, clockAnchor]);
@@ -277,8 +289,8 @@ export default function AssignedExams() {
           response.serverTime,
           performance.now(),
         );
-        setClockAnchor(anchor);
-        setRemaining(remainingServerSeconds(anchor, performance.now()));
+        updateClockAnchor(anchor);
+        updateRemaining(remainingServerSeconds(anchor, performance.now()));
         setOffline(false);
         setReconnecting(false);
       } catch (caught) {
@@ -294,7 +306,7 @@ export default function AssignedExams() {
       }
     }, HEARTBEAT_INTERVAL_MS);
     return () => window.clearInterval(timer);
-  }, [active, session, result, paused, activeId, clockAnchor, remaining]);
+  }, [active, session, result, paused, activeId]);
 
   useEffect(() => {
     if (!active || !session || result || paused || remaining > 0 || busy) return;
@@ -313,8 +325,8 @@ export default function AssignedExams() {
         if (cancelled) return;
         setSession(response.session);
         const anchor = createServerClockAnchor(response.session, performance.now());
-        setClockAnchor(anchor);
-        setRemaining(remainingServerSeconds(anchor, performance.now()));
+        updateClockAnchor(anchor);
+        updateRemaining(remainingServerSeconds(anchor, performance.now()));
         setPaused(false);
         setOffline(false);
         setReconnecting(false);
@@ -386,7 +398,7 @@ export default function AssignedExams() {
     setResult(null);
     setActiveId("");
     setSession(null);
-    setClockAnchor(null);
+    updateClockAnchor(null);
     setAnswers({});
     answersRef.current = {};
     void load();

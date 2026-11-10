@@ -7,6 +7,7 @@ import AdminWorkspace from "./AdminWorkspace";
 import StudentNavigation, { type StudentPage } from "./StudentNavigation";
 import StudentAnnouncementDialog from "./StudentAnnouncementDialog";
 import StudentProgress, { DashboardProgressSummary } from "./StudentProgress";
+import StudentDashboardWelcome from "./StudentDashboardWelcome";
 
 const API = (import.meta.env.VITE_API_URL || "http://localhost:4000").replace(/\/+$/, "");
 type User = { id: number; email: string; role: "ADMIN" | "STUDENT" };
@@ -1013,16 +1014,7 @@ export default function App() {
           </section>
         ) : (
           <>
-            <section hidden={activePage !== "dashboard"} className="welcome panel" id="dashboard">
-              <div>
-                <p className="eyebrow">YOUR LEARNING DASHBOARD</p>
-                <h1>Make every practice count.</h1>
-                <p className="muted">
-                  Pick a subject or start a mixed session. Your progress is saved to your account.
-                </p>
-              </div>
-              <div className="welcome-mark">A</div>
-            </section>
+            <StudentDashboardWelcome visible={activePage === "dashboard"} />
             {activePage === "dashboard" && announcements.length > 0 ? (
               <section className="panel student-notice-preview">
                 <div className="section-head"><div><p className="eyebrow">IMPORTANT UPDATES</p><h2>Latest announcement</h2></div><button className="ghost" onClick={() => setActivePage("announcements")}>View all ({announcements.length}) →</button></div>

@@ -319,10 +319,7 @@ describe("versioned exam management", () => {
 
   it("runs the complete formal exam lifecycle and enforces server-side failure paths on PostgreSQL", async () => {
     const question = await server.db.question.findFirstOrThrow({ where: { text: "Which structure follows FIFO?" } });
-    const createStudent = async (email: string) => {
-      await server.db.user.create({ data: { email, passwordHash: hashPassword("exam-test-password-123"), role: "STUDENT" } });
-      return createSession(email, "STUDENT");
-    };
+    const createStudent = async (email: string) => createSession(email, "STUDENT");
     const studentA = await createStudent("lifecycle-a@arctester.test");
     const studentB = await createStudent("lifecycle-b@arctester.test");
     const studentC = await createStudent("lifecycle-c@arctester.test");
@@ -388,6 +385,12 @@ describe("versioned exam management", () => {
     await server.db.examSession.update({ where: { id: sessionD }, data: { startedAt: expiredAt, lastHeartbeatAt: expiredAt } });
     expect((await request("/exams/assignments/" + assignmentD.id + "/session/heartbeat", "POST", { event: "HEARTBEAT" }, studentD)).status).toBe(409);
     expect((await server.db.examSession.findUniqueOrThrow({ where: { id: sessionD } })).status).toBe("EXPIRED");
+
+    const assignmentIds = [assignmentA.id, assignmentB.id, assignmentC.id, assignmentD.id];
+    await server.db.examSubmission.deleteMany({ where: { assignmentId: { in: assignmentIds } } });
+    await server.db.examAssignment.deleteMany({ where: { id: { in: assignmentIds } } });
+    await server.db.exam.delete({ where: { id: exam.id } });
+    await server.db.user.deleteMany({ where: { id: { in: studentIds } } });
   });
   it("lists published papers in the student catalogue without exposing answer data", async () => {
     const catalog = await request("/exams/catalog", "GET", undefined, studentCookie);

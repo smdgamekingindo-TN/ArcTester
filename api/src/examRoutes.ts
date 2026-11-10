@@ -1668,7 +1668,17 @@ export function examRouter(db: PrismaClient): Router {
         new Date(input.startedAt).getTime() < startedAt.getTime() - 60000 ||
         new Date(input.startedAt).getTime() > startedAt.getTime() + 60000;
 
-      const submission = await db.$transaction(async (tx) => {
+      let submission: {
+        id: string;
+        attemptUuid: string;
+        status: string;
+        score: number | null;
+        maximumScore: number | null;
+        submittedAt: Date;
+        receivedAt: Date;
+      };
+      try {
+        submission = await db.$transaction(async (tx) => {
         const existing = await tx.examSubmission.findUnique({
           where: { assignmentId: assignment.id },
         });
@@ -1765,6 +1775,28 @@ export function examRouter(db: PrismaClient): Router {
         });
         return created;
       });
+
+      } catch (error) {
+        const errorCode = typeof error === "object" && error !== null && "code" in error
+          ? (error as { code?: string }).code
+          : undefined;
+        if (errorCode === "P2002") {
+          // Two identical submit requests can both pass the initial read.
+          // The unique assignment constraint elects one winner; the loser
+          // returns that committed result instead of surfacing a 500.
+          const duplicate = await db.examSubmission.findUnique({
+            where: { assignmentId: assignment.id },
+            select: {
+              id: true, attemptUuid: true, status: true, score: true,
+              maximumScore: true, submittedAt: true, receivedAt: true,
+            },
+          });
+          if (duplicate?.attemptUuid === input.attemptUuid) {
+            return res.json({ ok: true, duplicate: true, submission: duplicate });
+          }
+        }
+        throw error;
+      }
 
       res.status(201).json({ ok: true, duplicate: false, submission });
     } catch (error) {

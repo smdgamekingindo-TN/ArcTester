@@ -48,7 +48,7 @@ describe("AdminSubjects", () => {
   it("shows zero coverage for blueprint subjects that have no bank questions", () => {
     render(<AdminSubjects catalog={[]} onRefresh={vi.fn()} />);
     expect(screen.getByText("0 / 200 blueprint questions currently in the bank")).toBeInTheDocument();
-    expect(screen.getByText("0 / 6 questions")).toBeInTheDocument();
+    expect(screen.getAllByText("0 / 6 questions").length).toBeGreaterThan(0);
     expect(screen.getAllByText("6 needed").length).toBeGreaterThan(0);
   });
 

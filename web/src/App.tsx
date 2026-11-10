@@ -21,6 +21,7 @@ import { useStudentCommunications } from "./useStudentCommunications";
 import StudentProgress, { DashboardProgressSummary } from "./StudentProgress";
 import StudentQuestionBankBrowser from "./StudentQuestionBankBrowser";
 import StudentQuestionBankStats from "./StudentQuestionBankStats";
+import StudentDashboardWelcome from "./StudentDashboardWelcome";
 import StudentPracticeQuickActions from "./StudentPracticeQuickActions";
 import StudentPracticeSubjectTopicFilters from "./StudentPracticeSubjectTopicFilters";
 import StudentPracticePaperConfiguration from "./StudentPracticePaperConfiguration";
@@ -856,16 +857,7 @@ export default function App() {
           />
         ) : (
           <>
-            <section hidden={activePage !== "dashboard"} className="welcome panel" id="dashboard">
-              <div>
-                <p className="eyebrow">YOUR LEARNING DASHBOARD</p>
-                <h1>Make every practice count.</h1>
-                <p className="muted">
-                  Pick a subject or start a mixed session. Your progress is saved to your account.
-                </p>
-              </div>
-              <div className="welcome-mark">A</div>
-            </section>
+            <StudentDashboardWelcome visible={activePage === "dashboard"} />
             {activePage === "dashboard" && announcements.length > 0 ? (
               <StudentAnnouncementPreview
                 announcement={announcements[0]}

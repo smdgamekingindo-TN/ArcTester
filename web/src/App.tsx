@@ -15,6 +15,7 @@ import StudentProgress, { DashboardProgressSummary } from "./StudentProgress";
 import StudentQuestionBankBrowser from "./StudentQuestionBankBrowser";
 import StudentPracticeQuickActions from "./StudentPracticeQuickActions";
 import StudentPracticeSubjectTopicFilters from "./StudentPracticeSubjectTopicFilters";
+import StudentPracticePaperConfiguration from "./StudentPracticePaperConfiguration";
 import StudentPracticeResumePreview from "./StudentPracticeResumePreview";
 import StudentAssignedExamPreview from "./StudentAssignedExamPreview";
 import StudentAnnouncementPreview from "./StudentAnnouncementPreview";
@@ -1085,14 +1086,13 @@ export default function App() {
                     onTopicKeysChange={setPracticeTopicKeys}
                     onError={setError}
                   />
-                  <div className="practice-builder-section">
-                    <strong>3. Configure your paper</strong>
-                    <div className="practice-config-grid">
-                      <label>Number of questions<input type="number" min={1} max={200} value={practiceQuestionCount} onChange={(event) => setPracticeQuestionCount(Math.max(1, Math.min(200, Math.floor(Number(event.target.value) || 1))))} /></label>
-                      <label>Difficulty<select value={practiceDifficulty} onChange={(event) => setPracticeDifficulty(event.target.value as typeof practiceDifficulty)}><option value="any">All difficulties</option><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select></label>
-                    </div>
-                    <p className="practice-helper">Questions are distributed as evenly as possible across selected subjects. If a subject has too few matching questions, ArcTester will tell you.</p>{practiceSubjects.length > 0 && <div className="practice-quota-preview"><span className="practice-helper">Requested subject distribution</span><div>{practiceSubjects.map((subject, index) => { const base = Math.floor(practiceQuestionCount / practiceSubjects.length); const quota = base + (index < practiceQuestionCount % practiceSubjects.length ? 1 : 0); return <span key={subject}><strong>{subject}</strong><b>{quota}</b></span>; })}</div></div>}
-                  </div>
+                  <StudentPracticePaperConfiguration
+                    selectedSubjects={practiceSubjects}
+                    questionCount={practiceQuestionCount}
+                    difficulty={practiceDifficulty}
+                    onQuestionCountChange={setPracticeQuestionCount}
+                    onDifficultyChange={setPracticeDifficulty}
+                  />
                   <div className="practice-builder-footer"><span className="muted">Your paper will use your selected filters.</span><button className="primary" disabled={busy || practiceSubjects.length === 0 || !bank?.total} onClick={createStudentPracticePaper}>{busy ? "Building paper…" : "Create " + practiceQuestionCount + "-question paper"}</button></div>
                 </article>
                 <StudentPracticeQuickActions

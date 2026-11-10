@@ -35,4 +35,4 @@ describe("StudentAnnouncementPreview", () => {
     fireEvent.click(screen.getByRole("button", { name: "View all (1)" }));
     expect(onViewAll).toHaveBeenCalledTimes(1);
   });
-}
+});

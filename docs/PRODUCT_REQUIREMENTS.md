@@ -67,6 +67,15 @@ The application must remain usable on modest hardware (including 8 GB RAM system
 11. Suspicious timing/connectivity signals may mark a submission for review; they must not silently alter the candidate's answers or score.
 12. Candidate-facing errors must explain what action is possible next (wait for invigilator, reconnect, or contact administrator).
 
+### Assigned-exam answer synchronization rule
+
+- The browser writes a local answer backup immediately when the candidate changes an answer; server autosave may be debounced or temporarily unavailable.
+- On reload/reconnect, restore the server's last saved answer set, then overlay the local backup by exam-question ID. **The local backup wins over the last server save** because it may contain a newer selection that has not yet reached the server.
+- Submit the merged answer set using the latest server revision. If the server reports a revision conflict, reload the latest server revision and reapply the local backup before retrying; never silently discard the local selection.
+- Keep the same attempt UUID across submission retries. A repeated submit with the same UUID must return the original result; a different UUID must not create a second result for the same assignment.
+- The UI must distinguish saved locally, synced with server, submitted/received, and graded. Offline state is not a successful server sync and must remain visible until acknowledged by the server.
+- The server remains authoritative for formal-exam start/deadline, session state and grading. Local backup precedence applies to answer recovery only; it cannot extend the exam or override a paused, terminated or expired session.
+
 ## 6. Invigilation, attendance, and audit
 
 - Live invigilation view lists active and paused sessions and distinguishes connected from stale candidates.

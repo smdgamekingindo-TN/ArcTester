@@ -352,13 +352,15 @@ export default function AssignedExams() {
         await syncAnswers();
       } catch (caught) {
         if (cancelled) return;
-        const message = (caught as Error).message;
-        if (/paused/i.test(message)) {
-          setPaused(true);
-          setHeldSeconds(clockAnchor ? holdServerClock(clockAnchor, performance.now()) : remaining);
-        } else {
+        if (isNetworkError(caught)) {
           setOffline(true);
           setError("Connection restored, but the exam session could not be resumed yet. Your local answers are retained.");
+          setReconnecting(false);
+        } else if (caught instanceof HttpError && caught.status === 409) {
+          setPaused(true);
+          setHeldSeconds(clockAnchorRef.current ? holdServerClock(clockAnchorRef.current, performance.now()) : remainingRef.current);
+        } else {
+          setError((caught as Error).message);
           setReconnecting(false);
         }
       }

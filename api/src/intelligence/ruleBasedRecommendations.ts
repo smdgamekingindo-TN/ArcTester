@@ -185,15 +185,18 @@ export function buildRuleBasedRecommendations(input: {
     return { recommendations, recentlyPracticedWeakCount: recent.length };
   }
 
-  // Do not let a weak subject aggregate override sufficiently sampled named
-  // topics that are already performing above the weak threshold.
-  const hasSufficientTopicEvidence = namedTopics.some((row) => row.seen >= input.minimumAnswers);
-  if (hasSufficientTopicEvidence) {
-    return { recommendations: [], recentlyPracticedWeakCount: 0 };
-  }
-
+  // Apply topic precedence per subject: strong topic evidence in one subject
+  // must not hide a genuine subject-level gap in a different subject.
+  const subjectsWithSufficientTopics = new Set(
+    namedTopics
+      .filter((row) => row.seen >= input.minimumAnswers)
+      .map((row) => row.subject),
+  );
   const weakSubjects = mergeEvidenceRows(input.subjects, true)
-    .filter((row) => isWeakEnough(row, input.minimumAnswers, input.weakAccuracyThreshold))
+    .filter((row) =>
+      !subjectsWithSufficientTopics.has(row.subject) &&
+      isWeakEnough(row, input.minimumAnswers, input.weakAccuracyThreshold)
+    )
     .sort(sortEvidence);
   const recentSubjects = weakSubjects.filter((row) => isRecent(lastBySubject.get(evidenceKey(row.subject, null))));
   const eligibleSubjects = weakSubjects

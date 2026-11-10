@@ -318,7 +318,7 @@ describe("versioned exam management", () => {
   });
 
   describe("PostgreSQL formal exam lifecycle", () => {
-    let fixture: { examId: string; assignments: Array<{ id: string; studentId: number }>; studentIds: number[]; cookies: string[]; questionSnapshotId: string };
+    let fixture: { examId: string; assignments: Array<{ id: string; studentId: number }>; studentIds: number[]; cookies: string[]; questionSnapshotId: string; lateAssignmentId?: string };
     const emails = ["lifecycle-a@arctester.test", "lifecycle-b@arctester.test", "lifecycle-c@arctester.test", "lifecycle-d@arctester.test"];
     beforeAll(async () => {
       const question = await server.db.question.findFirstOrThrow({ where: { text: "Which structure follows FIFO?" } });
@@ -338,10 +338,11 @@ describe("versioned exam management", () => {
     afterAll(async () => {
       if (!fixture) return;
       const assignmentIds = fixture.assignments.map((item) => item.id);
-      await server.db.examSubmission.deleteMany({ where: { assignmentId: { in: assignmentIds } } });
-      await server.db.examSessionEvent.deleteMany({ where: { session: { assignmentId: { in: assignmentIds } } } });
-      await server.db.examSession.deleteMany({ where: { assignmentId: { in: assignmentIds } } });
-      await server.db.examAssignment.deleteMany({ where: { id: { in: assignmentIds } } });
+      const cleanupAssignmentIds = fixture.lateAssignmentId ? [...assignmentIds, fixture.lateAssignmentId] : assignmentIds;
+      await server.db.examSubmission.deleteMany({ where: { assignmentId: { in: cleanupAssignmentIds } } });
+      await server.db.examSessionEvent.deleteMany({ where: { session: { assignmentId: { in: cleanupAssignmentIds } } } });
+      await server.db.examSession.deleteMany({ where: { assignmentId: { in: cleanupAssignmentIds } } });
+      await server.db.examAssignment.deleteMany({ where: { id: { in: cleanupAssignmentIds } } });
       await server.db.exam.delete({ where: { id: fixture.examId } });
       await server.db.user.deleteMany({ where: { id: { in: fixture.studentIds } } });
     });
@@ -407,6 +408,7 @@ describe("versioned exam management", () => {
       expect((await request("/exams/assignments/" + expiredAssignment.id + "/session/heartbeat", "POST", { event: "HEARTBEAT" }, expiredStudent)).status).toBe(409);
       expect((await server.db.examSession.findUniqueOrThrow({ where: { id: sessionD } })).status).toBe("EXPIRED");
       const lateAssignment = await server.db.examAssignment.create({ data: { examVersionId: (await server.db.examAssignment.findUniqueOrThrow({ where: { id: fixture.assignments[1].id }, select: { examVersionId: true } })).examVersionId, studentId: fixture.studentIds[1], assignedById: (await server.db.user.findUniqueOrThrow({ where: { email: "exam-admin@arctester.test" }, select: { id: true } })).id } });
+      fixture.lateAssignmentId = lateAssignment.id;
       const lateStarted = await request("/exams/assignments/" + lateAssignment.id + "/session/start", "POST", {}, fixture.cookies[1]);
       const lateSession = lateStarted.json.session as { id: string; startedAt: string };
       const pastDeadline = new Date(Date.now() - 62_000);
@@ -416,10 +418,7 @@ describe("versioned exam management", () => {
       expect(lateSubmit.status).toBe(201);
       expect((lateSubmit.json.submission as { status: string }).status).toBe("REVIEW_REQUIRED");
       expect((await request("/exams/assignments/" + lateAssignment.id + "/result", "GET", undefined, fixture.cookies[1])).status).toBe(200);
-      await server.db.examSubmission.deleteMany({ where: { assignmentId: lateAssignment.id } });
-      await server.db.examSessionEvent.deleteMany({ where: { session: { assignmentId: lateAssignment.id } } });
-      await server.db.examSession.deleteMany({ where: { assignmentId: lateAssignment.id } });
-      await server.db.examAssignment.delete({ where: { id: lateAssignment.id } });
+
     });
   });
 

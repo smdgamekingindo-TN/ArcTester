@@ -55,6 +55,44 @@ describe("live Vite application", () => {
     expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/exams/assigned"))).toBe(true);
   });
 
+  it("shows and acknowledges in-app notices for newly assigned exams and results", async () => {
+    fetchMock.mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const path = String(input);
+      if (path.endsWith("/auth/me")) return Promise.resolve(response(200, {
+        user: { id: 4, email: "student@example.com", role: "STUDENT" },
+      }));
+      if (path.endsWith("/bank")) return Promise.resolve(response(200, { total: 0, subjects: [] }));
+      if (path.endsWith("/notifications?unread=true")) return Promise.resolve(response(200, {
+        notifications: [{
+          id: "notification-assignment-1",
+          kind: "EXAM_ASSIGNMENT",
+          title: "New exam assigned",
+          message: "AP ECET Mock 1 is ready.",
+          href: "/assignments",
+          createdAt: "2026-11-10T09:00:00.000Z",
+          readAt: null,
+          expiresAt: null,
+        }],
+      }));
+      if (path.endsWith("/notifications/notification-assignment-1/read") && init?.method === "POST") {
+        return Promise.resolve(response(200, { ok: true, readAt: "2026-11-10T09:01:00.000Z", alreadyRead: false }));
+      }
+      return Promise.resolve(response(200, { ok: true, announcements: [] }));
+    });
+
+    render(<App />);
+
+    const notice = await screen.findByRole("status", { name: "New notification" });
+    expect(within(notice).getByRole("heading", { name: "New exam assigned" })).toBeInTheDocument();
+    expect(within(notice).getByRole("link", { name: "Open" })).toHaveAttribute("href", "/assignments");
+    fireEvent.click(within(notice).getByRole("button", { name: "Mark as read" }));
+    await waitFor(() => expect(screen.queryByRole("status", { name: "New notification" })).not.toBeInTheDocument());
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("/notifications/notification-assignment-1/read"),
+      expect.objectContaining({ method: "POST", credentials: "include" })
+    );
+  });
+
   it("loads published announcements into the student dashboard and announcements view", async () => {
     fetchMock.mockImplementation((input: RequestInfo | URL) => {
       const path = String(input);

@@ -648,19 +648,22 @@ describe("versioned exam management", () => {
       answers: [{ examQuestionId: question.id, selectedIndex: displayedCorrectIndex }],
     };
 
-    const first = await request(
-      `/exams/assignments/${assignmentId}/submission`,
-      "POST",
-      body,
-      studentCookie
-    );
-    expect(first.status).toBe(201);
-    const submission = first.json.submission as {
+    const [first, concurrent] = await Promise.all([
+      request(`/exams/assignments/${assignmentId}/submission`, "POST", body, studentCookie),
+      request(`/exams/assignments/${assignmentId}/submission`, "POST", body, studentCookie),
+    ]);
+    expect([first.status, concurrent.status].sort((left, right) => left - right)).toEqual([200, 201]);
+    const winner = first.status === 201 ? first : concurrent;
+    const duplicate = first.status === 200 ? first : concurrent;
+    expect(duplicate.json.duplicate).toBe(true);
+    const submission = winner.json.submission as {
       id: string;
       status: string;
       score: number;
       maximumScore: number;
     };
+    expect((await server.db.examSubmission.count({ where: { assignmentId } })).toBe(1);
+    expect((duplicate.json.submission as { id: string }).id).toBe(submission.id);
     expect(submission.status).toBe("GRADED");
     expect(submission.score).toBe(2);
     expect(submission.maximumScore).toBe(2);

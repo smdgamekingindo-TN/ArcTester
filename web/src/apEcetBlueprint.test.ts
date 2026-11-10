@@ -14,7 +14,11 @@ describe("AP ECET 2026 CSE blueprint", () => {
     expect(AP_ECET_2026_BLUEPRINT_TOTAL).toBe(200);
   });
 
-  it("normalizes case and repeated whitespace when matching blueprint aliases", () => {\n    expect(countBlueprintQuestions([{ name: "  Computer   Networks  ", count: 9 }], ["Computer Networks"])).toBe(9);\n  });\n\n  it("aggregates only catalog entries matching a blueprint alias", () => {
+  it("normalizes case and repeated whitespace when matching blueprint aliases", () => {
+    expect(countBlueprintQuestions([{ name: "  Computer   Networks  ", count: 9 }], ["Computer Networks"])).toBe(9);
+  });
+
+  it("aggregates only catalog entries matching a blueprint alias", () => {
     expect(countBlueprintQuestions([
       { name: "Maths", count: 7 },
       { name: "Mathematics", count: 5 },

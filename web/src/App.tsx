@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { mergeAssignedExamAnswers } from "../lib/answerRecovery";
 import { classifyAssignmentHeartbeatFailure } from "./assignedExamHeartbeat";
 import { safeStorage } from "./safeStorage";
+import AuthScreen from "./AuthScreen";
 import { createApiClient } from "./apiClient";
 import { buildPracticeConfig } from "./practiceConfig";
 import { bindLocalExamBackupOwner, clearLocalExamBackupsOnLogout } from "./localExamBackup";
@@ -777,78 +778,20 @@ export default function App() {
 
   if (!user) {
     return (
-      <main className="auth-shell">
-        <section className="auth-card">
-          <Brand />
-          <p className="eyebrow">YOUR PERSONAL PRACTICE SPACE</p>
-          <h1>{register ? "Create your account" : "Welcome back"}</h1>
-          <p className="muted">Sign in to continue your preparation.</p>
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              void authenticate();
-            }}
-          >
-            <label>
-              Email address
-              <input
-                type="email"
-                autoComplete="email"
-                required
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-              />
-            </label>
-            <label>
-              Password
-              <input
-                type="password"
-                autoComplete={register ? "new-password" : "current-password"}
-                minLength={register ? 8 : 1}
-                required
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-              />
-            </label>
-            {register && (
-              <label>
-                Invitation code
-                <input
-                  type="text"
-                  autoComplete="one-time-code"
-                  required
-                  value={invitationToken}
-                  onChange={(event) => setInvitationToken(event.target.value)}
-                />
-              </label>
-            )}
-            <button className="primary full" disabled={busy}>
-              {busy ? "Please wait…" : register ? "Create account" : "Sign in"}
-            </button>
-          </form>
-          <button className="text-button" onClick={() => setRegister(!register)}>
-            {register ? "Already have an account? Sign in" : "Have an invitation? Create account"}
-          </button>
-          {error && <p className="error">{error}</p>}
-        </section>
-      </main>
+      <AuthScreen
+        email={email}
+        password={password}
+        invitationToken={invitationToken}
+        register={register}
+        busy={busy}
+        error={error}
+        onEmailChange={setEmail}
+        onPasswordChange={setPassword}
+        onInvitationTokenChange={setInvitationToken}
+        onRegisterChange={setRegister}
+        onAuthenticate={() => void authenticate()}
+      />
     );
-  }
-
-  if (user.role === "ADMIN") {
-    return <AdminWorkspace
-      email={user.email}
-      theme={theme}
-      setTheme={setTheme}
-      signOut={signOut}
-      invitations={invitations}
-      createInvitation={createInvitation}
-      inviteEmail={inviteEmail}
-      setInviteEmail={setInviteEmail}
-      createdInvitation={createdInvitation}
-      revokeInvitation={revokeInvitation}
-      busy={busy}
-    />;
   }
 
   return (
@@ -1117,15 +1060,5 @@ export default function App() {
         />
       )}
     </div>
-  );
-}
-
-
-function Brand() {
-  return (
-    <a className="brand" href="#dashboard">
-      <span className="brand-mark">A</span>
-      <span>ArcTester</span>
-    </a>
   );
 }

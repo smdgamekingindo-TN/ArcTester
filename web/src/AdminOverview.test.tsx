@@ -11,7 +11,7 @@ describe("AdminOverview", () => {
     expect(screen.getByRole("heading", { name: "Build better exams." })).toBeTruthy();
     expect(screen.getByText("75")).toBeTruthy();
     expect(screen.getByText("8 topics mapped")).toBeTruthy();
-    expect(screen.getByText("2")).toBeTruthy();
+    expect(screen.getAllByText("2")).toHaveLength(2);
     expect(screen.getByText("1 published")).toBeTruthy();
     expect(screen.getByText("12")).toBeTruthy();
     expect(container.querySelector(".coverage-row i")?.getAttribute("style")).toContain("66.666");

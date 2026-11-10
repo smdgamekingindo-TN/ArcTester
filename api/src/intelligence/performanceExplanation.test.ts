@@ -44,7 +44,6 @@ describe("buildPerformanceExplanation", () => {
   });
 });
 
-
 describe("buildPerformanceExplanation subject fallback", () => {
   it("uses subject-level evidence when topic labels are unavailable", () => {
     const topics = [
@@ -66,6 +65,16 @@ describe("buildPerformanceExplanation subject fallback", () => {
       { subject: "CSE", topic: null, seen: 20, correct: 12, wrong: 8, accuracy: 0.6 },
     ]);
     expect(result.headline).toContain("Trees");
-    expect(result.headline).toContain("Trees in CSE");
+  });
+
+  it("does not report a weak subject aggregate when sampled named topics are healthy", () => {
+    const result = buildPerformanceExplanation([
+      { subject: "CSE", topic: "Arrays", seen: 10, correct: 8, wrong: 2, accuracy: 0.8 },
+      { subject: "CSE", topic: "Trees", seen: 10, correct: 7, wrong: 3, accuracy: 0.7 },
+    ], 5, 0.6, [
+      { subject: "CSE", topic: null, seen: 20, correct: 8, wrong: 12, accuracy: 0.4 },
+    ]);
+    expect(result.headline).toContain("No confirmed weak topic");
+    expect(result.headline).not.toContain("revision gap is CSE");
   });
 });

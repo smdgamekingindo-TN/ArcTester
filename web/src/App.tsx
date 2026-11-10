@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { mergeAssignedExamAnswers } from "../lib/answerRecovery";
 import { classifyAssignmentHeartbeatFailure } from "./assignedExamHeartbeat";
 import { safeStorage } from "./safeStorage";
+import { buildPracticeConfig } from "./practiceConfig";
 import { bindLocalExamBackupOwner, clearLocalExamBackupsOnLogout } from "./localExamBackup";
 import type { FormEvent } from "react";
 import AdminWorkspace from "./AdminWorkspace";
@@ -641,11 +642,7 @@ export default function App() {
   }
 
   function createStudentPracticePaper() {
-    const topicFilters = practiceTopicKeys.flatMap((key) => {
-      try { const parsed = JSON.parse(key) as [string, string]; return [{ subject: parsed[0], topic: parsed[1] }]; }
-      catch { return []; }
-    });
-    void startTest("practice", undefined, { subjects: practiceSubjects, topicFilters, count: practiceQuestionCount, difficulty: practiceDifficulty });
+    void startTest("practice", undefined, buildPracticeConfig(practiceSubjects, practiceTopicKeys, practiceQuestionCount, practiceDifficulty));
   }
 
   function selectPracticeAnswer(questionId: number, selectedIndex: number) {

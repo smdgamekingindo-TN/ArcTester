@@ -7,6 +7,9 @@ import AdminWorkspace from "./AdminWorkspace";
 import StudentNavigation, { type StudentPage } from "./StudentNavigation";
 import StudentAnnouncementDialog from "./StudentAnnouncementDialog";
 import StudentNotificationBanner from "./StudentNotificationBanner";
+import StudentAnnouncementsInbox from "./StudentAnnouncementsInbox";
+import StudentNotificationsInbox from "./StudentNotificationsInbox";
+import { useStudentCommunications } from "./useStudentCommunications";
 import StudentProgress, { DashboardProgressSummary } from "./StudentProgress";
 
 const API = (import.meta.env.VITE_API_URL || "http://localhost:4000").replace(/\/+$/, "");
@@ -22,8 +25,6 @@ type Invitation = {
   status: "PENDING" | "USED" | "REVOKED" | "EXPIRED";
 };
 type CreatedInvitation = { id: string; email: string; token: string; expiresAt: string };
-type Announcement = { id: string; title: string; message: string; createdAt: string; publishedAt: string; expiresAt: string | null; seenAt?: string | null; acknowledgedAt?: string | null };
-type StudentNotification = { id: string; kind: string; title: string; message: string; href: string; createdAt: string; readAt: string | null; expiresAt: string | null };
 type Question = {
   id: number;
   subject: string;
@@ -89,8 +90,6 @@ export default function App() {
   const [password, setPassword] = useState("");
   const [invitationToken, setInvitationToken] = useState("");
   const [invitations, setInvitations] = useState<Invitation[]>([]);
-  const [activeAnnouncements, setActiveAnnouncements] = useState<Announcement[]>([]);
-  const [studentNotifications, setStudentNotifications] = useState<StudentNotification[]>([]);
   const [inviteEmail, setInviteEmail] = useState("");
   const [createdInvitation, setCreatedInvitation] = useState<CreatedInvitation | null>(null);
   const [assignedExams, setAssignedExams] = useState<AssignedExam[]>([]);
@@ -109,7 +108,6 @@ export default function App() {
   const [practiceTopicKeys, setPracticeTopicKeys] = useState<string[]>([]);
   const [practiceQuestionCount, setPracticeQuestionCount] = useState(20);
   const [practiceDifficulty, setPracticeDifficulty] = useState<"any" | "easy" | "medium" | "hard">("any");
-  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [register, setRegister] = useState(false);
   const [test, setTest] = useState<Test | null>(null);
   const [result, setResult] = useState<Result | null>(null);
@@ -136,6 +134,23 @@ export default function App() {
     ? Math.max(0, Math.ceil((practiceDeadline - (practiceClock + practiceServerOffset)) / 1000))
     : null;
   const [activePage, setActivePage] = useState<StudentPage>("dashboard");
+  const {
+    announcements,
+    activeAnnouncements,
+    notifications: studentNotifications,
+    refreshAnnouncements,
+    refreshNotifications,
+    dismissAnnouncement,
+    acknowledgeAnnouncement,
+    markNotificationRead,
+    clear: clearStudentCommunications,
+  } = useStudentCommunications({
+    userRole: user?.role ?? null,
+    activePage,
+    request,
+    setError,
+    setBusy,
+  });
   const [theme, setTheme] = useState<"light" | "dark">(
     () => (safeStorage.getItem("arctester-theme") as "light" | "dark") || "light"
   );
@@ -165,46 +180,6 @@ export default function App() {
       .then(setBank)
       .catch((cause) => setError((cause as Error).message));
   }, [user]);
-
-  useEffect(() => {
-    if (user?.role !== "STUDENT") {
-      setActiveAnnouncements([]);
-      return;
-    }
-    request<{ announcements: Announcement[] }>("/announcements/active")
-      .then(({ announcements }) => setActiveAnnouncements(Array.isArray(announcements) ? announcements : []))
-      .catch((cause) => setError((cause as Error).message));
-  }, [user]);
-
-  useEffect(() => {
-    if (user?.role !== "STUDENT") {
-      setStudentNotifications([]);
-      return;
-    }
-    let cancelled = false;
-    const refreshNotifications = () => {
-      request<{ notifications: StudentNotification[] }>(activePage === "notifications" ? "/notifications" : "/notifications?unread=true")
-        .then(({ notifications: items }) => {
-          if (!cancelled) setStudentNotifications(Array.isArray(items) ? items : []);
-        })
-        .catch(() => {
-          // Notification delivery is supplementary; keep the core student workspace usable.
-        });
-    };
-    refreshNotifications();
-    const interval = window.setInterval(refreshNotifications, 30_000);
-    return () => {
-      cancelled = true;
-      window.clearInterval(interval);
-    };
-  }, [user, activePage]);
-
-  useEffect(() => {
-    if (user?.role !== "STUDENT" || !["dashboard", "announcements"].includes(activePage)) return;
-    request<{ announcements: Announcement[] }>("/announcements")
-      .then(({ announcements: items }) => setAnnouncements(Array.isArray(items) ? items : []))
-      .catch((cause) => setError((cause as Error).message));
-  }, [user, activePage]);
 
   useEffect(() => {
     if (user?.role !== "STUDENT" || !["dashboard", "assigned-exams"].includes(activePage)) return;
@@ -272,19 +247,10 @@ export default function App() {
     return () => { cancelled = true; };
   }, [user, test, result]);
 
-  async function markStudentNotificationRead(id: string) {
-    try {
-      const result = await request<{ readAt: string }>(`/notifications/${id}/read`, { method: "POST", body: JSON.stringify({}) });
-      setStudentNotifications((items) => items.map((item) => item.id === id ? { ...item, readAt: result.readAt } : item));
-    } catch (cause) {
-      setError((cause as Error).message);
-    }
-  }
-
   async function openStudentNotification(id: string) {
     const notification = studentNotifications.find((item) => item.id === id);
     if (!notification) return;
-    await markStudentNotificationRead(id);
+    await markNotificationRead(id);
     if (notification.href === "/assignments") {
       setActivePage("assigned-exams");
       return;
@@ -293,15 +259,6 @@ export default function App() {
     if (resultMatch) {
       setActivePage("assigned-exams");
       void reviewAssignedExam(resultMatch[1]);
-    }
-  }
-
-  async function dismissAnnouncement(id: string) {
-    try {
-      await request("/announcements/" + id + "/acknowledge", { method: "POST" });
-      setActiveAnnouncements((items) => items.filter((item) => item.id !== id));
-    } catch (cause) {
-      setError((cause as Error).message);
     }
   }
 
@@ -597,18 +554,6 @@ export default function App() {
     }
   }
 
-  async function acknowledgeAnnouncement(id: string) {
-    setBusy(true);
-    try {
-      const result = await request<{ seenAt: string; acknowledgedAt: string | null }>(`/announcements/${id}/acknowledge`, { method: "POST" });
-      setAnnouncements((current) => current.map((item) => item.id === id ? { ...item, seenAt: result.seenAt, acknowledgedAt: result.acknowledgedAt } : item));
-    } catch (cause) {
-      setError((cause as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
   async function revokeInvitation(id: string) {
     setBusy(true);
     setError("");
@@ -811,7 +756,7 @@ export default function App() {
     setAssignmentResult(null);
     setAssignmentResultForId(null);
     setAssignedExams([]);
-    setAnnouncements([]);
+    clearStudentCommunications();
     setInvitations([]);
     setPracticeSubjects([]);
     setPracticeTopicKeys([]);
@@ -1052,7 +997,7 @@ export default function App() {
           <section className="student-notifications-page">
             <div className="page-heading">
               <div><p className="eyebrow">STUDENT COMMUNICATION</p><h1>Notification inbox</h1><p className="muted">New exam assignments, graded results and submissions awaiting review.</p></div>
-              <button className="ghost" onClick={() => request<{ notifications: StudentNotification[] }>("/notifications").then(({ notifications: items }) => setStudentNotifications(items)).catch((cause) => setError((cause as Error).message))}>Refresh</button>
+              <button className="ghost" onClick={() => void refreshNotifications().catch((cause) => setError((cause as Error).message))}>Refresh</button>
             </div>
             {studentNotifications.length === 0 ? <div className="panel empty-state"><h2>No notifications yet</h2><p className="muted">New assignments and exam results will appear here.</p></div> : studentNotifications.map((item) => (
               <article className="panel notification-row" key={item.id}>
@@ -1060,7 +1005,7 @@ export default function App() {
                 <h2>{item.title}</h2><p>{item.message}</p>
                 <div className="row">
                   <button className="ghost" onClick={() => openStudentNotification(item.id)}>Open</button>
-                  {!item.readAt ? <button className="ghost" onClick={() => void markStudentNotificationRead(item.id)}>Mark as read</button> : null}
+                  {!item.readAt ? <button className="ghost" onClick={() => void markNotificationRead(item.id)}>Mark as read</button> : null}
                 </div>
               </article>
             ))}
@@ -1069,7 +1014,7 @@ export default function App() {
           <section className="student-announcements">
             <div className="page-heading">
               <div><p className="eyebrow">STUDENT COMMUNICATION</p><h1>Announcements</h1><p className="muted">Notices published by your ArcTester administrator.</p></div>
-              <button className="ghost" onClick={() => request<{ announcements: Announcement[] }>("/announcements").then(({ announcements: items }) => setAnnouncements(items)).catch((cause) => setError((cause as Error).message))}>Refresh</button>
+              <button className="ghost" onClick={() => void refreshAnnouncements().catch((cause) => setError((cause as Error).message))}>Refresh</button>
             </div>
             {announcements.length === 0 ? <div className="panel empty-state"><h2>No announcements yet</h2><p className="muted">New notices from your administrator will appear here automatically.</p></div> : announcements.map((item) => (
               <article className="panel announcement-row" key={item.id}>
@@ -1241,7 +1186,7 @@ export default function App() {
       {!activeAssignmentPackage && !test && !result && studentNotifications.find((item) => !item.readAt) && (
         <StudentNotificationBanner
           notification={studentNotifications.find((item) => !item.readAt)!}
-          onRead={(id) => void markStudentNotificationRead(id)}
+          onRead={(id) => void markNotificationRead(id)}
           onOpen={(notification) => void openStudentNotification(notification.id)}
         />
       )}

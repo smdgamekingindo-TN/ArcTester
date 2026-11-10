@@ -7,7 +7,7 @@ import {
   type ServerClockAnchor,
 } from "./assignedExamRuntime";
 
-const API = (import.meta.env.VITE_API_URL || "http://localhost:4000").replace(/\\/+$/, "");
+const API = (import.meta.env.VITE_API_URL || "http://localhost:4000").replace(new RegExp("/+$"), "");
 const HEARTBEAT_INTERVAL_MS = 15_000;
 const AUTOSAVE_INTERVAL_MS = 5_000;
 

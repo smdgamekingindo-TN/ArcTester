@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
+import AdminQuestionEditor, { type AdminQuestionForm } from "./AdminQuestionEditor";
 
 const API = (import.meta.env.VITE_API_URL || "http://localhost:4000").replace(/\/+$/, "");
 type Question = { id:number; subject:string; topic:string; text:string; options:string[]; correctIndex:number; explanation:string; source:string; difficulty:string };

@@ -12,8 +12,8 @@ Preview:
 Execute after reviewing both URLs and preparing an empty *rehearsal* database:
   DATABASE_URL=... RESTORE_DATABASE_URL=... scripts/backup-restore-rehearsal.sh --execute
 
-The script never creates or drops databases, never uses pg_restore --clean,
-and never deletes or overwrites an existing backup file.
+The script never creates or drops databases, never requests automatic object
+deletions during restore, and never deletes or overwrites an existing backup file.
 HELP
   exit 0
 fi

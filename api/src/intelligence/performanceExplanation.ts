@@ -35,8 +35,18 @@ export function buildPerformanceExplanation(
     .filter((row) => row.accuracy !== null && row.seen >= minimumAnswers && row.accuracy < weakAccuracyThreshold)
     .sort(sortEvidence)
     .slice(0, 3);
+  const subjectsWithSufficientTopics = new Set(
+    topicRows
+      .filter((row) => row.seen >= minimumAnswers)
+      .map((row) => row.subject),
+  );
   const evidencedWeakSubjects = subjectRows
-    .filter((row) => row.accuracy !== null && row.seen >= minimumAnswers && row.accuracy < weakAccuracyThreshold)
+    .filter((row) =>
+      !subjectsWithSufficientTopics.has(row.subject) &&
+      row.accuracy !== null &&
+      row.seen >= minimumAnswers &&
+      row.accuracy < weakAccuracyThreshold
+    )
     .sort(sortEvidence)
     .slice(0, 3);
 

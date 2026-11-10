@@ -32,7 +32,6 @@ async function api<T>(path:string, init:RequestInit={}):Promise<T>{
 export default function AdminWorkspace(p:Props){
  const [tab,setTab]=useState("overview"),[catalog,setCatalog]=useState<CatalogSubject[]>([]),[questions,setQuestions]=useState<Question[]>([]),[total,setTotal]=useState(0),[page,setPage]=useState(1),[query,setQuery]=useState(""),[subject,setSubject]=useState(""),[topic,setTopic]=useState(""),[difficulty,setDifficulty]=useState(""),[selected,setSelected]=useState<number[]>([]),[error,setError]=useState(""),[notice,setNotice]=useState(""),[busy,setBusy]=useState(false);
  const [uploadText,setUploadText]=useState(""),[uploadFormat,setUploadFormat]=useState<"csv"|"json">("csv"),[report,setReport]=useState<AdminImportReport|null>(null),[previewReady,setPreviewReady]=useState(false);
- const fileRef=useRef<HTMLInputElement>(null);
  const questionRequestSequence=useRef(0);
  const [form,setForm]=useState({subject:"Mathematics",topic:"General",text:"",a:"",b:"",c:"",d:"",correctIndex:"0",difficulty:"medium",explanation:"",source:""});
  const [exam,setExam]=useState({title:"",description:"",instructions:"Read each question carefully. Select one correct option.",duration:"180",shuffleQuestions:true,shuffleOptions:false,marks:"1",negative:"0.25",selectionMode:"manual",perSubject:""});

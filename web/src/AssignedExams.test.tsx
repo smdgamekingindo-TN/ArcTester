@@ -74,7 +74,7 @@ describe("assigned exam server session client", () => {
     let failedOnce = false;
     fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
       const path = String(input);
-      if (path.endsWith("/exams/assigned")) return jsonResponse({ assignments: [] });
+      if (path.endsWith("/exams/assigned")) return jsonResponse({ assignments: [{ id: "assignment-1", status: "ASSIGNED", assignedAt: session.serverTime, availableFrom: null, dueAt: null, exam: { id: "exam-1", title: "Lifecycle test", description: "" }, version: 1, durationMinutes: 60, questionCount: 1, submission: null }] });
       if (path.endsWith("/package")) return jsonResponse({ package: { assignmentId: "assignment-1", title: "Lifecycle test", description: "", version: 1, instructions: "", durationMinutes: 60, serverTime: session.serverTime, questions: [{ id: "question-1", position: 0, subject: "CSE", topic: null, text: "Choose one", options: ["A", "B", "C", "D"], optionOrder: [0, 1, 2, 3], marks: 2, negativeMarks: 0 }] } });
       if (path.endsWith("/session/start")) return jsonResponse({ session });
       if (path.endsWith("/answers") && (!init || init.method === undefined || init.method === "GET")) return jsonResponse({ revision: 0, answers: [] });

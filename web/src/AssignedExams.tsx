@@ -11,7 +11,7 @@ const API = (import.meta.env.VITE_API_URL || "http://localhost:4000").replace(ne
 const HEARTBEAT_INTERVAL_MS = 15_000;
 const AUTOSAVE_INTERVAL_MS = 5_000;
 const PAUSE_POLL_INTERVAL_MS = 5_000;
-const MAX_AUTO_SUBMIT_ATTEMPTS = 5;
+const MAX_AUTO_SUBMIT_RETRIES = 5;
 const AUTO_SUBMIT_BACKOFF_MS = [1_000, 2_000, 4_000, 8_000, 16_000];
 
 type Assignment = {

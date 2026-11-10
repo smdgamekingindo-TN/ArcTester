@@ -65,7 +65,7 @@ export function useStudentCommunications({
     setAnnouncements([]);
     setActiveAnnouncements([]);
     setNotifications([]);
-  }, [userId]);
+  }, [userId, userRole]);
 
   useEffect(() => {
     if (userRole !== "STUDENT") {

@@ -23,18 +23,20 @@ export interface StudentNotification {
   expiresAt: string | null;
 }
 
-type Request = <T>(path: string, init?: RequestInit) => Promise<T>;
+export type StudentCommunicationsRequest = <T>(path: string, init?: RequestInit) => Promise<T>;
 
 interface UseStudentCommunicationsOptions {
   userRole: "ADMIN" | "STUDENT" | null;
+  userId: number | null;
   activePage: StudentPage;
-  request: Request;
+  request: StudentCommunicationsRequest;
   setError: (message: string) => void;
   setBusy: Dispatch<SetStateAction<boolean>>;
 }
 
 export function useStudentCommunications({
   userRole,
+  userId,
   activePage,
   request,
   setError,
@@ -60,6 +62,12 @@ export function useStudentCommunications({
   }, [activePage, request, userRole]);
 
   useEffect(() => {
+    setAnnouncements([]);
+    setActiveAnnouncements([]);
+    setNotifications([]);
+  }, [userId]);
+
+  useEffect(() => {
     if (userRole !== "STUDENT") {
       setActiveAnnouncements([]);
       return;
@@ -67,7 +75,7 @@ export function useStudentCommunications({
     request<{ announcements: StudentAnnouncement[] }>("/announcements/active")
       .then(({ announcements: items }) => setActiveAnnouncements(Array.isArray(items) ? items : []))
       .catch((cause) => setError((cause as Error).message));
-  }, [request, setError, userRole]);
+  }, [request, setError, userId, userRole]);
 
   useEffect(() => {
     if (userRole !== "STUDENT") {
@@ -84,12 +92,12 @@ export function useStudentCommunications({
     return () => {
       window.clearInterval(interval);
     };
-  }, [refreshNotifications, userRole]);
+  }, [refreshNotifications, userId, userRole]);
 
   useEffect(() => {
     if (userRole !== "STUDENT" || !["dashboard", "announcements"].includes(activePage)) return;
     refreshAnnouncements().catch((cause) => setError((cause as Error).message));
-  }, [activePage, refreshAnnouncements, setError, userRole]);
+  }, [activePage, refreshAnnouncements, setError, userId, userRole]);
 
   async function dismissAnnouncement(id: string) {
     try {

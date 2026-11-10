@@ -31,7 +31,7 @@ describe("AdminSubjects", () => {
     ];
     render(<AdminSubjects catalog={subjects} onRefresh={onRefresh} />);
 
-    expect(screen.getByText("50 / 200 blueprint questions currently in the bank")).toBeInTheDocument();
+    expect(screen.getByText("66 / 200 blueprint questions currently in the bank")).toBeInTheDocument();
     expect(screen.getByText("50 / 50 questions")).toBeInTheDocument();
     expect(screen.getAllByText("6 needed").length).toBeGreaterThan(0);
     expect(screen.getByText("4 / 8 questions")).toBeInTheDocument();

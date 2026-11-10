@@ -2,6 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { mergeAssignedExamAnswers } from "../lib/answerRecovery";
 import { classifyAssignmentHeartbeatFailure } from "./assignedExamHeartbeat";
 import { safeStorage } from "./safeStorage";
+import { getBrowserDeviceFingerprint } from "./deviceFingerprint";
+import StudentPracticeSession, { type PracticeSessionTest } from "./StudentPracticeSession";
+import StudentPracticeResults, { type PracticeResult } from "./StudentPracticeResults";
 import { buildPracticeConfig } from "./practiceConfig";
 import { createApiClient } from "./apiClient";
 import { getRemainingPracticeSeconds } from "./practiceTimer";
@@ -38,52 +41,12 @@ type Invitation = {
   status: "PENDING" | "USED" | "REVOKED" | "EXPIRED";
 };
 type CreatedInvitation = { id: string; email: string; token: string; expiresAt: string };
-type Question = {
-  id: number;
-  subject: string;
-  topic: string | null;
-  text: string;
-  options: string[];
-};
-type Test = {
-  attemptId: number;
-  mode: string;
-  deadline: string | null;
-  serverNow?: string;
-  questions: Question[];
-  warnings: string[];
-};
+type Test = PracticeSessionTest;
 type RestoredTest = Omit<Test, "warnings"> & { warnings?: string[]; serverNow: string; saved: { questionId: number; selectedIndex: number | null }[] };
 function practiceAnswersKey(attemptId: number | string): string { return `arctester-practice-answers-${attemptId}`; }
 function assignedAnswersKey(assignmentId: string): string { return `arctester-assignment-answers-${assignmentId}`; }
 function assignedAttemptKey(assignmentId: string): string { return `arctester-assigned-attempt-${assignmentId}`; }
-type Result = {
-  attemptId: number;
-  score: number;
-  total: number;
-  breakdown: { subject: string; correct: number; total: number }[];
-  questions: {
-    questionId: number;
-    text: string;
-    options: string[];
-    selectedIndex: number | null;
-    correctIndex: number;
-    isCorrect: boolean;
-    explanation: string;
-  }[];
-};
-
-function browserDeviceFingerprint(): string {
-  const key = "arctester-device-fingerprint";
-  const existing = safeStorage.getItem(key);
-  if (existing) return existing;
-  const fingerprint =
-    typeof crypto !== "undefined" && "randomUUID" in crypto
-      ? crypto.randomUUID()
-      : `web-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
-  safeStorage.setItem(key, fingerprint);
-  return fingerprint;
-}
+type Result = PracticeResult;
 
 
 
@@ -179,7 +142,7 @@ export default function App() {
       body: JSON.stringify({
         deviceName: "Web browser",
         platform: "web",
-        fingerprint: browserDeviceFingerprint(),
+        fingerprint: getBrowserDeviceFingerprint(safeStorage),
       }),
     }).catch((cause) => setError((cause as Error).message));
     request<Bank>("/bank")
@@ -853,97 +816,17 @@ export default function App() {
             <div className="assigned-exam-submit"><span className="muted">{Object.keys(assignmentAnswers).length} of {activeAssignmentPackage.questions.length} answered</span><small className={`autosave-status autosave-${assignmentSaveStatus}`}>{assignmentSaveStatus === "saving" ? "Saving to server…" : assignmentSaveStatus === "saved" ? "All answers synced" : assignmentSaveStatus === "error" ? "Sync failed · local backup saved" : "Local backup active"}</small><button className="primary" disabled={busy || assignmentSessionPaused} onClick={() => void submitAssignedExam()}>{assignmentSessionPaused ? "Waiting for invigilator" : busy ? "Submitting…" : "Submit final answers"}</button></div>
           </section>
         ) : activePage === "practice" && test ? (
-          <section>
-            <div className="page-heading">
-              <div>
-                <p className="eyebrow">PRACTICE SESSION</p>
-                <h1>Stay focused.</h1>
-                <p className="muted">
-                  {test.questions.length} questions · {Object.keys(answers).length} answered
-                  {practiceRemainingSeconds !== null ? <> · <strong className={practiceRemainingSeconds < 300 ? "timer-warning" : "exam-countdown"}>{Math.floor(practiceRemainingSeconds / 60).toString().padStart(2, "0")}:{(practiceRemainingSeconds % 60).toString().padStart(2, "0")} remaining</strong></> : null}
-                </p>
-              </div>
-              <button className="ghost" onClick={() => setActivePage("dashboard")}>
-                Leave session
-              </button>
-            </div>
-            {test.warnings.map((warning) => (
-              <p className="notice" key={warning}>
-                {warning}
-              </p>
-            ))}
-            <section className="panel exam-question-navigator" aria-label="Practice question navigator"><div className="exam-progress-heading"><strong>Question progress</strong><span>{Object.keys(answers).length} / {test.questions.length} answered</span></div><div className="exam-progress-track"><span style={{ width: `${test.questions.length ? Object.keys(answers).length / test.questions.length * 100 : 0}%` }} /></div><div className="exam-palette">{test.questions.map((question, index) => <button type="button" key={question.id} aria-label={`Go to question ${index + 1}${answers[question.id] !== undefined ? ", answered" : ", unanswered"}`} className={answers[question.id] !== undefined ? "exam-palette-item answered" : "exam-palette-item"} onClick={() => document.getElementById(`practice-question-${question.id}`)?.scrollIntoView({ behavior: "smooth", block: "start" })}>{index + 1}</button>)}</div></section>
-            <div className="question-list">
-              {test.questions.map((question, index) => (
-                <article id={`practice-question-${question.id}`} className="panel question-card" key={question.id}>
-                  <p className="eyebrow">
-                    QUESTION {index + 1} · {question.subject}
-                  </p>
-                  <h2>{question.text}</h2>
-                  <div className="options">
-                    {question.options.map((option, optionIndex) => (
-                      <button
-                        key={optionIndex}
-                        className={
-                          answers[question.id] === optionIndex ? "option selected" : "option"
-                        }
-                        onClick={() =>
-                          selectPracticeAnswer(question.id, optionIndex)
-                        }
-                      >
-                        <span>{String.fromCharCode(65 + optionIndex)}</span>
-                        {option}
-                      </button>
-                    ))}
-                  </div>
-                </article>
-              ))}
-            </div>
-            <button className="primary" disabled={busy} onClick={() => void submitTest()}>
-              {busy ? "Submitting…" : "Submit answers"}
-            </button>
-          </section>
+          <StudentPracticeSession
+            test={test}
+            answers={answers}
+            remainingSeconds={practiceRemainingSeconds}
+            busy={busy}
+            onLeave={() => setActivePage("dashboard")}
+            onSelectAnswer={selectPracticeAnswer}
+            onSubmit={() => void submitTest()}
+          />
         ) : activePage === "practice" && result ? (
-          <section>
-            <div className="page-heading">
-              <div>
-                <p className="eyebrow">SESSION COMPLETE</p>
-                <h1>Your result</h1>
-              </div>
-              <button className="ghost" onClick={() => setResult(null)}>
-                Back to dashboard
-              </button>
-            </div>
-            <div className="panel score-panel">
-              <strong>
-                {result.score} / {result.total}
-              </strong>
-              <span className="muted">Your score</span>
-            </div>
-            <div className="grid two">
-              {result.breakdown.map((item) => (
-                <article className="panel" key={item.subject}>
-                  <h3>{item.subject}</h3>
-                  <p>
-                    {item.correct} / {item.total} correct
-                  </p>
-                </article>
-              ))}
-            </div>
-            <h2 className="section-heading">Answer review</h2>
-            {result.questions.map((question, index) => (
-              <article className="panel question-card" key={question.questionId}>
-                <p className="eyebrow">QUESTION {index + 1}</p>
-                <h3>{question.text}</h3>
-                <p className={question.selectedIndex === null ? "muted" : question.isCorrect ? "success" : "error"}>
-                  {question.selectedIndex === null ? "Not answered" : question.isCorrect ? "Correct" : "Incorrect"}
-                </p>
-                <p><strong>Your answer:</strong> {question.selectedIndex === null ? "Not answered" : question.options[question.selectedIndex]}</p>
-                <p><strong>Correct answer:</strong> {question.options[question.correctIndex]}</p>
-                <p className="muted">{question.explanation}</p>
-              </article>
-            ))}
-          </section>
+          <StudentPracticeResults result={result} onBack={() => setResult(null)} />
         ) : activePage === "assigned-exams" ? (
           <section className="assigned-exams-page">
             <div className="page-heading"><div><p className="eyebrow">EXAM CENTRE</p><h1>Assigned exams</h1><p className="muted">Exams assigned to your account by the administrator.</p></div><button className="ghost" disabled={busy} onClick={() => void refreshAssignedExams()}>Refresh</button></div>
@@ -1078,12 +961,3 @@ export default function App() {
   );
 }
 
-
-function Brand() {
-  return (
-    <a className="brand" href="#dashboard">
-      <span className="brand-mark">A</span>
-      <span>ArcTester</span>
-    </a>
-  );
-}

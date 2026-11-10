@@ -1111,10 +1111,10 @@ describe("versioned exam management", () => {
     );
     expect(saved.status).toBe(200);
     await server.db.examAssignment.update({
-      where: { id: lateAssignment.id }, data: { dueAt: new Date(Date.now() - 1_000) },
+      where: { id: lateAssignment.id }, data: { dueAt: new Date(Date.now() - 11_000) },
     });
 
-    // Once the assignment deadline has passed, all live-exam access paths must agree.
+    // Once the assignment deadline has passed, live access is blocked; submission remains accepted only after the 10-second grace expires.
     const expiredPackage = await request(
       `/exams/assignments/${lateAssignment.id}/package`, "GET", undefined, lateCandidateCookie,
     );

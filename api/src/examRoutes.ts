@@ -1763,6 +1763,31 @@ export function examRouter(db: PrismaClient): Router {
 
       res.status(201).json({ ok: true, duplicate: false, submission });
     } catch (error) {
+      // A second request can race the first submission and observe a session
+      // that has just transitioned to COMPLETED. Resolve that race by looking
+      // up the persisted submission: same UUID is idempotent; another UUID is
+      // a conflict. This also covers a concurrent unique-assignment insert.
+      const retry = SubmitExamSchema.safeParse(req.body);
+      if (retry.success) {
+        try {
+          const existing = await db.examSubmission.findFirst({
+            where: {
+              assignmentId: req.params.id,
+              assignment: { studentId: req.user!.id },
+            },
+            select: {
+              id: true, attemptUuid: true, status: true, score: true,
+              maximumScore: true, submittedAt: true, receivedAt: true,
+            },
+          });
+          if (existing?.attemptUuid === retry.data.attemptUuid) {
+            return res.json({ ok: true, duplicate: true, submission: existing });
+          }
+          if (existing) return next(conflict("An attempt has already been submitted for this assignment."));
+        } catch {
+          // Preserve the original error if the idempotency lookup itself fails.
+        }
+      }
       next(error);
     }
   });

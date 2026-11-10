@@ -39,6 +39,6 @@ describe("AdminQuestionImport", () => {
     expect(onConfirm).toHaveBeenCalledTimes(1);
     expect(onCancelPreview).toHaveBeenCalledTimes(1);
     rerender(<AdminQuestionImport {...props} busy={true} />);
-    expect(screen.getByRole("button", { name: "Preview import" }).hasAttribute("disabled")).toBe(true);
+    expect(screen.getByRole("button", { name: "Validating…" }).hasAttribute("disabled")).toBe(true);
   });
 });

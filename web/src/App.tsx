@@ -281,10 +281,10 @@ export default function App() {
     }
   }
 
-  function openStudentNotification(id: string) {
+  async function openStudentNotification(id: string) {
     const notification = studentNotifications.find((item) => item.id === id);
     if (!notification) return;
-    void markStudentNotificationRead(id);
+    await markStudentNotificationRead(id);
     if (notification.href === "/assignments") {
       setActivePage("assigned-exams");
       return;
@@ -1242,7 +1242,7 @@ export default function App() {
         <StudentNotificationBanner
           notification={studentNotifications.find((item) => !item.readAt)!}
           onRead={(id) => void markStudentNotificationRead(id)}
-          onOpen={(notification) => openStudentNotification(notification.id)}
+          onOpen={(notification) => void openStudentNotification(notification.id)}
         />
       )}
       {activeAnnouncements[0] && (

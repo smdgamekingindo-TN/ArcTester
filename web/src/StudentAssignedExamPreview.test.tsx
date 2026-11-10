@@ -26,7 +26,7 @@ describe("StudentAssignedExamPreview", () => {
 
     expect(screen.getByText("Extra exam 4")).toBeInTheDocument();
     expect(screen.queryByText("Extra exam 5")).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "View all exams" }));
+    fireEvent.click(screen.getByRole("button", { name: /View all exams/ }));
     expect(onViewAll).toHaveBeenCalledTimes(1);
   });
 

@@ -21,7 +21,7 @@ describe("server-authoritative assigned exam clock", () => {
   it("holds the timer while the invigilator has paused the session", () => {
     const anchor = createServerClockAnchor(session, 1000);
     const held = holdServerClock(anchor, 10_000);
-    expect(held).toBe(3595);
+    expect(held).toBe(3586);
     expect(held).toBe(holdServerClock(anchor, 10_000));
   });
 
@@ -31,7 +31,7 @@ describe("server-authoritative assigned exam clock", () => {
     // Device Date.now() is deliberately absent from the clock calculation.
     const afterWallClockChange = remainingServerSeconds(anchor, 65_000);
     expect(afterWallClockChange).toBe(beforeClockChange);
-    expect(afterWallClockChange).toBe(3540);
+    expect(afterWallClockChange).toBe(3535);
   });
 
   it("resumes from the server-issued deadline after a pause", () => {

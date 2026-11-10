@@ -11,7 +11,7 @@ describe("AdminResultsAnalytics", () => {
   it("renders submission metrics, average and student result rows", () => {
     render(<AdminResultsAnalytics results={results} onRefresh={vi.fn()} />);
     expect(screen.getByRole("heading", { name: "Results & analytics" })).toBeTruthy();
-    expect(screen.getByText("82")).toBeTruthy();
+    expect(screen.getByText("82 / 100")).toBeTruthy();
     expect(screen.getByText("GRADED")).toBeTruthy();
     expect(screen.getByText("REVIEW REQUIRED")).toBeTruthy();
     expect(screen.getByText("graded@example.test")).toBeTruthy();
@@ -22,7 +22,7 @@ describe("AdminResultsAnalytics", () => {
     const onRefresh = vi.fn();
     render(<AdminResultsAnalytics results={[]} onRefresh={onRefresh} />);
     expect(screen.getByText("No submissions have been received yet.")).toBeTruthy();
-    expect(screen.getByText("0")).toBeTruthy();
+    expect(screen.getAllByText("0")).toHaveLength(4);
     fireEvent.click(screen.getByRole("button", { name: "Refresh results" }));
     expect(onRefresh).toHaveBeenCalledTimes(1);
   });

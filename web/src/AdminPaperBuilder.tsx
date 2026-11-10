@@ -1,4 +1,5 @@
 import type { FormEvent } from "react";
+import { canonicalPaperSubject } from "./apEcet2026";
 
 export type AdminPaperDraft = { title: string; description: string; instructions: string; duration: string; shuffleQuestions: boolean; shuffleOptions: boolean; marks: string; negative: string; selectionMode: "manual" | "random"; perSubject: string };
 export type AdminPaperCatalogSubject = { id: number; name: string; count: number; topics: { id: number; name: string; _count: { questions: number } }[] };

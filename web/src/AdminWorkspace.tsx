@@ -8,9 +8,9 @@ import AdminInvitations, { type AdminInvitation, type CreatedAdminInvitation } f
 import AdminQuestionEditor, { type AdminQuestionForm } from "./AdminQuestionEditor";
 import AdminExamManagement, { type AdminManagedExam, type AdminExamStudent, type AdminExamPreview } from "./AdminExamManagement";
 import AdminResultsAnalytics, { type AdminExamResult } from "./AdminResultsAnalytics";
-import AdminPaperBuilder, { type AdminPaperDraft, type AdminPaperCatalogSubject, type AdminPaperQuestion, type AdminPaperDifficultyMix, type AdminPaperSubjectScoring } from "./AdminPaperBuilder";
+import AdminPaperBuilder, { type AdminPaperDraft, type AdminPaperQuestion, type AdminPaperDifficultyMix, type AdminPaperSubjectScoring } from "./AdminPaperBuilder";
 import AdminQuestionImport, { type AdminImportReport } from "./AdminQuestionImport";
-import AdminOverview, { type AdminOverviewExam, type AdminOverviewSubject } from "./AdminOverview";
+import AdminOverview from "./AdminOverview";
 import AdminLiveMonitor, { type LiveSession } from "./AdminLiveMonitor";
 import AdminReviewQueue, { type ReviewQueueItem } from "./AdminReviewQueue";
 import { AP_ECET_CSE_2026_QUOTAS, canonicalPaperSubject, selectPaperQuestions } from "./apEcet2026";

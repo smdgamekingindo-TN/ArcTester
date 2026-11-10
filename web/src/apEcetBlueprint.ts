@@ -62,7 +62,7 @@ export const AP_ECET_2026_BLUEPRINT_TOTAL = AP_ECET_2026_CSE_BLUEPRINT.reduce(
 );
 
 export function normalizeBlueprintSubjectName(name: string): string {
-  return name.trim().toLocaleLowerCase("en-US").replace(/\\s+/g, " ");
+  return name.trim().toLocaleLowerCase("en-US").replace(/\s+/g, " ");
 }
 
 export function countBlueprintQuestions(

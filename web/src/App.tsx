@@ -600,7 +600,7 @@ export default function App() {
   async function acknowledgeAnnouncement(id: string) {
     setBusy(true);
     try {
-      const result = await request<{ seenAt: string; acknowledgedAt: string | null }>(`/announcements/${id}/read`, { method: "POST" });
+      const result = await request<{ seenAt: string; acknowledgedAt: string | null }>(`/announcements/${id}/acknowledge`, { method: "POST" });
       setAnnouncements((current) => current.map((item) => item.id === id ? { ...item, seenAt: result.seenAt, acknowledgedAt: result.acknowledgedAt } : item));
     } catch (cause) {
       setError((cause as Error).message);

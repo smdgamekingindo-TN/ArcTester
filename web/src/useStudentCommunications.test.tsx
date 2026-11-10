@@ -1,6 +1,6 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { useStudentCommunications } from "./useStudentCommunications";
+import { useStudentCommunications, type StudentCommunicationsRequest } from "./useStudentCommunications";
 
 describe("useStudentCommunications", () => {
   it("loads the active announcement popup, announcement history and unread notices", async () => {
@@ -16,7 +16,7 @@ describe("useStudentCommunications", () => {
       userRole: "STUDENT",
       userId: 1,
       activePage: "dashboard",
-      request,
+      request: request as unknown as StudentCommunicationsRequest,
       setError,
       setBusy,
     }));
@@ -64,7 +64,7 @@ describe("useStudentCommunications", () => {
         userRole: role,
         userId: role === "STUDENT" ? 1 : null,
         activePage: "dashboard",
-        request,
+        request: request as unknown as StudentCommunicationsRequest,
         setError: vi.fn(),
         setBusy: vi.fn(),
       }),

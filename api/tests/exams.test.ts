@@ -407,6 +407,31 @@ describe("versioned exam management", () => {
       await server.db.examSession.update({ where: { id: sessionD }, data: { startedAt: expiredAt, lastHeartbeatAt: expiredAt } });
       expect((await request("/exams/assignments/" + expiredAssignment.id + "/session/heartbeat", "POST", { event: "HEARTBEAT" }, expiredStudent)).status).toBe(409);
       expect((await server.db.examSession.findUniqueOrThrow({ where: { id: sessionD } })).status).toBe("EXPIRED");
+      const examVersion = await server.db.examVersion.findFirstOrThrow({
+        where: { examId: fixture.examId },
+        select: { durationMinutes: true },
+      });
+      const durationMs = examVersion.durationMinutes * 60_000;
+      const graceAssignment = fixture.assignments[1];
+      const graceStudent = fixture.cookies[1];
+      const graceStarted = await request("/exams/assignments/" + graceAssignment.id + "/session/start", "POST", {}, graceStudent);
+      const graceSessionId = (graceStarted.json.session as { id: string }).id;
+      const withinGraceStartedAt = new Date(Date.now() - durationMs - 9_999);
+      await server.db.examSession.update({
+        where: { id: graceSessionId },
+        data: { startedAt: withinGraceStartedAt, lastHeartbeatAt: new Date() },
+      });
+      const withinGraceBody = {
+        attemptUuid: "c6b7d74c-4f7f-4dd9-a1f4-f0c1b3a1c5f1",
+        startedAt: withinGraceStartedAt.toISOString(),
+        submittedAt: new Date().toISOString(),
+        answers: [{ examQuestionId: fixture.questionSnapshotId, selectedIndex: 1 }],
+      };
+      const withinGraceSubmit = await request("/exams/assignments/" + graceAssignment.id + "/submission", "POST", withinGraceBody, graceStudent);
+      expect(withinGraceSubmit.status).toBe(201);
+      expect((withinGraceSubmit.json.submission as { status: string; score: number | null }).status).toBe("GRADED");
+      expect((withinGraceSubmit.json.submission as { score: number | null }).score).toBe(2);
+
       const lateCookie = await createSession("lifecycle-late@arctester.test", "STUDENT");
       const lateStudent = await server.db.user.findUniqueOrThrow({ where: { email: "lifecycle-late@arctester.test" }, select: { id: true } });
       fixture.studentIds.push(lateStudent.id);
@@ -414,9 +439,9 @@ describe("versioned exam management", () => {
       fixture.lateAssignmentId = lateAssignment.id;
       const lateStarted = await request("/exams/assignments/" + lateAssignment.id + "/session/start", "POST", {}, lateCookie);
       const lateSession = lateStarted.json.session as { id: string; startedAt: string };
-      const pastDeadline = new Date(Date.now() - 62_000);
+      const pastDeadline = new Date(Date.now() - durationMs - 10_001);
       await server.db.examSession.update({ where: { id: lateSession.id }, data: { startedAt: pastDeadline, lastHeartbeatAt: new Date() } });
-      const lateBody = { attemptUuid: "b6b7d74c-4f7f-4dd9-a1f4-f0c1b3a1c5f0", startedAt: lateSession.startedAt, submittedAt: new Date().toISOString(), answers: [{ examQuestionId: fixture.questionSnapshotId, selectedIndex: 1 }] };
+      const lateBody = { attemptUuid: "b6b7d74c-4f7f-4dd9-a1f4-f0c1b3a1c5f0", startedAt: pastDeadline.toISOString(), submittedAt: new Date().toISOString(), answers: [{ examQuestionId: fixture.questionSnapshotId, selectedIndex: 1 }] };
       const lateSubmit = await request("/exams/assignments/" + lateAssignment.id + "/submission", "POST", lateBody, lateCookie);
       expect(lateSubmit.status).toBe(201);
       expect((lateSubmit.json.submission as { status: string }).status).toBe("REVIEW_REQUIRED");

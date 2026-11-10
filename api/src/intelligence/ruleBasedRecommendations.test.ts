@@ -24,7 +24,7 @@ describe("buildRuleBasedRecommendations", () => {
     expect(result.recommendations.some((item) => item.id.startsWith("revise-subject-"))).toBe(false);
   });
 
-  it("uses subject-level recommendations instead of an unassigned-topic prompt when topic labels are missing", () => {
+  it("uses subject-level recommendations when named topic evidence is unavailable", () => {
     const result = buildRuleBasedRecommendations({
       ...config,
       topics: [{ subject: "Mathematics", topic: null, seen: 8, correct: 2, wrong: 6, accuracy: 0.25 }],
@@ -42,7 +42,19 @@ describe("buildRuleBasedRecommendations", () => {
       }),
       expect.objectContaining({ id: "review-subject-mistakes-Mathematics", mode: "mistakes", questionCount: 6 }),
     ]);
-    expect(result.recommendations.some((item) => item.title.includes("Unassigned topic"))).toBe(false);
+  });
+
+  it("does not let a weak subject aggregate override sufficiently sampled healthy topics", () => {
+    const result = buildRuleBasedRecommendations({
+      ...config,
+      topics: [
+        { subject: "CSE", topic: "Arrays", seen: 10, correct: 8, wrong: 2, accuracy: 0.8 },
+        { subject: "CSE", topic: "Trees", seen: 10, correct: 7, wrong: 3, accuracy: 0.7 },
+      ],
+      subjects: [{ subject: "CSE", topic: null, seen: 20, correct: 8, wrong: 12, accuracy: 0.4 }],
+      recentActivity: [],
+    });
+    expect(result.recommendations).toEqual([]);
   });
 
   it("suppresses recently practiced weak topics and releases them after the cooldown", () => {

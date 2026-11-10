@@ -84,7 +84,7 @@ describe("live Vite application", () => {
 
     const notice = await screen.findByRole("status", { name: "New notification" });
     expect(within(notice).getByRole("heading", { name: "New exam assigned" })).toBeInTheDocument();
-    expect(within(notice).getByRole("button", { name: "Open" })).toHaveAttribute("href", "/assignments");
+    expect(within(notice).getByRole("button", { name: "Open" })).toBeEnabled();
     fireEvent.click(within(notice).getByRole("button", { name: "Mark as read" }));
     await waitFor(() => expect(screen.queryByRole("status", { name: "New notification" })).not.toBeInTheDocument());
     expect(fetchMock).toHaveBeenCalledWith(
@@ -123,7 +123,7 @@ describe("live Vite application", () => {
     render(<App />);
     fireEvent.click(await screen.findByRole("button", { name: "Notifications (1)" }));
     expect(await screen.findByRole("heading", { name: "Notification inbox" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Exam result available" })).toBeInTheDocument();
+    expect(within(screen.getByRole("main")).getByRole("heading", { name: "Exam result available" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Mark as read" }));
     await waitFor(() => expect(screen.getByText("READ")).toBeInTheDocument());
     expect(fetchMock).toHaveBeenCalledWith(
@@ -168,7 +168,7 @@ describe("live Vite application", () => {
 
     fireEvent.click(within(popup).getByRole("button", { name: /Got it/ }));
     await waitFor(() => expect(document.querySelector('[aria-labelledby="announcement-popup-title"]')).not.toBeInTheDocument());
-    expect(fetchMock.mock.calls.some((call) => String(call[0]).endsWith("/announcements/notice-1/read"))).toBe(true);
+    expect(fetchMock.mock.calls.some((call) => String(call[0]).endsWith("/announcements/notice-1/acknowledge"))).toBe(true);
 
     fireEvent.click(screen.getByRole("button", { name: /Announcements/ }));
     await waitFor(() => {

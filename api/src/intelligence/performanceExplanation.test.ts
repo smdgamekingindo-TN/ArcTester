@@ -66,6 +66,6 @@ describe("buildPerformanceExplanation subject fallback", () => {
       { subject: "CSE", topic: null, seen: 20, correct: 12, wrong: 8, accuracy: 0.6 },
     ]);
     expect(result.headline).toContain("Trees");
-    expect(result.headline).not.toContain("CSE.");
+    expect(result.headline).toContain("Trees in CSE");
   });
 });

@@ -317,6 +317,78 @@ describe("versioned exam management", () => {
     assignmentId = assignment.id;
   });
 
+  it("runs the complete formal exam lifecycle and enforces server-side failure paths on PostgreSQL", async () => {
+    const question = await server.db.question.findFirstOrThrow({ where: { text: "Which structure follows FIFO?" } });
+    const createStudent = async (email: string) => {
+      await server.db.user.create({ data: { email, passwordHash: hashPassword("exam-test-password-123"), role: "STUDENT" } });
+      return createSession(email, "STUDENT");
+    };
+    const studentA = await createStudent("lifecycle-a@arctester.test");
+    const studentB = await createStudent("lifecycle-b@arctester.test");
+    const studentC = await createStudent("lifecycle-c@arctester.test");
+    const studentD = await createStudent("lifecycle-d@arctester.test");
+    const created = await request("/admin/exams", "POST", {
+      title: "PostgreSQL lifecycle integration", description: "End-to-end API verification",
+      instructions: "Select the correct answer.", durationMinutes: 1, shuffleQuestions: false, shuffleOptions: false,
+      questions: [{ questionId: question.id, marks: 2, negativeMarks: 0 }],
+    }, adminCookie);
+    expect(created.status).toBe(201);
+    const exam = created.json.exam as { id: string };
+    expect((await request("/admin/exams/" + exam.id + "/publish", "POST", {}, adminCookie)).status).toBe(200);
+    const studentIds = await Promise.all(["lifecycle-a@arctester.test", "lifecycle-b@arctester.test", "lifecycle-c@arctester.test", "lifecycle-d@arctester.test"].map(async email => (await server.db.user.findUniqueOrThrow({ where: { email }, select: { id: true } })).id));
+    const assigned = await request("/admin/exams/" + exam.id + "/assign", "POST", { studentIds }, adminCookie);
+    expect(assigned.status).toBe(201);
+    const rows = assigned.json.assignments as Array<{ id: string; studentId: number }>; expect(rows).toHaveLength(4);
+    const assignmentA = rows.find(row => row.studentId === studentIds[0])!;
+    const assignmentB = rows.find(row => row.studentId === studentIds[1])!;
+    const assignmentC = rows.find(row => row.studentId === studentIds[2])!;
+    const assignmentD = rows.find(row => row.studentId === studentIds[3])!;
+    const packageA = await request("/exams/assignments/" + assignmentA.id + "/package", "GET", undefined, studentA);
+    expect(packageA.status).toBe(200);
+    const packageQuestion = (packageA.json.package as { questions: Array<Record<string, unknown> & { id: string }> }).questions[0];
+    expect(packageQuestion.correctIndex).toBeUndefined(); expect(packageQuestion.explanation).toBeUndefined();
+    const started = await request("/exams/assignments/" + assignmentA.id + "/session/start", "POST", {}, studentA);
+    expect(started.status).toBe(200);
+    const session = started.json.session as { id: string; startedAt: string; deadline: string; serverTime: string };
+    expect(new Date(session.deadline).getTime()).toBe(new Date(session.startedAt).getTime() + 60_000);
+    expect((await request("/exams/assignments/" + assignmentA.id + "/session/heartbeat", "POST", { event: "HEARTBEAT" }, studentA)).status).toBe(200);
+    const snapshot = await server.db.examVersionQuestion.findFirstOrThrow({ where: { examVersion: { examId: exam.id } } });
+    const saved = await request("/exams/assignments/" + assignmentA.id + "/answers", "PUT", { revision: 0, answers: [{ examQuestionId: snapshot.id, selectedIndex: 1 }] }, studentA);
+    expect(saved.status).toBe(200); expect(saved.json).toMatchObject({ revision: 1, savedCount: 1 });
+    const paused = await request("/admin/exams/sessions/" + session.id + "/action", "POST", { action: "PAUSE", reason: "Lifecycle integration pause" }, adminCookie);
+    expect(paused.status).toBe(200);
+    const pausedRow = await server.db.examSession.findUniqueOrThrow({ where: { id: session.id } }); expect(pausedRow.status).toBe("PAUSED");
+    expect((await request("/exams/assignments/" + assignmentA.id + "/session/heartbeat", "POST", { event: "HEARTBEAT" }, studentA)).status).toBe(409);
+    expect((await server.db.examSession.findUniqueOrThrow({ where: { id: session.id } })).pausedAt?.getTime()).toBe(pausedRow.pausedAt?.getTime());
+    expect((await request("/admin/exams/sessions/" + session.id + "/action", "POST", { action: "RESUME", reason: "Lifecycle integration resume" }, adminCookie)).status).toBe(200);
+    const reconnected = await request("/exams/assignments/" + assignmentA.id + "/session/start", "POST", {}, studentA); expect(reconnected.status).toBe(200);
+    expect((reconnected.json.session as { startedAt: string }).startedAt).toBe(session.startedAt);
+    const pausedDuration = (await server.db.examSession.findUniqueOrThrow({ where: { id: session.id } })).pausedDurationMs;
+    expect(new Date((reconnected.json.session as { deadline: string }).deadline).getTime()).toBe(new Date(session.startedAt).getTime() + 60_000 + pausedDuration);
+    expect((await request("/exams/assignments/" + assignmentA.id + "/session/heartbeat", "POST", { event: "CONNECTION_RESTORED" }, studentA)).status).toBe(200);
+    const body = { attemptUuid: "c9c79f5b-a1c3-4d65-9c75-0b37d7a98a10", startedAt: session.startedAt, submittedAt: new Date().toISOString(), revision: 1, answers: [{ examQuestionId: snapshot.id, selectedIndex: 1 }] };
+    const submitted = await request("/exams/assignments/" + assignmentA.id + "/submission", "POST", body, studentA); expect(submitted.status).toBe(201);
+    const submission = submitted.json.submission as { id: string; status: string; score: number; maximumScore: number };
+    expect(submission).toMatchObject({ status: "GRADED", score: 2, maximumScore: 2 });
+    const duplicate = await request("/exams/assignments/" + assignmentA.id + "/submission", "POST", body, studentA);
+    expect(duplicate.status).toBe(200); expect(duplicate.json.duplicate).toBe(true); expect((duplicate.json.submission as { id: string }).id).toBe(submission.id);
+    const result = await request("/exams/assignments/" + assignmentA.id + "/result", "GET", undefined, studentA);
+    expect(result.status).toBe(200); expect((result.json.result as { score: number }).score).toBe(2);
+    expect((await request("/exams/assignments/" + assignmentA.id + "/answers", "GET", undefined, studentB)).status).toBe(404);
+    expect((await request("/exams/assignments/" + assignmentA.id + "/result", "GET", undefined, studentB)).status).toBe(404);
+    const startedC = await request("/exams/assignments/" + assignmentC.id + "/session/start", "POST", {}, studentC);
+    const sessionC = (startedC.json.session as { id: string }).id;
+    expect((await request("/admin/exams/sessions/" + sessionC + "/action", "POST", { action: "TERMINATE", reason: "Failure path" }, adminCookie)).status).toBe(200);
+    expect((await request("/exams/assignments/" + assignmentC.id + "/session/start", "POST", {}, studentC)).status).toBe(409);
+    expect((await request("/exams/assignments/" + assignmentC.id + "/session/heartbeat", "POST", { event: "HEARTBEAT" }, studentC)).status).toBe(409);
+    expect(await server.db.examSubmission.findUnique({ where: { assignmentId: assignmentC.id } })).toBeNull();
+    const startedD = await request("/exams/assignments/" + assignmentD.id + "/session/start", "POST", {}, studentD);
+    const sessionD = (startedD.json.session as { id: string }).id;
+    const expiredAt = new Date(Date.now() - 3 * 60_000);
+    await server.db.examSession.update({ where: { id: sessionD }, data: { startedAt: expiredAt, lastHeartbeatAt: expiredAt } });
+    expect((await request("/exams/assignments/" + assignmentD.id + "/session/heartbeat", "POST", { event: "HEARTBEAT" }, studentD)).status).toBe(409);
+    expect((await server.db.examSession.findUniqueOrThrow({ where: { id: sessionD } })).status).toBe("EXPIRED");
+  });
   it("lists published papers in the student catalogue without exposing answer data", async () => {
     const catalog = await request("/exams/catalog", "GET", undefined, studentCookie);
     expect(catalog.status).toBe(200);

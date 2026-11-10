@@ -7,6 +7,7 @@ import AdminWorkspace from "./AdminWorkspace";
 import StudentNavigation, { type StudentPage } from "./StudentNavigation";
 import StudentAnnouncementDialog from "./StudentAnnouncementDialog";
 import StudentProgress, { DashboardProgressSummary } from "./StudentProgress";
+import StudentPracticeResumePreview from "./StudentPracticeResumePreview";
 
 const API = (import.meta.env.VITE_API_URL || "http://localhost:4000").replace(/\/+$/, "");
 type User = { id: number; email: string; role: "ADMIN" | "STUDENT" };
@@ -1059,16 +1060,11 @@ export default function App() {
               </section>
             ) : null}
             {activePage === "dashboard" && test ? (
-              <section className="panel student-notice-preview" aria-labelledby="practice-resume-title">
-                <div className="section-head">
-                  <div>
-                    <p className="eyebrow">PRACTICE IN PROGRESS</p>
-                    <h2 id="practice-resume-title">Resume your practice session</h2>
-                    <p className="muted">{Object.keys(answers).length} of {test.questions.length} questions answered. Your selections are saved in this browser.</p>
-                  </div>
-                  <button type="button" className="primary" onClick={() => setActivePage("practice")}>Continue practice</button>
-                </div>
-              </section>
+              <StudentPracticeResumePreview
+                answeredCount={Object.keys(answers).length}
+                totalQuestions={test.questions.length}
+                onResume={() => setActivePage("practice")}
+              />
             ) : null}
             <div hidden={activePage !== "dashboard"} className="stats-row">
               <article className="panel stat">

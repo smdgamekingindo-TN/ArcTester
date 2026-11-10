@@ -1659,12 +1659,16 @@ export function examRouter(db: PrismaClient): Router {
       const durationMs = assignment.examVersion.durationMinutes * 60 * 1000 + sessionPausedDurationMs;
       const staleHeartbeat = !sessionLastHeartbeatAt ||
         serverSubmittedAt.getTime() - sessionLastHeartbeatAt.getTime() > 90000;
+      const durationDeadlineMs = startedAt.getTime() + durationMs;
+      const assignmentDueAtMs = assignment.dueAt?.getTime() ?? Number.POSITIVE_INFINITY;
+      const authoritativeDeadlineMs = Math.min(durationDeadlineMs, assignmentDueAtMs);
+      const pastAutoSubmitGraceWindow =
+        serverSubmittedAt.getTime() > authoritativeDeadlineMs + AUTO_SUBMIT_GRACE_MS;
       const suspiciousTiming =
         offlineSessionReconciled ||
-        serverSubmittedAt.getTime() > startedAt.getTime() + durationMs + AUTO_SUBMIT_GRACE_MS ||
+        pastAutoSubmitGraceWindow ||
         staleHeartbeat ||
         (assignment.availableFrom !== null && startedAt < assignment.availableFrom) ||
-        (assignment.dueAt !== null && submittedAt >= assignment.dueAt) ||
         new Date(input.startedAt).getTime() < startedAt.getTime() - 60000 ||
         new Date(input.startedAt).getTime() > startedAt.getTime() + 60000;
 

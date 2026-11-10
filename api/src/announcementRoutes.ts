@@ -123,7 +123,7 @@ export function announcementRouter(db: PrismaClient): Router {
     }
   });
 
-  router.post("/announcements/:id/read", requireAuth, async (req: AuthedRequest, res, next) => {
+  router.post(["/announcements/:id/read", "/announcements/:id/acknowledge"], requireAuth, async (req: AuthedRequest, res, next) => {
     try {
       const now = new Date();
       const announcement = await db.announcement.findFirst({

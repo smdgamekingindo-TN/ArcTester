@@ -416,7 +416,7 @@ describe("versioned exam management", () => {
       const graceStudent = fixture.cookies[1];
       const graceStarted = await request("/exams/assignments/" + graceAssignment.id + "/session/start", "POST", {}, graceStudent);
       const graceSessionId = (graceStarted.json.session as { id: string }).id;
-      const withinGraceStartedAt = new Date(Date.now() - durationMs - 9_999);
+      const withinGraceStartedAt = new Date(Date.now() - durationMs - 9_000);
       await server.db.examSession.update({
         where: { id: graceSessionId },
         data: { startedAt: withinGraceStartedAt, lastHeartbeatAt: new Date() },
@@ -439,7 +439,7 @@ describe("versioned exam management", () => {
       fixture.lateAssignmentId = lateAssignment.id;
       const lateStarted = await request("/exams/assignments/" + lateAssignment.id + "/session/start", "POST", {}, lateCookie);
       const lateSession = lateStarted.json.session as { id: string; startedAt: string };
-      const pastDeadline = new Date(Date.now() - durationMs - 10_001);
+      const pastDeadline = new Date(Date.now() - durationMs - 11_000);
       await server.db.examSession.update({ where: { id: lateSession.id }, data: { startedAt: pastDeadline, lastHeartbeatAt: new Date() } });
       const lateBody = { attemptUuid: "b6b7d74c-4f7f-4dd9-a1f4-f0c1b3a1c5f0", startedAt: pastDeadline.toISOString(), submittedAt: new Date().toISOString(), answers: [{ examQuestionId: fixture.questionSnapshotId, selectedIndex: 1 }] };
       const lateSubmit = await request("/exams/assignments/" + lateAssignment.id + "/submission", "POST", lateBody, lateCookie);

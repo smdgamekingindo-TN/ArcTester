@@ -83,10 +83,13 @@ export function selectPaperQuestions(
   defaultPerSubject: number,
   difficultyMix: PaperDifficultyMix,
   seed = 42,
+  includeUnspecifiedSubjects = true,
 ): PaperSelection {
   const quotaBySubject = new Map<string, number>();
   for (const [subject, quota] of Object.entries(requestedQuotas)) quotaBySubject.set(canonicalPaperSubject(subject), Math.max(0, Math.floor(quota)));
-  const subjects = [...new Set([...candidates.map((question) => canonicalPaperSubject(question.subject)), ...quotaBySubject.keys()])];
+  const subjects = includeUnspecifiedSubjects
+    ? [...new Set([...candidates.map((question) => canonicalPaperSubject(question.subject)), ...quotaBySubject.keys()])]
+    : [...quotaBySubject.keys()];
   const random = seededRandom(seed);
   const ids: number[] = [];
   const shortfalls: PaperShortfall[] = [];

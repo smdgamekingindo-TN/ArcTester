@@ -438,6 +438,13 @@ describe("versioned exam management", () => {
       const lateSubmit = await request("/exams/assignments/" + lateAssignment.id + "/submission", "POST", lateBody, lateCookie);
       expect(lateSubmit.status).toBe(201);
       expect((lateSubmit.json.submission as { status: string }).status).toBe("REVIEW_REQUIRED");
+      const reviewNotice = await server.db.studentNotification.findFirstOrThrow({
+        where: { userId: lateStudent.id, kind: "EXAM_REVIEW" },
+      });
+      expect(reviewNotice).toMatchObject({
+        title: "Submission awaiting review",
+        href: `/assignments/${lateAssignment.id}/result`,
+      });
       expect((await request("/exams/assignments/" + lateAssignment.id + "/result", "GET", undefined, lateCookie)).status).toBe(200);
 
     });

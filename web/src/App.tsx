@@ -9,6 +9,7 @@ import StudentNavigation, { type StudentPage } from "./StudentNavigation";
 import StudentAnnouncementDialog from "./StudentAnnouncementDialog";
 import StudentNotificationBanner from "./StudentNotificationBanner";
 import StudentProgress, { DashboardProgressSummary } from "./StudentProgress";
+import StudentQuestionBankStats from "./StudentQuestionBankStats";
 import StudentAssignedExamPreview from "./StudentAssignedExamPreview";
 import StudentAnnouncementPreview from "./StudentAnnouncementPreview";
 
@@ -1126,18 +1127,7 @@ export default function App() {
                 </div>
               </section>
             ) : null}
-            <div hidden={activePage !== "dashboard"} className="stats-row">
-              <article className="panel stat">
-                <span className="muted">Question bank</span>
-                <strong>{bank?.total ?? "—"}</strong>
-                <span className="muted">Available questions</span>
-              </article>
-              <article className="panel stat">
-                <span className="muted">Subjects</span>
-                <strong>{bank?.subjects.length ?? "—"}</strong>
-                <span className="muted">In your question bank</span>
-              </article>
-            </div>
+            <StudentQuestionBankStats bank={bank} visible={activePage === "dashboard"} />
             <section hidden={activePage !== "practice"} id="practice">
               <div className="section-head">
                 <div>

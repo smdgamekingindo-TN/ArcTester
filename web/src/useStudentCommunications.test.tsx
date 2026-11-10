@@ -101,14 +101,16 @@ describe("useStudentCommunications", () => {
 
   it("clears all student communication state when the account is no longer a student", async () => {
     const request = vi.fn(async () => ({ announcements: [] }));
+    const setError = vi.fn();
+    const setBusy = vi.fn();
     const { result, rerender } = renderHook(
       ({ role }: { role: "STUDENT" | "ADMIN" }) => useStudentCommunications({
         userRole: role,
         userId: role === "STUDENT" ? 1 : null,
         activePage: "dashboard",
         request: request as unknown as StudentCommunicationsRequest,
-        setError: vi.fn(),
-        setBusy: vi.fn(),
+        setError,
+        setBusy,
       }),
       { initialProps: { role: "STUDENT" as const } },
     );

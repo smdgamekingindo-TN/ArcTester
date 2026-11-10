@@ -57,6 +57,44 @@ describe("useStudentCommunications", () => {
     expect(request).toHaveBeenCalledWith("/announcements/history-1/acknowledge", { method: "POST" });
   });
 
+  it("clears previous account notices before loading the next student's inbox", async () => {
+    let currentUserId = 1;
+    const request = vi.fn(async (path: string) => {
+      if (path === "/announcements/active") return { announcements: [] };
+      if (path === "/notifications?unread=true") return {
+        notifications: [{
+          id: `notice-user-${currentUserId}`,
+          kind: "EXAM_ASSIGNMENT",
+          title: `Notice for user ${currentUserId}`,
+          message: "Account-scoped notice.",
+          href: "/assignments",
+          createdAt: "2026-11-10T08:30:00.000Z",
+          readAt: null,
+          expiresAt: null,
+        }],
+      };
+      return { announcements: [] };
+    });
+    const options = (userId: number) => ({
+      userRole: "STUDENT" as const,
+      userId,
+      activePage: "dashboard" as const,
+      request: request as unknown as StudentCommunicationsRequest,
+      setError: vi.fn(),
+      setBusy: vi.fn(),
+    });
+    const { result, rerender } = renderHook(
+      ({ userId }: { userId: number }) => useStudentCommunications(options(userId)),
+      { initialProps: { userId: 1 } },
+    );
+    await waitFor(() => expect(result.current.notifications[0]?.id).toBe("notice-user-1"));
+
+    currentUserId = 2;
+    rerender({ userId: 2 });
+    await waitFor(() => expect(result.current.notifications[0]?.id).toBe("notice-user-2"));
+    expect(result.current.notifications.some((item) => item.id === "notice-user-1")).toBe(false);
+  });
+
   it("clears all student communication state when the account is no longer a student", async () => {
     const request = vi.fn(async () => ({ announcements: [] }));
     const { result, rerender } = renderHook(

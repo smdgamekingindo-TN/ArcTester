@@ -657,13 +657,15 @@ describe("live Vite application", () => {
     expect(intervalSpy.mock.calls.some(([, delay]) => delay === 5000)).toBe(true);
     const pausedHeartbeat = intervalSpy.mock.calls.filter(([, delay]) => delay === 5000).at(-1)?.[0] as (() => void) | undefined;
     expect(pausedHeartbeat).toBeTypeOf("function");
+    const countdownIntervalsBeforeResume = intervalSpy.mock.calls.filter(([, delay]) => delay === 1000).length;
     performanceTime += 30_000;
+    expect(screen.getByText("01:00 remaining")).toBeInTheDocument();
     heartbeatStatus = "ACTIVE";
     await act(async () => { pausedHeartbeat?.(); await Promise.resolve(); });
     await waitFor(() => expect(screen.queryByText("Session paused or awaiting invigilator action. The server-controlled timer is held.")).not.toBeInTheDocument());
     expect(screen.getByText("02:00 remaining")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Submit final answers" })).toBeEnabled();
-    expect(intervalSpy.mock.calls.some(([, delay]) => delay === 1000)).toBe(true);
+    await waitFor(() => expect(intervalSpy.mock.calls.filter(([, delay]) => delay === 1000).length).toBeGreaterThan(countdownIntervalsBeforeResume));
   });
   it("counts down practice time from the API clock and automatically submits at expiry", async () => {
     let performanceTime = 2000;

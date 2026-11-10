@@ -9,6 +9,7 @@ import StudentNavigation, { type StudentPage } from "./StudentNavigation";
 import StudentAnnouncementDialog from "./StudentAnnouncementDialog";
 import StudentNotificationBanner from "./StudentNotificationBanner";
 import StudentProgress, { DashboardProgressSummary } from "./StudentProgress";
+import StudentPracticeResumePreview from "./StudentPracticeResumePreview";
 import StudentAssignedExamPreview from "./StudentAssignedExamPreview";
 import StudentAnnouncementPreview from "./StudentAnnouncementPreview";
 

@@ -51,7 +51,7 @@ describe("student announcements page", () => {
           }],
         }));
       }
-      if (String(url).endsWith("/announcements/notice-1/read") && init?.method === "POST") {
+      if (String(url).endsWith("/announcements/notice-1/acknowledge") && init?.method === "POST") {
         return Promise.resolve(jsonResponse(200, {
           ok: true,
           seenAt: "2026-11-08T09:05:00.000Z",

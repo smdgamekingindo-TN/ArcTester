@@ -1684,111 +1684,111 @@ export function examRouter(db: PrismaClient): Router {
       let duplicateSubmission = false;
       try {
         submission = await db.$transaction(async (tx) => {
-        const existing = await tx.examSubmission.findUnique({
-          where: { assignmentId: assignment.id },
-        });
-        if (existing) {
-          if (existing.attemptUuid === input.attemptUuid) {
-            duplicateSubmission = true;
-            return existing;
+          const existing = await tx.examSubmission.findUnique({
+            where: { assignmentId: assignment.id },
+          });
+          if (existing) {
+            if (existing.attemptUuid === input.attemptUuid) {
+              duplicateSubmission = true;
+              return existing;
+            }
+            throw conflict("An attempt has already been submitted for this assignment.");
           }
-          throw conflict("An attempt has already been submitted for this assignment.");
-        }
 
-        const duplicateAttempt = await tx.examSubmission.findUnique({
-          where: { attemptUuid: input.attemptUuid },
-        });
-        if (duplicateAttempt) {
-          throw conflict("This attempt identifier has already been used.");
-        }
+          const duplicateAttempt = await tx.examSubmission.findUnique({
+            where: { attemptUuid: input.attemptUuid },
+          });
+          if (duplicateAttempt) {
+            throw conflict("This attempt identifier has already been used.");
+          }
 
-        // Check idempotency before reconciling an offline session. The session
-        // and its audit event are created inside this transaction so any later
-        // failure (including a reused attempt UUID) rolls them back together.
-        const submissionSession = examSession ?? await tx.examSession.create({
-          data: {
-            assignmentId: assignment.id,
-            studentId: req.user!.id,
-            status: "ACTIVE",
-            startedAt: serverStartedAt,
-            lastHeartbeatAt: serverSubmittedAt,
-            lastActivityAt: serverSubmittedAt,
-            events: {
-              create: {
-                actorId: req.user!.id,
-                type: "OFFLINE_SESSION_RECONCILED",
-                detail: "An offline exam attempt was reconciled when the device reconnected.",
+          // Check idempotency before reconciling an offline session. The session
+          // and its audit event are created inside this transaction so any later
+          // failure (including a reused attempt UUID) rolls them back together.
+          const submissionSession = examSession ?? await tx.examSession.create({
+            data: {
+              assignmentId: assignment.id,
+              studentId: req.user!.id,
+              status: "ACTIVE",
+              startedAt: serverStartedAt,
+              lastHeartbeatAt: serverSubmittedAt,
+              lastActivityAt: serverSubmittedAt,
+              events: {
+                create: {
+                  actorId: req.user!.id,
+                  type: "OFFLINE_SESSION_RECONCILED",
+                  detail: "An offline exam attempt was reconciled when the device reconnected.",
+                },
               },
             },
-          },
-        });
+          });
 
-        if (!offlineSessionReconciled && input.revision !== undefined) {
-          const currentRevision = await tx.examSession.updateMany({
+          if (!offlineSessionReconciled && input.revision !== undefined) {
+            const currentRevision = await tx.examSession.updateMany({
+              where: {
+                id: submissionSession.id,
+                status: "ACTIVE",
+                startedAt: serverStartedAt,
+                answersRevision: input.revision,
+              },
+              data: { answersRevision: { increment: 1 } },
+            });
+            if (currentRevision.count !== 1) {
+              throw conflict("These answers were changed in another session. Reload the exam before submitting.");
+            }
+          }
+
+          // Finalize only if the session is still active with the same start time
+          // observed before the transaction. This prevents a concurrent invigilator
+          // pause or termination from being overwritten by a late submission.
+          const completedSession = await tx.examSession.updateMany({
             where: {
               id: submissionSession.id,
               status: "ACTIVE",
               startedAt: serverStartedAt,
-              answersRevision: input.revision,
             },
-            data: { answersRevision: { increment: 1 } },
+            data: { status: "COMPLETED", endedAt: serverSubmittedAt, lastActivityAt: serverSubmittedAt },
           });
-          if (currentRevision.count !== 1) {
-            throw conflict("These answers were changed in another session. Reload the exam before submitting.");
+          if (completedSession.count !== 1) {
+            const concurrentSubmission = await tx.examSubmission.findUnique({
+              where: { assignmentId: assignment.id },
+            });
+            if (concurrentSubmission?.attemptUuid === input.attemptUuid) {
+              duplicateSubmission = true;
+              return concurrentSubmission;
+            }
+            throw conflict("The exam session changed before submission was finalized. Refresh and contact the invigilator.");
           }
-        }
 
-        // Finalize only if the session is still active with the same start time
-        // observed before the transaction. This prevents a concurrent invigilator
-        // pause or termination from being overwritten by a late submission.
-        const completedSession = await tx.examSession.updateMany({
-          where: {
-            id: submissionSession.id,
-            status: "ACTIVE",
-            startedAt: serverStartedAt,
-          },
-          data: { status: "COMPLETED", endedAt: serverSubmittedAt, lastActivityAt: serverSubmittedAt },
-        });
-        if (completedSession.count !== 1) {
-          const concurrentSubmission = await tx.examSubmission.findUnique({
-            where: { assignmentId: assignment.id },
+          const created = await tx.examSubmission.create({
+            data: {
+              assignmentId: assignment.id,
+              attemptUuid: input.attemptUuid,
+              startedAt,
+              submittedAt,
+              status: suspiciousTiming ? "REVIEW_REQUIRED" : "GRADED",
+              score,
+              maximumScore,
+              answers: { create: answerRows },
+            },
+            select: {
+              id: true,
+              attemptUuid: true,
+              status: true,
+              score: true,
+              maximumScore: true,
+              submittedAt: true,
+              receivedAt: true,
+            },
           });
-          if (concurrentSubmission?.attemptUuid === input.attemptUuid) {
-            duplicateSubmission = true;
-            return concurrentSubmission;
-          }
-          throw conflict("The exam session changed before submission was finalized. Refresh and contact the invigilator.");
-        }
-
-        const created = await tx.examSubmission.create({
-          data: {
-            assignmentId: assignment.id,
-            attemptUuid: input.attemptUuid,
-            startedAt,
-            submittedAt,
-            status: suspiciousTiming ? "REVIEW_REQUIRED" : "GRADED",
-            score,
-            maximumScore,
-            answers: { create: answerRows },
-          },
-          select: {
-            id: true,
-            attemptUuid: true,
-            status: true,
-            score: true,
-            maximumScore: true,
-            submittedAt: true,
-            receivedAt: true,
-          },
-        });
-        await tx.examAssignment.update({
-          where: { id: assignment.id },
-          data: { status: "SUBMITTED" },
-        });
-        await tx.examSessionEvent.create({
-          data: { sessionId: submissionSession.id, actorId: req.user!.id, type: "SUBMITTED", detail: suspiciousTiming ? "Submission retained for invigilator review due to timing or connectivity signals." : "Candidate submitted the examination." },
-        });
-        return created;
+          await tx.examAssignment.update({
+            where: { id: assignment.id },
+            data: { status: "SUBMITTED" },
+          });
+          await tx.examSessionEvent.create({
+            data: { sessionId: submissionSession.id, actorId: req.user!.id, type: "SUBMITTED", detail: suspiciousTiming ? "Submission retained for invigilator review due to timing or connectivity signals." : "Candidate submitted the examination." },
+          });
+          return created;
       });
 
       } catch (error) {

@@ -30,7 +30,7 @@ describe("assigned exam server session client", () => {
       removeItem: vi.fn(),
     });
     Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
-    fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
       const path = String(input);
       if (path.endsWith("/exams/assigned")) {
         return jsonResponse({ assignments: [{ id: "assignment-1", status: "ASSIGNED", assignedAt: session.serverTime, availableFrom: null, dueAt: null, exam: { id: "exam-1", title: "Lifecycle test", description: "" }, version: 1, durationMinutes: 60, questionCount: 1, submission: null }] });

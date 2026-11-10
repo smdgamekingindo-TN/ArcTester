@@ -10,6 +10,9 @@ import {
 const API = (import.meta.env.VITE_API_URL || "http://localhost:4000").replace(new RegExp("/+$"), "");
 const HEARTBEAT_INTERVAL_MS = 15_000;
 const AUTOSAVE_INTERVAL_MS = 5_000;
+const PAUSE_POLL_INTERVAL_MS = 5_000;
+const MAX_AUTO_SUBMIT_ATTEMPTS = 5;
+const AUTO_SUBMIT_BACKOFF_MS = [1_000, 2_000, 4_000, 8_000, 16_000];
 
 type Assignment = {
   id: string;
@@ -86,6 +89,11 @@ function createUuid(): string {
   });
 }
 
+class HttpError extends Error {
+  constructor(message: string, readonly status: number) { super(message); this.name = "HttpError"; }
+}
+function isNetworkError(error: unknown): boolean { return error instanceof TypeError; }
+
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const response = await fetch(API + path, {
     ...init,
@@ -93,7 +101,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     headers: { "content-type": "application/json", ...init.headers },
   });
   const body = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(body.error || "The request failed.");
+  if (!response.ok) throw new HttpError(typeof body.error === "string" ? body.error : response.statusText || "The request failed.", response.status);
   return body as T;
 }
 
@@ -143,6 +151,7 @@ export default function AssignedExams() {
   const submitting = useRef(false);
   const clockAnchorRef = useRef<ServerClockAnchor | null>(null);
   const remainingRef = useRef(0);
+  const autoSubmitStarted = useRef(false);
 
   function updateClockAnchor(anchor: ServerClockAnchor | null) {
     clockAnchorRef.current = anchor;
@@ -226,9 +235,8 @@ export default function AssignedExams() {
       setSyncState("saved locally");
       setOffline(!navigator.onLine);
     } catch (caught) {
-      const message = (caught as Error).message;
-      setError(message);
-      if (/paused/i.test(message)) setPaused(true);
+      if (isNetworkError(caught)) setOffline(true);
+      else setError((caught as Error).message);
     } finally {
       setBusy(false);
     }
@@ -250,15 +258,11 @@ export default function AssignedExams() {
       revision.current = saved.revision;
       setSyncState("synced");
     } catch (caught) {
-      const message = (caught as Error).message;
-      if (/paused|no active exam session/i.test(message)) {
+      if (isNetworkError(caught)) setOffline(true);
+      else if (caught instanceof HttpError && caught.status === 409) {
         setPaused(true);
         setHeldSeconds(clockAnchorRef.current ? holdServerClock(clockAnchorRef.current, performance.now()) : remainingRef.current);
-      } else if (/failed|network|fetch/i.test(message)) {
-        setOffline(true);
-      } else {
-        setError(message);
-      }
+      } else setError((caught as Error).message);
     }
   }
 
@@ -294,23 +298,20 @@ export default function AssignedExams() {
         setOffline(false);
         setReconnecting(false);
       } catch (caught) {
-        const message = (caught as Error).message;
-        if (/paused|no active exam session/i.test(message)) {
-          setPaused(true);
-          setHeldSeconds(clockAnchorRef.current ? holdServerClock(clockAnchorRef.current, performance.now()) : remainingRef.current);
-        } else if (/failed|network|fetch/i.test(message)) {
-          setOffline(true);
-        } else {
-          setError(message);
-        }
+              if (isNetworkError(caught)) setOffline(true);
+              else if (caught instanceof HttpError && caught.status === 409) {
+                setPaused(true);
+                setHeldSeconds(clockAnchorRef.current ? holdServerClock(clockAnchorRef.current, performance.now()) : remainingRef.current);
+              } else setError((caught as Error).message);
       }
     }, HEARTBEAT_INTERVAL_MS);
     return () => window.clearInterval(timer);
   }, [active, session, result, paused, activeId]);
 
   useEffect(() => {
-    if (!active || !session || result || paused || remaining > 0 || busy) return;
-    void submit();
+    if (!active || !session || result || paused || remaining > 0 || busy || autoSubmitStarted.current) return;
+    autoSubmitStarted.current = true;
+    void submit(true);
   }, [active, session, result, paused, remaining, busy]);
 
   useEffect(() => {

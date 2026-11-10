@@ -30,6 +30,8 @@ describe("useStudentCommunications", () => {
   });
 
   it("loads the full inbox on the notifications page and persists read/acknowledgement actions", async () => {
+    const setError = vi.fn();
+    const setBusy = vi.fn();
     const request = vi.fn(async (path: string) => {
       if (path === "/announcements/active") return { announcements: [] };
       if (path === "/notifications") return { notifications: [{ id: "notice-1", kind: "EXAM_RESULT", title: "Result", message: "Ready.", href: "/assignments/a1/result", createdAt: "2026-11-10T08:30:00.000Z", readAt: null, expiresAt: null }] };
@@ -42,8 +44,8 @@ describe("useStudentCommunications", () => {
       userId: 1,
       activePage: "notifications",
       request: request as unknown as StudentCommunicationsRequest,
-      setError: vi.fn(),
-      setBusy: vi.fn(),
+      setError,
+      setBusy,
     }));
 
     await waitFor(() => expect(result.current.notifications).toHaveLength(1));
@@ -75,13 +77,15 @@ describe("useStudentCommunications", () => {
       };
       return { announcements: [] };
     });
+    const setError = vi.fn();
+    const setBusy = vi.fn();
     const options = (userId: number) => ({
       userRole: "STUDENT" as const,
       userId,
       activePage: "dashboard" as const,
       request: request as unknown as StudentCommunicationsRequest,
-      setError: vi.fn(),
-      setBusy: vi.fn(),
+      setError,
+      setBusy,
     });
     const { result, rerender } = renderHook(
       ({ userId }: { userId: number }) => useStudentCommunications(options(userId)),

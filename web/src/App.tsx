@@ -146,6 +146,7 @@ export default function App() {
     clear: clearStudentCommunications,
   } = useStudentCommunications({
     userRole: user?.role ?? null,
+    userId: user?.id ?? null,
     activePage,
     request,
     setError,

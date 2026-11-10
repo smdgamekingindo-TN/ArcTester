@@ -2,7 +2,7 @@ name: ArcTester CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'chatgpt/**']
   pull_request:
     branches: [main, 'chatgpt/**']
   workflow_dispatch:

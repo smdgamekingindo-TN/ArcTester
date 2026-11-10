@@ -57,6 +57,26 @@ describe("buildRuleBasedRecommendations", () => {
     expect(result.recommendations).toEqual([]);
   });
 
+  it("keeps subject fallback available for a different subject with no sampled topics", () => {
+    const result = buildRuleBasedRecommendations({
+      ...config,
+      topics: [
+        { subject: "CSE", topic: "Arrays", seen: 10, correct: 8, wrong: 2, accuracy: 0.8 },
+        { subject: "Mathematics", topic: null, seen: 8, correct: 2, wrong: 6, accuracy: 0.25 },
+      ],
+      subjects: [
+        { subject: "CSE", topic: null, seen: 10, correct: 8, wrong: 2, accuracy: 0.8 },
+        { subject: "Mathematics", topic: null, seen: 8, correct: 2, wrong: 6, accuracy: 0.25 },
+      ],
+      recentActivity: [],
+    });
+    expect(result.recommendations[0]).toMatchObject({
+      id: "revise-subject-Mathematics",
+      subject: "Mathematics",
+      topic: null,
+    });
+  });
+
   it("suppresses recently practiced weak topics and releases them after the cooldown", () => {
     const topic = { subject: "CSE", topic: "Graphs", seen: 10, correct: 3, wrong: 7, accuracy: 0.3 };
     const recentActivity = [{ subject: "CSE", topic: "Graphs", lastPracticedAt: new Date(config.now - 24 * 60 * 60 * 1000) }];

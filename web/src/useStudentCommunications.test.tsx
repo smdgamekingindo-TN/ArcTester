@@ -14,6 +14,7 @@ describe("useStudentCommunications", () => {
     const setBusy = vi.fn();
     const { result } = renderHook(() => useStudentCommunications({
       userRole: "STUDENT",
+      userId: 1,
       activePage: "dashboard",
       request,
       setError,
@@ -38,6 +39,7 @@ describe("useStudentCommunications", () => {
     });
     const { result } = renderHook(() => useStudentCommunications({
       userRole: "STUDENT",
+      userId: 1,
       activePage: "notifications",
       request,
       setError: vi.fn(),
@@ -60,6 +62,7 @@ describe("useStudentCommunications", () => {
     const { result, rerender } = renderHook(
       ({ role }: { role: "STUDENT" | "ADMIN" }) => useStudentCommunications({
         userRole: role,
+        userId: role === "STUDENT" ? 1 : null,
         activePage: "dashboard",
         request,
         setError: vi.fn(),

@@ -380,7 +380,7 @@ describe("versioned exam management", () => {
       const assignment = fixture.assignments[0]; const student = fixture.cookies[0];
       const started = await request("/exams/assignments/" + assignment.id + "/session/start", "POST", {}, student);
       const session = started.json.session as { startedAt: string };
-      const body = { attemptUuid: "c9c79f5b-a1c3-4d65-9c75-0b37d7a98a10", startedAt: session.startedAt, submittedAt: new Date().toISOString(), revision: 0, answers: [{ examQuestionId: fixture.questionSnapshotId, selectedIndex: 1 }] };
+      const body = { attemptUuid: "c9c79f5b-a1c3-4d65-9c75-0b37d7a98a10", startedAt: session.startedAt, submittedAt: new Date().toISOString(), answers: [{ examQuestionId: fixture.questionSnapshotId, selectedIndex: 1 }] };
       const submitted = await request("/exams/assignments/" + assignment.id + "/submission", "POST", body, student);
       expect(submitted.status).toBe(201);
       const submission = submitted.json.submission as { id: string; status: string; score: number; maximumScore: number };

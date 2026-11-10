@@ -67,6 +67,18 @@ describe("buildPerformanceExplanation subject fallback", () => {
     expect(result.headline).toContain("Trees");
   });
 
+  it("uses subject fallback for an under-labelled subject without overriding another subject's topic evidence", () => {
+    const result = buildPerformanceExplanation([
+      { subject: "CSE", topic: "Arrays", seen: 10, correct: 8, wrong: 2, accuracy: 0.8 },
+      { subject: "Mathematics", topic: null, seen: 8, correct: 2, wrong: 6, accuracy: 0.25 },
+    ], 5, 0.6, [
+      { subject: "CSE", topic: null, seen: 10, correct: 8, wrong: 2, accuracy: 0.8 },
+      { subject: "Mathematics", topic: null, seen: 8, correct: 2, wrong: 6, accuracy: 0.25 },
+    ]);
+    expect(result.headline).toContain("Mathematics");
+    expect(result.details.join(" ")).toContain("Topic labels are not available");
+  });
+
   it("does not report a weak subject aggregate when sampled named topics are healthy", () => {
     const result = buildPerformanceExplanation([
       { subject: "CSE", topic: "Arrays", seen: 10, correct: 8, wrong: 2, accuracy: 0.8 },

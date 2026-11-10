@@ -139,6 +139,7 @@ describe("assigned exam server session client", () => {
     render(<AssignedExams />);
     fireEvent.click(await screen.findByRole("button", { name: /Start exam/ }));
     await screen.findByText("Choose one");
+    await waitFor(() => expect(screen.getByText("Could not reach the server. Your answers are saved on this device. Press Retry submission when you are back online.")).toBeInTheDocument());
     await act(async () => { await vi.advanceTimersByTimeAsync(32_000); });
     expect(fetchMock.mock.calls.filter(([input]) => String(input).endsWith("/submission"))).toHaveLength(6);
     expect(screen.getByText("Could not reach the server. Your answers are saved on this device. Press Retry submission when you are back online.")).toBeInTheDocument();
@@ -149,7 +150,7 @@ describe("assigned exam server session client", () => {
       const path = String(input);
       if (path.endsWith("/exams/assigned")) return jsonResponse({ assignments: [{ id: "assignment-1", status: "ASSIGNED", assignedAt: session.serverTime, availableFrom: null, dueAt: null, exam: { id: "exam-1", title: "Lifecycle test", description: "" }, version: 1, durationMinutes: 60, questionCount: 1, submission: null }] });
       if (path.endsWith("/package")) return jsonResponse({ package: { assignmentId: "assignment-1", title: "Lifecycle test", description: "", version: 1, instructions: "", durationMinutes: 60, serverTime: session.serverTime, questions: [{ id: "question-1", position: 0, subject: "CSE", topic: null, text: "Choose one", options: ["A", "B", "C", "D"], optionOrder: [0, 1, 2, 3], marks: 2, negativeMarks: 0 }] } });
-      if (path.endsWith("/session/start")) return jsonResponse({ session: { ...session, serverTime: "2026-11-10T10:00:00.000Z", deadline: "2026-11-10T10:00:01.000Z" } });
+      if (path.endsWith("/session/start")) return jsonResponse({ session: { ...session, serverTime: "2026-11-10T10:00:00.000Z", deadline: "2026-11-10T10:00:00.000Z" } });
       if (path.endsWith("/answers")) return jsonResponse({ revision: 0, answers: [] });
       if (path.endsWith("/submission")) return jsonResponse({ error: status === 403 ? "Forbidden by administrator." : "The examination time has expired." }, status);
       return jsonResponse({});
@@ -157,7 +158,7 @@ describe("assigned exam server session client", () => {
     render(<AssignedExams />);
     fireEvent.click(await screen.findByRole("button", { name: /Start exam/ }));
     await screen.findByText("Choose one");
-    await act(async () => { await vi.advanceTimersByTimeAsync(1_000); });
+    await waitFor(() => expect(screen.getByText(status === 403 ? "Forbidden by administrator." : "The examination time has expired.")).toBeInTheDocument());
     expect(fetchMock.mock.calls.filter(([input]) => String(input).endsWith("/submission"))).toHaveLength(1);
     expect(screen.getByText(status === 403 ? "Forbidden by administrator." : "The examination time has expired.")).toBeInTheDocument();
   });

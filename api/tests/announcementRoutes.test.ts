@@ -46,6 +46,31 @@ describe("announcement API", () => {
     await server.close();
   });
 
+  it("rejects an already-expired announcement and hides notices after their expiry", async () => {
+    const rejected = await postJson(
+      `${server.baseUrl}/admin/announcements`,
+      { title: "Expired notice", message: "This should not publish.", expiresAt: new Date(Date.now() - 60_000).toISOString() },
+      adminCookie,
+    );
+    expect(rejected.status).toBe(400);
+
+    const expired = await server.db.announcement.create({
+      data: {
+        title: "Expired announcement",
+        message: "This notice is no longer active.",
+        createdById: (await server.db.user.findUniqueOrThrow({ where: { email: "announcement-admin@example.test" } })).id,
+        startsAt: new Date(Date.now() - 120_000),
+        expiresAt: new Date(Date.now() - 60_000),
+      },
+    });
+    const active = await getJson(`${server.baseUrl}/announcements/active`, studentCookie);
+    expect((active.json as { announcements: { id: string }[] }).announcements)
+      .not.toEqual(expect.arrayContaining([expect.objectContaining({ id: expired.id })]));
+    const inbox = await getJson(`${server.baseUrl}/announcements`, studentCookie);
+    expect((inbox.json as { announcements: { id: string }[] }).announcements)
+      .not.toEqual(expect.arrayContaining([expect.objectContaining({ id: expired.id })]));
+  });
+
   it("publishes, lists, acknowledges, and deletes announcements", async () => {
     const created = await postJson(
       `${server.baseUrl}/admin/announcements`,

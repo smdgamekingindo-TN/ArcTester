@@ -78,8 +78,7 @@ export function buildPerformanceExplanation(
     };
   }
 
-  const hasSufficientTopicEvidence = topicRows.some((row) => row.seen >= minimumAnswers);
-  if (evidencedWeakSubjects.length > 0 && !hasSufficientTopicEvidence) {
+  if (evidencedWeakSubjects.length > 0) {
     const details = evidencedWeakSubjects.map((row) =>
       `${row.subject}: ${Math.round((row.accuracy ?? 0) * 100)}% accuracy across ${row.seen} answered questions, with ${row.wrong} incorrect.`
     );

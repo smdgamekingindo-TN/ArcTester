@@ -38,6 +38,7 @@ describe("Phase 16 operational readiness artifacts", () => {
     expect(backupScript).toContain("rehearsal");
     expect(backupScript).toContain("information_schema.tables");
     expect(backupScript).toContain("Refusing to overwrite existing backup file");
+    expect(backupScript).toContain('[[ -e "$backup_file" || -L "$backup_file" ]]');
     expect(backupScript).not.toMatch(/pg_restore\s+[^\n]*--clean|dropdb|DROP DATABASE|rm\s+-rf/i);
   });
 });

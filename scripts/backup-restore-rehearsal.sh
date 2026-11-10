@@ -66,10 +66,10 @@ table_counts() {
 
 source_counts="$(table_counts "$DATABASE_URL")"
 backup_dir="${BACKUP_DIR:-$PWD/backups}"
-mkdir -p "$backup_dir"
 backup_file="${BACKUP_FILE:-$backup_dir/arctester-$(date -u +%Y%m%dT%H%M%SZ).dump}"
+mkdir -p "$(dirname "$backup_file")"
 
-if [[ -e "$backup_file" ]]; then
+if [[ -e "$backup_file" || -L "$backup_file" ]]; then
   echo "Refusing to overwrite existing backup file: $backup_file" >&2
   exit 1
 fi

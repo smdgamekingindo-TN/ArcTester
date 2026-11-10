@@ -17,7 +17,7 @@ separate, empty rehearsal database. It does not restore over the source database
 - The script requires the explicit `--execute` argument. Without it, it only
   prints the planned actions.
 - It does not create or drop databases, does not use `pg_restore --clean`,
-  and does not delete or overwrite an existing backup file.
+  and does not delete or overwrite an existing backup file or follow a pre-existing backup-file symlink.
 - Dumps contain account and student data. Restrict access, encrypt backups at
   rest and in transit, and follow the organization's retention policy.
 

@@ -181,7 +181,7 @@ export default function AdminWorkspace(p:Props){
     subjectScoring={subjectScoring}
     busy={busy}
     onExamChange={(field, value) => setExam((current) => ({ ...current, [field]: value }))}
-    onLoadPreset={() => { setExam((current) => ({ ...current, selectionMode: "random", duration: "180" })); setSubjectQuotas(AP_ECET_CSE_2026_QUOTAS); }}
+    onLoadPreset={() => { setExam((current) => ({ ...current, selectionMode: "random", duration: "180", negative: "0" })); setSubjectQuotas(AP_ECET_CSE_2026_QUOTAS); }}
     onSelectionModeChange={(value) => setExam((current) => ({ ...current, selectionMode: value }))}
     onSubjectQuotaChange={(name, value) => setSubjectQuotas((current) => ({ ...current, [canonicalPaperSubject(name)]: Math.max(0, value) }))}
     onDifficultyMixChange={(level, value) => setDifficultyMix((current) => ({ ...current, [level]: Math.max(0, Math.min(100, value)) }))}

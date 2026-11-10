@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { mergeAssignedExamAnswers } from "../lib/answerRecovery";
 import { classifyAssignmentHeartbeatFailure } from "./assignedExamHeartbeat";
 import { safeStorage } from "./safeStorage";
+import StudentPracticeResults, { type PracticeResult } from "./StudentPracticeResults";
 import StudentPracticeSession, { type PracticeSessionTest } from "./StudentPracticeSession";
 import { getBrowserDeviceFingerprint } from "./deviceFingerprint";
 import { getRemainingPracticeSeconds } from "./practiceTimer";
@@ -45,21 +46,7 @@ type RestoredTest = Omit<Test, "warnings"> & { warnings?: string[]; serverNow: s
 function practiceAnswersKey(attemptId: number | string): string { return `arctester-practice-answers-${attemptId}`; }
 function assignedAnswersKey(assignmentId: string): string { return `arctester-assignment-answers-${assignmentId}`; }
 function assignedAttemptKey(assignmentId: string): string { return `arctester-assigned-attempt-${assignmentId}`; }
-type Result = {
-  attemptId: number;
-  score: number;
-  total: number;
-  breakdown: { subject: string; correct: number; total: number }[];
-  questions: {
-    questionId: number;
-    text: string;
-    options: string[];
-    selectedIndex: number | null;
-    correctIndex: number;
-    isCorrect: boolean;
-    explanation: string;
-  }[];
-};
+type Result = PracticeResult;
 
 
 
@@ -825,46 +812,7 @@ export default function App() {
             onSubmit={() => void submitTest()}
           />
         ) : activePage === "practice" && result ? (
-          <section>
-            <div className="page-heading">
-              <div>
-                <p className="eyebrow">SESSION COMPLETE</p>
-                <h1>Your result</h1>
-              </div>
-              <button className="ghost" onClick={() => setResult(null)}>
-                Back to dashboard
-              </button>
-            </div>
-            <div className="panel score-panel">
-              <strong>
-                {result.score} / {result.total}
-              </strong>
-              <span className="muted">Your score</span>
-            </div>
-            <div className="grid two">
-              {result.breakdown.map((item) => (
-                <article className="panel" key={item.subject}>
-                  <h3>{item.subject}</h3>
-                  <p>
-                    {item.correct} / {item.total} correct
-                  </p>
-                </article>
-              ))}
-            </div>
-            <h2 className="section-heading">Answer review</h2>
-            {result.questions.map((question, index) => (
-              <article className="panel question-card" key={question.questionId}>
-                <p className="eyebrow">QUESTION {index + 1}</p>
-                <h3>{question.text}</h3>
-                <p className={question.selectedIndex === null ? "muted" : question.isCorrect ? "success" : "error"}>
-                  {question.selectedIndex === null ? "Not answered" : question.isCorrect ? "Correct" : "Incorrect"}
-                </p>
-                <p><strong>Your answer:</strong> {question.selectedIndex === null ? "Not answered" : question.options[question.selectedIndex]}</p>
-                <p><strong>Correct answer:</strong> {question.options[question.correctIndex]}</p>
-                <p className="muted">{question.explanation}</p>
-              </article>
-            ))}
-          </section>
+          <StudentPracticeResults result={result} onBack={() => setResult(null)} />
         ) : activePage === "assigned-exams" ? (
           <section className="assigned-exams-page">
             <div className="page-heading"><div><p className="eyebrow">EXAM CENTRE</p><h1>Assigned exams</h1><p className="muted">Exams assigned to your account by the administrator.</p></div><button className="ghost" disabled={busy} onClick={() => void refreshAssignedExams()}>Refresh</button></div>

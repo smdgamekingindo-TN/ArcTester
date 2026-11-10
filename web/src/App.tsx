@@ -996,7 +996,7 @@ export default function App() {
               </article>
               <article className="panel stat">
                 <span className="muted">Subjects</span>
-                <strong>{bank?.subjects.length ?? "—"}</strong>
+                <strong>{bank?.subjects?.length ?? "—"}</strong>
                 <span className="muted">In your question bank</span>
               </article>
             </div>

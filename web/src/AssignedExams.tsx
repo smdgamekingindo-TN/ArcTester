@@ -374,7 +374,7 @@ export default function AssignedExams() {
     const body = { attemptUuid, startedAt: session.startedAt, submittedAt: new Date().toISOString(), revision: revision.current,
       answers: active.questions.map((question) => ({ examQuestionId: question.id, selectedIndex: answersRef.current[question.id] === undefined ? null : question.optionOrder[answersRef.current[question.id]] })) };
     try {
-      let submitted = false; const attempts = automatic ? MAX_AUTO_SUBMIT_ATTEMPTS : 1;
+      let submitted = false; const attempts = automatic ? MAX_AUTO_SUBMIT_RETRIES : 1;
       for (let attempt = 0; attempt < attempts; attempt += 1) {
         try { await request("/exams/assignments/" + activeId + "/submission", { method: "POST", body: JSON.stringify(body) }); submitted = true; break; }
         catch (caught) { if (!isNetworkError(caught)) throw caught; setOffline(true); if (attempt === attempts - 1) throw caught; await new Promise((resolve) => window.setTimeout(resolve, AUTO_SUBMIT_BACKOFF_MS[attempt])); }

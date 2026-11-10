@@ -683,7 +683,7 @@ export const api = {
     request<StudyRecommendationsReport>("/analytics/recommendations"),
   announcements: () => request<{ ok: true; announcements: Announcement[]; serverTime: string }>("/announcements"),
   acknowledgeAnnouncement: (id: string) =>
-    request<{ ok: true; seenAt: string; acknowledgedAt: string | null }>(`/announcements/${encodeURIComponent(id)}/read`, json({})),
+    request<{ ok: true; seenAt: string; acknowledgedAt: string | null }>(`/announcements/${encodeURIComponent(id)}/acknowledge`, json({})),
   notifications: (unreadOnly = false) =>
     request<{ ok: true; notifications: StudentNotification[]; unreadCount: number; serverTime: string }>(
       `/notifications${unreadOnly ? "?unread=true" : ""}`

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { mergeAssignedExamAnswers } from "../lib/answerRecovery";
 import { classifyAssignmentHeartbeatFailure } from "./assignedExamHeartbeat";
 import { safeStorage } from "./safeStorage";
+import { getRemainingPracticeSeconds } from "./practiceTimer";
 import AuthScreen from "./AuthScreen";
 import { createApiClient } from "./apiClient";
 import { buildPracticeConfig } from "./practiceConfig";
@@ -133,9 +134,7 @@ export default function App() {
     ? Math.max(0, Math.ceil((effectiveAssignmentDeadline - (assignmentClock + assignmentServerOffset)) / 1000))
     : 0;
   const practiceDeadline = test?.deadline ? new Date(test.deadline).getTime() : Number.POSITIVE_INFINITY;
-  const practiceRemainingSeconds = Number.isFinite(practiceDeadline)
-    ? Math.max(0, Math.ceil((practiceDeadline - (practiceClock + practiceServerOffset)) / 1000))
-    : null;
+  const practiceRemainingSeconds = getRemainingPracticeSeconds(practiceDeadline, practiceClock, practiceServerOffset);
   const [activePage, setActivePage] = useState<StudentPage>("dashboard");
   const {
     announcements,

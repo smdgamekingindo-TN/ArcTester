@@ -96,7 +96,7 @@ export default function AdminWorkspace(p:Props){
  await api("/admin/exams",{method:"POST",body:JSON.stringify({title:exam.title,description:exam.description,instructions:exam.instructions,durationMinutes:Number(exam.duration),shuffleQuestions:exam.shuffleQuestions,shuffleOptions:exam.shuffleOptions,subjectRules:subjectScoring,questions:ids.map(questionId=>({questionId,marks:Number(exam.marks),negativeMarks:Number(exam.negative)}))})});
  setNotice("Mock test saved as a draft. Review and publish it from Exam management.");setExamIds([]);setTab("exams");await loadExams();});}
  async function publish(id:string){await run(async()=>{await api(`/admin/exams/${id}/publish`,{method:"POST"});setNotice("Exam version published. It is now ready for assignment.");await loadExams();});}
- async function openPreview(id:string){await run(async()=>{const r=await api<{exam:ExamPreview}>("/admin/exams/"+id+"/preview");setPreview(r.exam);});}
+ async function openPreview(id:string){await run(async()=>{const r=await api<{exam:AdminExamPreview}>("/admin/exams/"+id+"/preview");setPreview(r.exam);});}
  function toggleId(id:number){setExamIds(old=>old.includes(id)?old.filter(x=>x!==id):[...old,id]);}
  function toggleSelected(id:number){setSelected(old=>old.includes(id)?old.filter(x=>x!==id):[...old,id]);}
  const stats=useMemo(()=>({subjects:catalog.length,topics:catalog.reduce((n,s)=>n+s.topics.length,0),questions:catalog.reduce((n,s)=>n+s.count,0)}),[catalog]);

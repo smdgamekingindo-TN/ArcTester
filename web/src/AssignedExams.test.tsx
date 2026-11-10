@@ -97,11 +97,16 @@ describe("assigned exam server session client", () => {
   });
   it("holds the timer while paused and automatically resumes after the administrator resumes the session", async () => {
     let resumed = false;
+    let startCalls = 0;
     fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
       const path = String(input);
       if (path.endsWith("/exams/assigned")) return jsonResponse({ assignments: [{ id: "assignment-1", status: "ASSIGNED", assignedAt: session.serverTime, availableFrom: null, dueAt: null, exam: { id: "exam-1", title: "Lifecycle test", description: "" }, version: 1, durationMinutes: 60, questionCount: 1, submission: null }] });
       if (path.endsWith("/package")) return jsonResponse({ package: { assignmentId: "assignment-1", title: "Lifecycle test", description: "", version: 1, instructions: "", durationMinutes: 60, serverTime: session.serverTime, questions: [{ id: "question-1", position: 0, subject: "CSE", topic: null, text: "Choose one", options: ["A", "B", "C", "D"], optionOrder: [0, 1, 2, 3], marks: 2, negativeMarks: 0 }] } });
-      if (path.endsWith("/session/start")) return resumed ? jsonResponse({ session: { ...session, serverTime: "2026-11-10T10:00:30.000Z", deadline: "2026-11-10T11:00:30.000Z" } }) : jsonResponse({ error: "The exam session is paused." }, 409);
+      if (path.endsWith("/session/start")) {
+        startCalls += 1;
+        if (startCalls === 1 || resumed) return jsonResponse({ session: { ...session, serverTime: "2026-11-10T10:00:30.000Z", deadline: "2026-11-10T11:00:30.000Z" } });
+        return jsonResponse({ error: "The exam session is paused." }, 409);
+      }
       if (path.endsWith("/answers") && (!init || init.method === undefined || init.method === "GET")) return jsonResponse({ revision: 0, answers: [] });
       if (path.endsWith("/answers") && init?.method === "PUT") return jsonResponse({ revision: 1 });
       if (path.endsWith("/session/heartbeat")) return jsonResponse({ error: "There is no active exam session." }, 409);
@@ -118,7 +123,7 @@ describe("assigned exam server session client", () => {
     resumed = true;
     await act(async () => { await vi.advanceTimersByTimeAsync(5_000); });
     await waitFor(() => expect(screen.queryByText(/Paused by invigilator/)).not.toBeInTheDocument());
-    expect(fetchMock.mock.calls.filter(([input]) => String(input).endsWith("/session/start") && (arguments[1] as RequestInit | undefined)?.method === "POST").length).toBeGreaterThanOrEqual(2);
+    expect(startCalls).toBeGreaterThanOrEqual(2);
   });
 
   it("caps failed automatic submission at five attempts with exponential backoff", async () => {

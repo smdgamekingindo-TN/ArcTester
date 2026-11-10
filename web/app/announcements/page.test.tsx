@@ -67,14 +67,8 @@ describe("student announcements page", () => {
     expect(screen.getByText("Your mock exam starts at 10 AM tomorrow.")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Acknowledge" }));
     expect(await screen.findByRole("status")).toHaveTextContent("Acknowledged");
-    expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining("/announcements/notice-1/acknowledge"),
-      expect.objectContaining({ method: "POST", credentials: "include" })
-    );
-    expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining("/announcements"),
-      expect.objectContaining({ credentials: "include" })
-    );
+    expect(fetchMock.mock.calls.some(([url, init]) => String(url).endsWith("/announcements/notice-1/acknowledge") && init?.method === "POST" && init.credentials === "include")).toBe(true);
+    expect(fetchMock.mock.calls.some(([url, init]) => String(url).endsWith("/announcements") && init?.credentials === "include")).toBe(true);
   });
 
   it("does not request the student feed for a signed-out visitor", async () => {

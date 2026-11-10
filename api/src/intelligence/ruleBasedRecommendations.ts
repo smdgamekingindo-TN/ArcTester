@@ -104,9 +104,10 @@ function toRecommendationEvidence(
 }
 
 /**
- * Builds deterministic, evidence-backed recommendations. Topic evidence takes
- * precedence; subject-level fallback is used only when no topic has enough
- * evidence. A cooldown suppresses recently practiced weak areas.
+ * Builds deterministic, evidence-backed recommendations. Sufficient named
+ * topic evidence takes precedence over subject aggregates, even when the
+ * topics are not weak. Subject fallback is reserved for missing/low-sample
+ * topic labels. A cooldown suppresses recently practiced weak areas.
  */
 export function buildRuleBasedRecommendations(input: {
   topics: RecommendationEvidenceRow[];
@@ -139,8 +140,9 @@ export function buildRuleBasedRecommendations(input: {
   const isRecent = (timestamp: number | undefined): boolean =>
     timestamp !== undefined && now - timestamp < cooldownMs;
   const maximumAreas = Math.max(1, input.maximumAreas ?? 3);
-  const weakTopics = mergeEvidenceRows(input.topics, false)
-    .filter((row) => row.topic !== null && row.topic.trim().length > 0)
+  const namedTopics = mergeEvidenceRows(input.topics, false)
+    .filter((row) => row.topic !== null && row.topic.trim().length > 0);
+  const weakTopics = namedTopics
     .filter((row) => isWeakEnough(row, input.minimumAnswers, input.weakAccuracyThreshold))
     .sort(sortEvidence);
 
@@ -181,6 +183,13 @@ export function buildRuleBasedRecommendations(input: {
       return items;
     });
     return { recommendations, recentlyPracticedWeakCount: recent.length };
+  }
+
+  // Do not let a weak subject aggregate override sufficiently sampled named
+  // topics that are already performing above the weak threshold.
+  const hasSufficientTopicEvidence = namedTopics.some((row) => row.seen >= input.minimumAnswers);
+  if (hasSufficientTopicEvidence) {
+    return { recommendations: [], recentlyPracticedWeakCount: 0 };
   }
 
   const weakSubjects = mergeEvidenceRows(input.subjects, true)

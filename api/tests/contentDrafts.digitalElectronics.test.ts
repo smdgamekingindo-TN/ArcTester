@@ -8,7 +8,7 @@ import { QuestionInputSchema } from "../src/questions.js";
 const csvPath = resolve(dirname(fileURLToPath(import.meta.url)), "../../content/question-drafts/digital-electronics.csv");
 const table = parseCsv(readFileSync(csvPath, "utf8"));
 const headers = table.headers.map((header) => header.toLowerCase());
-const cell = (row: string[], name: string) => row[headers.indexOf(name)] ?? "";
+const cell = (row: string[], name: string) => row[headers.indexOf(name.toLowerCase())] ?? "";
 
 describe("Digital Electronics question draft batch", () => {
   it("contains six single-subject MCQs with four options, explanations, difficulty and NEEDS HUMAN REVIEW markers", () => {

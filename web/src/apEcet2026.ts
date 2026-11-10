@@ -3,7 +3,7 @@ export type PaperDifficultyMix = { easy: number; medium: number; hard: number };
 export type PaperShortfall = { subject: string; requested: number; available: number };
 export type PaperSelection = { ids: number[]; shortfalls: PaperShortfall[] };
 
-/** Official APECET 2026 CSE distribution: 100 common + 100 branch questions. */
+/** Official APECET 2026 CSE distribution from APSCHE Annexure-II: 100 common + 100 branch questions. Source: https://cets.apsche.ap.gov.in/ECET/PDF/Diploma%20Holders%20in%20Engineering/APECET2026_COMPUTER_SCIENCE_AND_ENGINEERING.pdf */
 export const AP_ECET_CSE_2026_QUOTAS: Readonly<Record<string, number>> = {
   Mathematics: 50,
   Physics: 25,

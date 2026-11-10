@@ -84,7 +84,7 @@ describe("live Vite application", () => {
 
     const notice = await screen.findByRole("status", { name: "New notification" });
     expect(within(notice).getByRole("heading", { name: "New exam assigned" })).toBeInTheDocument();
-    expect(within(notice).getByRole("link", { name: "Open" })).toHaveAttribute("href", "/assignments");
+    expect(within(notice).getByRole("button", { name: "Open" })).toHaveAttribute("href", "/assignments");
     fireEvent.click(within(notice).getByRole("button", { name: "Mark as read" }));
     await waitFor(() => expect(screen.queryByRole("status", { name: "New notification" })).not.toBeInTheDocument());
     expect(fetchMock).toHaveBeenCalledWith(

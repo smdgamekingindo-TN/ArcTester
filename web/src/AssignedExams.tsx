@@ -309,6 +309,23 @@ export default function AssignedExams() {
   }, [active, session, result, paused, activeId]);
 
   useEffect(() => {
+    if (!active || !session || !paused || result || offline) return;
+    const timer = window.setInterval(async () => {
+      try {
+        const response = await request<{ session: ServerSession }>("/exams/assignments/" + activeId + "/session/start", { method: "POST", body: JSON.stringify({}) });
+        const anchor = createServerClockAnchor(response.session, performance.now());
+        setSession(response.session); updateClockAnchor(anchor);
+        updateRemaining(remainingServerSeconds(anchor, performance.now()));
+        setPaused(false); setHeldSeconds(null); setOffline(false); setError(""); setReconnecting(false);
+        await syncAnswers();
+      } catch (caught) {
+        if (isNetworkError(caught)) setOffline(true);
+        else if (!(caught instanceof HttpError && caught.status === 409)) setError((caught as Error).message);
+      }
+    }, PAUSE_POLL_INTERVAL_MS);
+    return () => window.clearInterval(timer);
+  }, [active, session, paused, result, offline, activeId]);
+  useEffect(() => {
     if (!active || !session || result || paused || remaining > 0 || busy || autoSubmitStarted.current) return;
     autoSubmitStarted.current = true;
     void submit(true);
@@ -349,45 +366,25 @@ export default function AssignedExams() {
     return () => { cancelled = true; };
   }, [active, session, reconnecting, result, activeId]);
 
-  async function submit() {
+  async function submit(automatic = false) {
     if (!active || !session || !activeId || submitting.current || result) return;
-    submitting.current = true;
-    setBusy(true);
-    setError("");
+    submitting.current = true; setBusy(true); setError("");
+    const body = { attemptUuid, startedAt: session.startedAt, submittedAt: new Date().toISOString(), revision: revision.current,
+      answers: active.questions.map((question) => ({ examQuestionId: question.id, selectedIndex: answersRef.current[question.id] === undefined ? null : question.optionOrder[answersRef.current[question.id]] })) };
     try {
-      const body = {
-        attemptUuid,
-        startedAt: session.startedAt,
-        submittedAt: new Date().toISOString(),
-        revision: revision.current,
-        answers: active.questions.map((question) => ({
-          examQuestionId: question.id,
-          selectedIndex: answersRef.current[question.id] === undefined
-            ? null
-            : question.optionOrder[answersRef.current[question.id]],
-        })),
-      };
-      await request(`/exams/assignments/${activeId}/submission`, {
-        method: "POST",
-        body: JSON.stringify(body),
-      });
-      const response = await request<{ result: ExamResult }>(`/exams/assignments/${activeId}/result`);
-      setResult({ ...response.result, questions: Array.isArray(response.result?.questions) ? response.result.questions : [] });
-      setSyncState("submitted");
-      localStorage.removeItem(backupKey(activeId));
-      await load();
-    } catch (caught) {
-      const message = (caught as Error).message;
-      if (/failed|network|fetch/i.test(message)) {
-        setOffline(true);
-        setError("Submission is queued locally. Reconnect and submit again; the same attempt ID makes the retry safe.");
-      } else {
-        setError(message);
+      let submitted = false; const attempts = automatic ? MAX_AUTO_SUBMIT_ATTEMPTS : 1;
+      for (let attempt = 0; attempt < attempts; attempt += 1) {
+        try { await request("/exams/assignments/" + activeId + "/submission", { method: "POST", body: JSON.stringify(body) }); submitted = true; break; }
+        catch (caught) { if (!isNetworkError(caught)) throw caught; setOffline(true); if (attempt === attempts - 1) throw caught; await new Promise((resolve) => window.setTimeout(resolve, AUTO_SUBMIT_BACKOFF_MS[attempt])); }
       }
-    } finally {
-      setBusy(false);
-      submitting.current = false;
-    }
+      if (!submitted) throw new TypeError("Could not reach the server.");
+      const response = await request<{ result: ExamResult }>("/exams/assignments/" + activeId + "/result");
+      setResult({ ...response.result, questions: Array.isArray(response.result?.questions) ? response.result.questions : [] });
+      setSyncState("submitted"); localStorage.removeItem(backupKey(activeId)); await load();
+    } catch (caught) {
+      if (isNetworkError(caught)) { setOffline(true); setError("Could not reach the server. Your answers are saved on this device. Press Retry submission when you are back online."); }
+      else { const httpError = caught as HttpError; setError(httpError.message); if (httpError.status === 409 || httpError.status === 403) autoSubmitStarted.current = true; }
+    } finally { setBusy(false); submitting.current = false; }
   }
 
   function chooseAnswer(questionId: string, index: number) {
@@ -399,6 +396,7 @@ export default function AssignedExams() {
     setResult(null);
     setActiveId("");
     setSession(null);
+    autoSubmitStarted.current = false;
     updateClockAnchor(null);
     setAnswers({});
     answersRef.current = {};
@@ -456,7 +454,7 @@ export default function AssignedExams() {
               ))}
               <div className="exam-submit-bar">
                 <span>{Object.keys(answers).length} / {active.questions.length} answered</span>
-                <button className="primary" disabled={busy || paused} onClick={() => void submit()}>{busy ? "Submitting…" : offline ? "Retry submission" : "Submit exam"}</button>
+                <button className="primary" disabled={busy || paused} onClick={() => void submit(false)}>{busy ? "Submitting…" : offline ? "Retry submission" : "Submit exam"}</button>
               </div>
             </>
           )}

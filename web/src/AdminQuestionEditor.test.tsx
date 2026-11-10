@@ -11,7 +11,7 @@ describe("AdminQuestionEditor", () => {
     expect(screen.getByDisplayValue("What is 2 + 2?")).toBeTruthy();
     expect(screen.getByDisplayValue("4")).toBeTruthy();
     expect((screen.getByLabelText("Correct answer") as HTMLSelectElement).value).toBe("3");
-    expect(screen.getByDisplayValue("easy")).toBeTruthy();
+    expect((screen.getByLabelText("Difficulty") as HTMLSelectElement).value).toBe("easy");
   });
 
   it("delegates all field changes, submit and back navigation", () => {

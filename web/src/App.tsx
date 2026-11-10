@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { mergeAssignedExamAnswers } from "../lib/answerRecovery";
 import { classifyAssignmentHeartbeatFailure } from "./assignedExamHeartbeat";
 import { safeStorage } from "./safeStorage";
+import StudentPracticeSession, { type PracticeSessionTest } from "./StudentPracticeSession";
 import { getBrowserDeviceFingerprint } from "./deviceFingerprint";
 import { getRemainingPracticeSeconds } from "./practiceTimer";
 import AuthScreen from "./AuthScreen";
@@ -39,21 +40,7 @@ type Invitation = {
   status: "PENDING" | "USED" | "REVOKED" | "EXPIRED";
 };
 type CreatedInvitation = { id: string; email: string; token: string; expiresAt: string };
-type Question = {
-  id: number;
-  subject: string;
-  topic: string | null;
-  text: string;
-  options: string[];
-};
-type Test = {
-  attemptId: number;
-  mode: string;
-  deadline: string | null;
-  serverNow?: string;
-  questions: Question[];
-  warnings: string[];
-};
+type Test = PracticeSessionTest;
 type RestoredTest = Omit<Test, "warnings"> & { warnings?: string[]; serverNow: string; saved: { questionId: number; selectedIndex: number | null }[] };
 function practiceAnswersKey(attemptId: number | string): string { return `arctester-practice-answers-${attemptId}`; }
 function assignedAnswersKey(assignmentId: string): string { return `arctester-assignment-answers-${assignmentId}`; }
@@ -828,56 +815,15 @@ export default function App() {
             <div className="assigned-exam-submit"><span className="muted">{Object.keys(assignmentAnswers).length} of {activeAssignmentPackage.questions.length} answered</span><small className={`autosave-status autosave-${assignmentSaveStatus}`}>{assignmentSaveStatus === "saving" ? "Saving to server…" : assignmentSaveStatus === "saved" ? "All answers synced" : assignmentSaveStatus === "error" ? "Sync failed · local backup saved" : "Local backup active"}</small><button className="primary" disabled={busy || assignmentSessionPaused} onClick={() => void submitAssignedExam()}>{assignmentSessionPaused ? "Waiting for invigilator" : busy ? "Submitting…" : "Submit final answers"}</button></div>
           </section>
         ) : activePage === "practice" && test ? (
-          <section>
-            <div className="page-heading">
-              <div>
-                <p className="eyebrow">PRACTICE SESSION</p>
-                <h1>Stay focused.</h1>
-                <p className="muted">
-                  {test.questions.length} questions · {Object.keys(answers).length} answered
-                  {practiceRemainingSeconds !== null ? <> · <strong className={practiceRemainingSeconds < 300 ? "timer-warning" : "exam-countdown"}>{Math.floor(practiceRemainingSeconds / 60).toString().padStart(2, "0")}:{(practiceRemainingSeconds % 60).toString().padStart(2, "0")} remaining</strong></> : null}
-                </p>
-              </div>
-              <button className="ghost" onClick={() => setActivePage("dashboard")}>
-                Leave session
-              </button>
-            </div>
-            {test.warnings.map((warning) => (
-              <p className="notice" key={warning}>
-                {warning}
-              </p>
-            ))}
-            <section className="panel exam-question-navigator" aria-label="Practice question navigator"><div className="exam-progress-heading"><strong>Question progress</strong><span>{Object.keys(answers).length} / {test.questions.length} answered</span></div><div className="exam-progress-track"><span style={{ width: `${test.questions.length ? Object.keys(answers).length / test.questions.length * 100 : 0}%` }} /></div><div className="exam-palette">{test.questions.map((question, index) => <button type="button" key={question.id} aria-label={`Go to question ${index + 1}${answers[question.id] !== undefined ? ", answered" : ", unanswered"}`} className={answers[question.id] !== undefined ? "exam-palette-item answered" : "exam-palette-item"} onClick={() => document.getElementById(`practice-question-${question.id}`)?.scrollIntoView({ behavior: "smooth", block: "start" })}>{index + 1}</button>)}</div></section>
-            <div className="question-list">
-              {test.questions.map((question, index) => (
-                <article id={`practice-question-${question.id}`} className="panel question-card" key={question.id}>
-                  <p className="eyebrow">
-                    QUESTION {index + 1} · {question.subject}
-                  </p>
-                  <h2>{question.text}</h2>
-                  <div className="options">
-                    {question.options.map((option, optionIndex) => (
-                      <button
-                        key={optionIndex}
-                        className={
-                          answers[question.id] === optionIndex ? "option selected" : "option"
-                        }
-                        onClick={() =>
-                          selectPracticeAnswer(question.id, optionIndex)
-                        }
-                      >
-                        <span>{String.fromCharCode(65 + optionIndex)}</span>
-                        {option}
-                      </button>
-                    ))}
-                  </div>
-                </article>
-              ))}
-            </div>
-            <button className="primary" disabled={busy} onClick={() => void submitTest()}>
-              {busy ? "Submitting…" : "Submit answers"}
-            </button>
-          </section>
+          <StudentPracticeSession
+            test={test}
+            answers={answers}
+            remainingSeconds={practiceRemainingSeconds}
+            busy={busy}
+            onLeave={() => setActivePage("dashboard")}
+            onSelectAnswer={selectPracticeAnswer}
+            onSubmit={() => void submitTest()}
+          />
         ) : activePage === "practice" && result ? (
           <section>
             <div className="page-heading">

@@ -100,12 +100,13 @@ describe("announcement API", () => {
       .toEqual(expect.arrayContaining([expect.objectContaining({ id: announcementId, seenAt: null })]));
 
     const acknowledged = await postJson(
-      `${server.baseUrl}/announcements/${announcementId}/read`,
+      `${server.baseUrl}/announcements/${announcementId}/acknowledge`,
       {},
       studentCookie,
     );
     expect(acknowledged.status).toBe(200);
     expect((acknowledged.json as { seenAt: string }).seenAt).toBeTruthy();
+    expect((await postJson(`${server.baseUrl}/announcements/${announcementId}/read`, {}, studentCookie)).status).toBe(200);
 
     const activeAfterRead = await getJson(`${server.baseUrl}/announcements/active`, studentCookie);
     expect((activeAfterRead.json as { announcements: { id: string }[] }).announcements)

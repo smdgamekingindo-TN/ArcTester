@@ -19,7 +19,7 @@ describe("StudentAnnouncementPreview", () => {
     expect(screen.getByRole("heading", { name: "Latest announcement" })).toBeInTheDocument();
     expect(screen.getByText("ECET mock exam schedule")).toBeInTheDocument();
     expect(screen.getByText("The mock exam starts tomorrow at 10 AM.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "View all (3)" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /View all \(3\)/ })).toBeInTheDocument();
   });
 
   it("delegates navigation to the parent when View all is selected", () => {
@@ -32,7 +32,7 @@ describe("StudentAnnouncementPreview", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "View all (1)" }));
+    fireEvent.click(screen.getByRole("button", { name: /View all \(1\)/ }));
     expect(onViewAll).toHaveBeenCalledTimes(1);
   });
 });

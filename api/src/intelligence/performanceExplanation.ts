@@ -26,12 +26,9 @@ export function buildPerformanceExplanation(
   weakAccuracyThreshold: number,
   subjects: PerformanceEvidenceRow[] = [],
 ): PerformanceExplanation {
-  const answeredQuestions = topics.length > 0
-    ? topics.reduce((sum, row) => sum + row.seen, 0)
-    : subjects.reduce((sum, row) => sum + row.seen, 0);
-  const incorrectAnswers = topics.length > 0
-    ? topics.reduce((sum, row) => sum + row.wrong, 0)
-    : subjects.reduce((sum, row) => sum + row.wrong, 0);
+  const answeredRows = topics.length > 0 ? topics : subjects;
+  const answeredQuestions = answeredRows.reduce((sum, row) => sum + row.seen, 0);
+  const incorrectAnswers = answeredRows.reduce((sum, row) => sum + row.wrong, 0);
   const topicRows = topics.filter((row) => row.topic !== null && row.topic.trim().length > 0 && row.seen > 0);
   const subjectRows = subjects.filter((row) => row.seen > 0);
   const evidencedWeakTopics = topicRows
@@ -71,7 +68,8 @@ export function buildPerformanceExplanation(
     };
   }
 
-  if (evidencedWeakSubjects.length > 0) {
+  const hasSufficientTopicEvidence = topicRows.some((row) => row.seen >= minimumAnswers);
+  if (evidencedWeakSubjects.length > 0 && !hasSufficientTopicEvidence) {
     const details = evidencedWeakSubjects.map((row) =>
       `${row.subject}: ${Math.round((row.accuracy ?? 0) * 100)}% accuracy across ${row.seen} answered questions, with ${row.wrong} incorrect.`
     );

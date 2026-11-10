@@ -8,11 +8,13 @@ export interface StudentNotificationNotice {
 interface StudentNotificationBannerProps {
   notification: StudentNotificationNotice;
   onRead: (id: string) => void;
+  onOpen: (notification: StudentNotificationNotice) => void;
 }
 
 export default function StudentNotificationBanner({
   notification,
   onRead,
+  onOpen,
 }: StudentNotificationBannerProps) {
   return (
     <section className="panel student-notification-banner" role="status" aria-label="New notification">
@@ -22,7 +24,7 @@ export default function StudentNotificationBanner({
         <p>{notification.message}</p>
       </div>
       <div className="row">
-        <a className="button button-secondary button-small" href={notification.href}>Open</a>
+        <button className="button button-secondary button-small" onClick={() => onOpen(notification)}>Open</button>
         <button className="button button-primary button-small" onClick={() => onRead(notification.id)}>
           Mark as read
         </button>

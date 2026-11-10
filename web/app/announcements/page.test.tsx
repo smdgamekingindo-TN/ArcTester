@@ -29,7 +29,7 @@ describe("student announcements page", () => {
   });
 
   it("shows published announcements to the signed-in student", async () => {
-    fetchMock.mockImplementation((url: string) => {
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
       if (String(url).endsWith("/auth/me")) {
         return Promise.resolve(jsonResponse(200, {
           ok: true,
@@ -47,7 +47,15 @@ describe("student announcements page", () => {
             createdAt: "2026-11-08T08:00:00.000Z",
             publishedAt: "2026-11-08T08:00:00.000Z",
             expiresAt: null,
+            acknowledgedAt: null,
           }],
+        }));
+      }
+      if (String(url).endsWith("/announcements/notice-1/read") && init?.method === "POST") {
+        return Promise.resolve(jsonResponse(200, {
+          ok: true,
+          seenAt: "2026-11-08T09:05:00.000Z",
+          acknowledgedAt: "2026-11-08T09:05:00.000Z",
         }));
       }
       return Promise.resolve(jsonResponse(404, { error: "Unknown route." }));
@@ -57,6 +65,12 @@ describe("student announcements page", () => {
 
     expect(await screen.findByRole("heading", { name: "Exam schedule updated" })).toBeInTheDocument();
     expect(screen.getByText("Your mock exam starts at 10 AM tomorrow.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Acknowledge" }));
+    expect(await screen.findByRole("status")).toHaveTextContent("Acknowledged");
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("/announcements/notice-1/read"),
+      expect.objectContaining({ method: "POST", credentials: "include" })
+    );
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining("/announcements"),
       expect.objectContaining({ credentials: "include" })

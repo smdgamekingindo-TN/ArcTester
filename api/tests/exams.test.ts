@@ -406,6 +406,9 @@ describe("versioned exam management", () => {
       const duplicate = await request("/exams/assignments/" + assignment.id + "/submission", "POST", body, student);
       expect(duplicate.status).toBe(200); expect(duplicate.json.duplicate).toBe(true);
       expect((duplicate.json.submission as { id: string }).id).toBe(submission.id);
+      expect(await server.db.studentNotification.count({
+        where: { userId: assignment.studentId, kind: "EXAM_RESULT" },
+      })).toBe(1);
       const result = await request("/exams/assignments/" + assignment.id + "/result", "GET", undefined, student);
       expect(result.status).toBe(200); expect((result.json.result as { score: number }).score).toBe(2);
       expect((await request("/exams/assignments/" + assignment.id + "/answers", "GET", undefined, fixture.cookies[1])).status).toBe(404);

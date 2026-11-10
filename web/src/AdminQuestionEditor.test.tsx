@@ -10,7 +10,7 @@ describe("AdminQuestionEditor", () => {
     expect(screen.getByRole("heading", { name: "Edit question" })).toBeTruthy();
     expect(screen.getByDisplayValue("What is 2 + 2?")).toBeTruthy();
     expect(screen.getByDisplayValue("4")).toBeTruthy();
-    expect(screen.getByDisplayValue("Option D")).toBeTruthy();
+    expect((screen.getByLabelText("Correct answer") as HTMLSelectElement).value).toBe("3");
     expect(screen.getByDisplayValue("easy")).toBeTruthy();
   });
 
@@ -20,12 +20,12 @@ describe("AdminQuestionEditor", () => {
     fireEvent.change(screen.getByLabelText("Subject"), { target: { value: "Physics" } });
     fireEvent.change(screen.getByLabelText("Option A"), { target: { value: "9" } });
     fireEvent.change(screen.getByLabelText("Correct answer"), { target: { value: "1" } });
-    fireEvent.click(screen.getByRole("button", { name: "Add to question bank" }).closest("button")!);
+    fireEvent.submit(screen.getByRole("button", { name: "Add to question bank" }).closest("form")!);
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(onChange).toHaveBeenCalledWith("subject", "Physics");
     expect(onChange).toHaveBeenCalledWith("a", "9");
     expect(onChange).toHaveBeenCalledWith("correctIndex", "1");
-    expect(onSubmit).not.toHaveBeenCalled();
+    expect(onSubmit).toHaveBeenCalledTimes(1);
     expect(onBack).toHaveBeenCalledTimes(1);
   });
 

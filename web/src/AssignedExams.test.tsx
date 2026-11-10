@@ -94,6 +94,7 @@ describe("assigned exam server session client", () => {
     expect(await screen.findByText("Could not reach the server. Your answers are saved on this device. Press Retry submission when you are back online.")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Retry submission" }));
     await waitFor(() => expect(screen.getByText("2 / 2")).toBeInTheDocument());
+    expect(screen.getByText("Submitted · final score")).toBeInTheDocument();
   });
   it("holds the timer while paused and automatically resumes after the administrator resumes the session", async () => {
     let resumed = false;

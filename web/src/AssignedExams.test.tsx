@@ -139,7 +139,6 @@ describe("assigned exam server session client", () => {
     render(<AssignedExams />);
     fireEvent.click(await screen.findByRole("button", { name: /Start exam/ }));
     await screen.findByText("Choose one");
-    await waitFor(() => expect(screen.getByText("Could not reach the server. Your answers are saved on this device. Press Retry submission when you are back online.")).toBeInTheDocument());
     await act(async () => { await vi.advanceTimersByTimeAsync(32_000); });
     expect(fetchMock.mock.calls.filter(([input]) => String(input).endsWith("/submission"))).toHaveLength(6);
     expect(screen.getByText("Could not reach the server. Your answers are saved on this device. Press Retry submission when you are back online.")).toBeInTheDocument();

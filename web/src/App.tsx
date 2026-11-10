@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { mergeAssignedExamAnswers } from "../lib/answerRecovery";
 import { classifyAssignmentHeartbeatFailure } from "./assignedExamHeartbeat";
 import { safeStorage } from "./safeStorage";
+import { createApiClient } from "./apiClient";
 import { buildPracticeConfig } from "./practiceConfig";
 import { bindLocalExamBackupOwner, clearLocalExamBackupsOnLogout } from "./localExamBackup";
 import type { FormEvent } from "react";
@@ -22,6 +23,7 @@ import StudentAssignedExamPreview from "./StudentAssignedExamPreview";
 import StudentAnnouncementPreview from "./StudentAnnouncementPreview";
 
 const API = (import.meta.env.VITE_API_URL || "http://localhost:4000").replace(/\/+$/, "");
+const request = createApiClient(API);
 type User = { id: number; email: string; role: "ADMIN" | "STUDENT" };
 type Bank = { total: number; subjects: { subject: string; count: number; topics?: { topic: string; count: number }[] }[] };
 type Invitation = {
@@ -81,16 +83,7 @@ function browserDeviceFingerprint(): string {
   return fingerprint;
 }
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const response = await fetch(`${API}${path}`, {
-    ...init,
-    credentials: "include",
-    headers: { "content-type": "application/json", ...init.headers },
-  });
-  const body = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(body.error || "The request failed.");
-  return body as T;
-}
+
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);

@@ -143,7 +143,7 @@ describe("live Vite application", () => {
       if (path.endsWith("/bank")) {
         return Promise.resolve(response(200, { total: 1, subjects: [{ subject: "Maths", count: 1, topics: [{ topic: "Algebra", count: 1 }] }] }));
       }
-      if (path.endsWith("/announcements/notice-1/read")) {
+      if (path.endsWith("/announcements/notice-1/acknowledge")) {
         return Promise.resolve(response(200, { ok: true, seenAt: "2026-11-08T09:00:00.000Z" }));
       }
       if (path.endsWith("/announcements/active") || path.endsWith("/announcements")) {

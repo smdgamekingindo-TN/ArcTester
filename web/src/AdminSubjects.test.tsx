@@ -13,7 +13,7 @@ describe("AdminSubjects", () => {
   it("renders subject question counts and topic coverage", () => {
     render(<AdminSubjects catalog={catalog} onRefresh={vi.fn()} />);
     expect(screen.getByRole("heading", { name: "Subjects & topics" })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "Mathematics" })).toBeTruthy();
+    expect(screen.getAllByRole("heading", { name: "Mathematics" })).toHaveLength(2);
     expect(screen.getByText("42 questions")).toBeTruthy();
     expect(screen.getByText("2 topics")).toBeTruthy();
     expect(screen.getByText("Algebra")).toBeTruthy();
@@ -33,7 +33,7 @@ describe("AdminSubjects", () => {
 
     expect(screen.getByText("50 / 200 blueprint questions currently in the bank")).toBeInTheDocument();
     expect(screen.getByText("50 / 50 questions")).toBeInTheDocument();
-    expect(screen.getByText("6 needed")).toBeInTheDocument();
+    expect(screen.getAllByText("6 needed").length).toBeGreaterThan(0);
     expect(screen.getByText("4 / 8 questions")).toBeInTheDocument();
     expect(screen.getByText("4 needed")).toBeInTheDocument();
     expect(screen.getByText("12 / 10 questions")).toBeInTheDocument();

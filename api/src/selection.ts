@@ -32,7 +32,7 @@ export interface Shortfall {
 
 const RequestedCountSchema = z.number().int().min(0, "requested count must be 0 or more");
 
-/** Official APECET 2026 CSE quotas, in paper order. */
+/** Official APECET 2026 CSE unit distribution (APSCHE Annexure-II); aliases preserve existing imported bank labels. Source: https://cets.apsche.ap.gov.in/ECET/PDF/Diploma%20Holders%20in%20Engineering/APECET2026_COMPUTER_SCIENCE_AND_ENGINEERING.pdf */
 export const MOCK_QUOTAS: readonly { subject: string; count: number; aliases?: readonly string[] }[] = [
   { subject: "Mathematics", count: 50, aliases: ["Maths"] },
   { subject: "Physics", count: 25 },

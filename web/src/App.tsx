@@ -346,7 +346,9 @@ export default function App() {
           { method: "POST", body: JSON.stringify({ event }) },
         );
         if (disposed) return;
-        setAssignmentServerOffset(new Date(heartbeat.serverTime).getTime() - performance.now());
+        const clientNow = performance.now();
+        setAssignmentServerOffset(new Date(heartbeat.serverTime).getTime() - clientNow);
+        setAssignmentClock(clientNow);
         if (heartbeat.deadline) setAssignmentDeadline(heartbeat.deadline);
         setAssignmentSessionPaused(heartbeat.sessionStatus !== "ACTIVE");
         assignmentConnectionLostRef.current = false;
@@ -364,7 +366,7 @@ export default function App() {
     };
     const interval = window.setInterval(() => {
       void sendHeartbeat(assignmentConnectionLostRef.current ? "CONNECTION_RESTORED" : "HEARTBEAT");
-    }, 15000);
+    }, assignmentSessionPaused ? 5000 : 15000);
     const onVisibilityChange = () => {
       if (document.hidden) {
         void sendHeartbeat("FOCUS_LOST");
@@ -378,7 +380,7 @@ export default function App() {
       window.clearInterval(interval);
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, [activeAssignmentPackage, assignmentStartedAt]);
+  }, [activeAssignmentPackage, assignmentStartedAt, assignmentSessionPaused]);
 
   useEffect(() => {
     if (!activeAssignmentPackage || !assignmentStartedAt || assignmentSessionPaused ||

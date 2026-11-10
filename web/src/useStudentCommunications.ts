@@ -74,7 +74,6 @@ export function useStudentCommunications({
       setNotifications([]);
       return;
     }
-    let cancelled = false;
     const refresh = () => {
       void refreshNotifications().catch(() => {
         // Notification delivery is supplementary; keep the core student workspace usable.
@@ -83,7 +82,6 @@ export function useStudentCommunications({
     refresh();
     const interval = window.setInterval(refresh, 30_000);
     return () => {
-      cancelled = true;
       window.clearInterval(interval);
     };
   }, [refreshNotifications, userRole]);

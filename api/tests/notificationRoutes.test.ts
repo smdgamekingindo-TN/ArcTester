@@ -38,7 +38,7 @@ describe("student notification API", () => {
         dedupeKey: "notification-assignment-first",
       },
     });
-    await server.db.studentNotification.create({
+    const expired = await server.db.studentNotification.create({
       data: {
         userId: firstUserId,
         kind: "EXAM_RESULT",
@@ -81,5 +81,6 @@ describe("student notification API", () => {
       unreadCount: 0,
     });
     expect((await postJson(`${server.baseUrl}/notifications/${active.id}/read`, {}, secondCookie)).status).toBe(400);
+    expect((await postJson(`${server.baseUrl}/notifications/${expired.id}/read`, {}, firstCookie)).status).toBe(400);
   });
 });

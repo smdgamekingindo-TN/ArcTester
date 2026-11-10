@@ -4,12 +4,13 @@ import AdminLiveMonitor, { type LiveSession } from "./AdminLiveMonitor";
 import AdminReviewQueue, { type ReviewQueueItem } from "./AdminReviewQueue";
 import AdminAnnouncements, { type AdminAnnouncement } from "./AdminAnnouncements";
 import AdminModelLab, { type ModelLabDataset, type ModelLabJob } from "./AdminModelLab";
+import AdminInvitations, { type AdminInvitation } from "./AdminInvitations";
 
 const API = (import.meta.env.VITE_API_URL || "http://localhost:4000").replace(/\/+$/, "");
 type Question = { id:number; subject:string; topic:string; text:string; options:string[]; correctIndex:number; explanation:string; source:string; difficulty:string };
 type CatalogSubject = { id:number; name:string; count:number; topics:{id:number;name:string;_count:{questions:number}}[] };
 type Exam = { id:string; title:string; status:string; versions:{version:number;durationMinutes:number;publishedAt:string|null;_count:{questions:number;assignments:number}}[] };
-type Invitation = { id:string; email:string; expiresAt:string; status:string };
+
 type Student = { id:number; email:string; createdAt:string };
 type ExamResult = { id:string; status:string; score:number|null; maximumScore:number|null; submittedAt:string; receivedAt:string; student:{id:number;email:string}; exam:{id:string;title:string}; version:number };
 
@@ -25,7 +26,7 @@ const AP_ECET_CSE_2026_QUOTAS:Record<string,number> = {
   "Computer Organisation":8,"Data Structures":10,"Computer Networks":6,"Operating Systems":10,
   "DBMS":8,"Java":10,"Web Technologies":8,"Big Data & Cloud":6,"Android":6,"IoT":8,"Python":8,
 };
-type Props = { email:string; theme:"light"|"dark"; setTheme:(v:"light"|"dark")=>void; signOut:()=>void; invitations:Invitation[]; createInvitation:(e:FormEvent<HTMLFormElement>)=>void; inviteEmail:string; setInviteEmail:(v:string)=>void; createdInvitation:{email:string;token:string;expiresAt:string}|null; revokeInvitation:(id:string)=>void; busy:boolean };
+type Props = { email:string; theme:"light"|"dark"; setTheme:(v:"light"|"dark")=>void; signOut:()=>void; invitations:AdminInvitation[]; createInvitation:(e:FormEvent<HTMLFormElement>)=>void; inviteEmail:string; setInviteEmail:(v:string)=>void; createdInvitation:{email:string;token:string;expiresAt:string}|null; revokeInvitation:(id:string)=>void; busy:boolean };
 async function api<T>(path:string, init:RequestInit={}):Promise<T>{
  const response=await fetch(API+path,{...init,credentials:"include",headers:{"content-type":"application/json",...init.headers}});
  const body=await response.json().catch(()=>({}));
@@ -155,6 +156,15 @@ export default function AdminWorkspace(p:Props){
     onDelete={(id) => void deleteAnnouncement(id)}
    />}
    {tab==="subjects"&&<><div className="admin-page-title"><div><p className="eyebrow">SYLLABUS ORGANISATION</p><h1>Subjects & topics</h1><p>Subject and topic structure is created automatically as questions are imported.</p></div><button className="ghost" onClick={()=>void loadCatalog()}>Refresh catalog</button></div><div className="subject-admin-grid">{catalog.map(s=><article className="admin-panel" key={s.id}><div className="subject-admin-head"><div><h2>{s.name}</h2><small>{s.count} questions</small></div><span>{s.topics.length} topics</span></div>{s.topics.map(t=><div className="topic-row" key={t.id}>{t.name}<span>{t._count.questions} questions</span></div>)}</article>)}</div></>}
-   {tab==="invitations"&&<><div className="admin-page-title"><div><p className="eyebrow">STUDENT ACCESS</p><h1>Invitations</h1><p>Create secure invitation codes and control who can join ArcTester.</p></div></div><form className="admin-panel admin-form" onSubmit={p.createInvitation}><label>Email address<input type="email" required value={p.inviteEmail} onChange={e=>p.setInviteEmail(e.target.value)} placeholder="student@example.com"/></label><button className="primary" disabled={p.busy}>Create invitation</button></form>{p.createdInvitation&&<div className="admin-panel invite-result"><b>{p.createdInvitation.email}</b><code>{p.createdInvitation.token}</code><button className="ghost" onClick={()=>void navigator.clipboard?.writeText(p.createdInvitation!.token)}>Copy code</button><small>Expires {new Date(p.createdInvitation.expiresAt).toLocaleString()}</small></div>}<div className="admin-panel invitation-list">{p.invitations.map(i=><div className="invitation-row" key={i.id}><div><b>{i.email}</b><small>Expires {new Date(i.expiresAt).toLocaleDateString()}</small></div><span className={`status status-${i.status.toLowerCase()}`}>{i.status}</span>{i.status==="PENDING"&&<button className="ghost" onClick={()=>p.revokeInvitation(i.id)}>Revoke</button>}</div>)}</div></>}
+   {tab==="invitations"&&<AdminInvitations
+    invitations={p.invitations}
+    inviteEmail={p.inviteEmail}
+    createdInvitation={p.createdInvitation}
+    busy={p.busy}
+    onInviteEmailChange={p.setInviteEmail}
+    onCreate={p.createInvitation}
+    onRevoke={p.revokeInvitation}
+   />}
+   
   </div></main></div>;
 }

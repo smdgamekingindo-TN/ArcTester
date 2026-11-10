@@ -126,7 +126,7 @@ describe("assigned exam server session client", () => {
     expect(startCalls).toBeGreaterThanOrEqual(2);
   });
 
-  it("caps failed automatic submission at five attempts with exponential backoff", async () => {
+  it("caps failed automatic submission at five retries with exponential backoff", async () => {
     fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
       const path = String(input);
       if (path.endsWith("/exams/assigned")) return jsonResponse({ assignments: [{ id: "assignment-1", status: "ASSIGNED", assignedAt: session.serverTime, availableFrom: null, dueAt: null, exam: { id: "exam-1", title: "Lifecycle test", description: "" }, version: 1, durationMinutes: 60, questionCount: 1, submission: null }] });
@@ -140,7 +140,7 @@ describe("assigned exam server session client", () => {
     fireEvent.click(await screen.findByRole("button", { name: /Start exam/ }));
     await screen.findByText("Choose one");
     await act(async () => { await vi.advanceTimersByTimeAsync(20_000); });
-    expect(fetchMock.mock.calls.filter(([input]) => String(input).endsWith("/submission"))).toHaveLength(5);
+    expect(fetchMock.mock.calls.filter(([input]) => String(input).endsWith("/submission"))).toHaveLength(6);
     expect(screen.getByText("Could not reach the server. Your answers are saved on this device. Press Retry submission when you are back online.")).toBeInTheDocument();
   });
 

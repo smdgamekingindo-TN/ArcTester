@@ -13,6 +13,11 @@ import {
   QUESTION_ANALYTICS_WEAK_ACCURACY,
 } from "./analytics.js";
 
+// A deadline-triggered client submit may arrive up to 10 seconds after the
+// authoritative deadline because of request scheduling and network transit.
+// Requests received later than this window are retained for invigilator review.
+const AUTO_SUBMIT_GRACE_MS = 10_000;
+
 const CreateExamSchema = z.object({
   title: z.string().trim().min(2).max(120),
   description: z.string().trim().max(2000).default(""),
@@ -1656,7 +1661,7 @@ export function examRouter(db: PrismaClient): Router {
         serverSubmittedAt.getTime() - sessionLastHeartbeatAt.getTime() > 90000;
       const suspiciousTiming =
         offlineSessionReconciled ||
-        serverSubmittedAt.getTime() >= startedAt.getTime() + durationMs + 60000 ||
+        serverSubmittedAt.getTime() > startedAt.getTime() + durationMs + AUTO_SUBMIT_GRACE_MS ||
         staleHeartbeat ||
         (assignment.availableFrom !== null && startedAt < assignment.availableFrom) ||
         (assignment.dueAt !== null && submittedAt >= assignment.dueAt) ||

@@ -183,7 +183,7 @@ export default function App() {
     }
     let cancelled = false;
     const refreshNotifications = () => {
-      request<{ notifications: StudentNotification[] }>("/notifications?unread=true")
+      request<{ notifications: StudentNotification[] }>(activePage === "notifications" ? "/notifications" : "/notifications?unread=true")
         .then(({ notifications: items }) => {
           if (!cancelled) setStudentNotifications(Array.isArray(items) ? items : []);
         })
@@ -197,7 +197,7 @@ export default function App() {
       cancelled = true;
       window.clearInterval(interval);
     };
-  }, [user]);
+  }, [user, activePage]);
 
   useEffect(() => {
     if (user?.role !== "STUDENT" || !["dashboard", "announcements"].includes(activePage)) return;
@@ -274,10 +274,25 @@ export default function App() {
 
   async function markStudentNotificationRead(id: string) {
     try {
-      await request(`/notifications/${id}/read`, { method: "POST", body: JSON.stringify({}) });
-      setStudentNotifications((items) => items.filter((item) => item.id !== id));
+      const result = await request<{ readAt: string }>(`/notifications/${id}/read`, { method: "POST", body: JSON.stringify({}) });
+      setStudentNotifications((items) => items.map((item) => item.id === id ? { ...item, readAt: result.readAt } : item));
     } catch (cause) {
       setError((cause as Error).message);
+    }
+  }
+
+  function openStudentNotification(id: string) {
+    const notification = studentNotifications.find((item) => item.id === id);
+    if (!notification) return;
+    void markStudentNotificationRead(id);
+    if (notification.href === "/assignments") {
+      setActivePage("assigned-exams");
+      return;
+    }
+    const resultMatch = notification.href.match(/^\/assignments\/([^/]+)\/result$/);
+    if (resultMatch) {
+      setActivePage("assigned-exams");
+      void reviewAssignedExam(resultMatch[1]);
     }
   }
 
@@ -893,6 +908,7 @@ export default function App() {
         examActive={Boolean(activeAssignmentPackage)}
         pendingExamCount={assignedExams.filter((item) => !item.submission).length}
         unreadAnnouncementCount={announcements.filter((item) => !item.seenAt).length}
+        unreadNotificationCount={studentNotifications.filter((item) => !item.readAt).length}
         theme={theme}
         onToggleTheme={() => setTheme((current) => current === "light" ? "dark" : "light")}
         email={user.email}
@@ -1031,6 +1047,23 @@ export default function App() {
                 {item.submission ? <><p className="muted">Submitted {new Date(item.submission.submittedAt).toLocaleString()} · {item.submission.status === "REVIEW_REQUIRED" ? "Awaiting administrator review. Your result will appear after approval." : `Score: ${item.submission.score ?? "Pending"} / ${item.submission.maximumScore ?? "—"}`}</p>{item.submission.status !== "REVIEW_REQUIRED" && <button type="button" className="ghost" disabled={busy} onClick={() => void reviewAssignedExam(item.id)}>Review answers</button>}{assignmentResultForId === item.id && assignmentResult && <div className="assigned-result-review"><h3>Answer review</h3><p><strong>{assignmentResult.score ?? "Pending"} / {assignmentResult.maximumScore ?? "—"}</strong> · {assignmentResult.status}</p>{assignmentResult.questions.map((question) => <article className="question-review-row" key={question.id}><strong>Q{question.position + 1}. {question.text}</strong><p className={question.isCorrect ? "success" : "error"}>{question.selectedIndex === null ? "Not answered" : question.isCorrect ? "Correct" : "Incorrect"} · {question.awardedMarks} marks</p><p><strong>Correct answer:</strong> {question.options[question.correctIndex]}</p><p className="muted">{question.explanation || "No explanation provided."}</p></article>)}</div>}</> : <button className="primary" disabled={busy || Boolean(unavailable) || Boolean(expired)} onClick={() => void startAssignedExam(item.id)}>{unavailable ? "Not available yet" : expired ? "Deadline passed" : "Start examination"}</button>}
               </article>;
             })}
+          </section>
+        ) : activePage === "notifications" ? (
+          <section className="student-notifications-page">
+            <div className="page-heading">
+              <div><p className="eyebrow">STUDENT COMMUNICATION</p><h1>Notification inbox</h1><p className="muted">New exam assignments, graded results and submissions awaiting review.</p></div>
+              <button className="ghost" onClick={() => request<{ notifications: StudentNotification[] }>("/notifications").then(({ notifications: items }) => setStudentNotifications(items)).catch((cause) => setError((cause as Error).message))}>Refresh</button>
+            </div>
+            {studentNotifications.length === 0 ? <div className="panel empty-state"><h2>No notifications yet</h2><p className="muted">New assignments and exam results will appear here.</p></div> : studentNotifications.map((item) => (
+              <article className="panel notification-row" key={item.id}>
+                <div className="announcement-meta"><span className={item.readAt ? "status status-used" : "status status-pending"}>{item.readAt ? "READ" : "UNREAD"}</span><small>{new Date(item.createdAt).toLocaleString()}</small></div>
+                <h2>{item.title}</h2><p>{item.message}</p>
+                <div className="row">
+                  <button className="ghost" onClick={() => openStudentNotification(item.id)}>Open</button>
+                  {!item.readAt ? <button className="ghost" onClick={() => void markStudentNotificationRead(item.id)}>Mark as read</button> : null}
+                </div>
+              </article>
+            ))}
           </section>
         ) : activePage === "announcements" ? (
           <section className="student-announcements">
@@ -1204,10 +1237,11 @@ export default function App() {
         )}
         {error && <p className="error">{error}</p>}
       </main>
-      {studentNotifications[0] && (
+      {studentNotifications.find((item) => !item.readAt) && (
         <StudentNotificationBanner
-          notification={studentNotifications[0]}
+          notification={studentNotifications.find((item) => !item.readAt)!}
           onRead={(id) => void markStudentNotificationRead(id)}
+          onOpen={(notification) => openStudentNotification(notification.id)}
         />
       )}
       {activeAnnouncements[0] && (

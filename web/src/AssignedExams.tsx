@@ -297,7 +297,7 @@ export default function AssignedExams() {
         const message = (caught as Error).message;
         if (/paused|no active exam session/i.test(message)) {
           setPaused(true);
-          setHeldSeconds(clockAnchor ? holdServerClock(clockAnchor, performance.now()) : remaining);
+          setHeldSeconds(clockAnchorRef.current ? holdServerClock(clockAnchorRef.current, performance.now()) : remainingRef.current);
         } else if (/failed|network|fetch/i.test(message)) {
           setOffline(true);
         } else {

@@ -24,7 +24,7 @@ describe("AdminPaperBuilder", () => {
     fireEvent.click(screen.getByRole("button", { name: "Load AP ECET CSE preset" }));
     fireEvent.click(screen.getByRole("button", { name: "Automatic draw" }));
     fireEvent.click(screen.getByRole("button", { name: "Select visible" }));
-    fireEvent.click(screen.getByLabelText("Mathematics · Algebra What is 2 + 2? easy"));
+    fireEvent.click(screen.getAllByRole("checkbox")[2]);
     expect(handlers.onExamChange).toHaveBeenCalledWith("title", "New paper");
     expect(handlers.onLoadPreset).toHaveBeenCalledTimes(1);
     expect(handlers.onSelectionModeChange).toHaveBeenCalledWith("random");
@@ -36,8 +36,8 @@ describe("AdminPaperBuilder", () => {
     const randomExam = { ...exam, title: "", selectionMode: "random" as const };
     const onSubjectQuotaChange = vi.fn(), onDifficultyMixChange = vi.fn();
     render(<AdminPaperBuilder {...props} exam={randomExam} examIds={[]} onSubjectQuotaChange={onSubjectQuotaChange} onDifficultyMixChange={onDifficultyMixChange} />);
-    fireEvent.change(screen.getByLabelText("Mathematics available"), { target: { value: "30" } });
-    fireEvent.change(screen.getByLabelText("easy"), { target: { value: "40" } });
+    fireEvent.change(screen.getAllByRole("spinbutton")[1], { target: { value: "30" } });
+    fireEvent.change(screen.getAllByRole("spinbutton")[2], { target: { value: "40" } });
     expect(onSubjectQuotaChange).toHaveBeenCalledWith("Mathematics", 30);
     expect(onDifficultyMixChange).toHaveBeenCalledWith("easy", 40);
     expect(screen.getByRole("button", { name: "Save draft exam →" }).hasAttribute("disabled")).toBe(true);

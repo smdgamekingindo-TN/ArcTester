@@ -20,6 +20,7 @@ import StudentNotificationsInbox from "./StudentNotificationsInbox";
 import { useStudentCommunications } from "./useStudentCommunications";
 import StudentProgress, { DashboardProgressSummary } from "./StudentProgress";
 import StudentQuestionBankBrowser from "./StudentQuestionBankBrowser";
+import StudentQuestionBankStats from "./StudentQuestionBankStats";
 import StudentPracticeQuickActions from "./StudentPracticeQuickActions";
 import StudentPracticeSubjectTopicFilters from "./StudentPracticeSubjectTopicFilters";
 import StudentPracticePaperConfiguration from "./StudentPracticePaperConfiguration";
@@ -886,18 +887,7 @@ export default function App() {
                 onResume={() => setActivePage("practice")}
               />
             ) : null}
-            <div hidden={activePage !== "dashboard"} className="stats-row">
-              <article className="panel stat">
-                <span className="muted">Question bank</span>
-                <strong>{bank?.total ?? "—"}</strong>
-                <span className="muted">Available questions</span>
-              </article>
-              <article className="panel stat">
-                <span className="muted">Subjects</span>
-                <strong>{bank?.subjects.length ?? "—"}</strong>
-                <span className="muted">In your question bank</span>
-              </article>
-            </div>
+            <StudentQuestionBankStats bank={bank} visible={activePage === "dashboard"} />
             <section hidden={activePage !== "practice"} id="practice">
               <div className="section-head">
                 <div>

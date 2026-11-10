@@ -662,7 +662,7 @@ describe("versioned exam management", () => {
       score: number;
       maximumScore: number;
     };
-    expect((await server.db.examSubmission.count({ where: { assignmentId } })).toBe(1);
+    expect(await server.db.examSubmission.count({ where: { assignmentId } })).toBe(1);
     expect((duplicate.json.submission as { id: string }).id).toBe(submission.id);
     expect(submission.status).toBe("GRADED");
     expect(submission.score).toBe(2);

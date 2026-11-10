@@ -600,8 +600,8 @@ export default function App() {
   async function acknowledgeAnnouncement(id: string) {
     setBusy(true);
     try {
-      const result = await request<{ seenAt: string }>(`/announcements/${id}/read`, { method: "POST" });
-      setAnnouncements((current) => current.map((item) => item.id === id ? { ...item, seenAt: result.seenAt } : item));
+      const result = await request<{ seenAt: string; acknowledgedAt: string | null }>(`/announcements/${id}/read`, { method: "POST" });
+      setAnnouncements((current) => current.map((item) => item.id === id ? { ...item, seenAt: result.seenAt, acknowledgedAt: result.acknowledgedAt } : item));
     } catch (cause) {
       setError((cause as Error).message);
     } finally {
@@ -1076,6 +1076,7 @@ export default function App() {
                 <div className="announcement-meta"><span className={item.seenAt ? "status status-used" : "status status-pending"}>{item.seenAt ? "SEEN" : "UNREAD"}</span><small>{new Date(item.publishedAt).toLocaleString()}</small></div>
                 <h2>{item.title}</h2><p>{item.message}</p>
                 {item.expiresAt ? <small className="muted">Expires {new Date(item.expiresAt).toLocaleString()}</small> : null}
+                {item.acknowledgedAt ? <small className="muted" role="status">Acknowledged {new Date(item.acknowledgedAt).toLocaleString()}</small> : <button className="ghost" onClick={() => void acknowledgeAnnouncement(item.id)}>Acknowledge</button>}
               </article>
             ))}
           </section>

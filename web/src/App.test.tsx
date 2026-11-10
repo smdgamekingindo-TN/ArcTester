@@ -667,6 +667,45 @@ describe("live Vite application", () => {
     expect(screen.getByRole("button", { name: "Submit final answers" })).toBeEnabled();
     await waitFor(() => expect(intervalSpy.mock.calls.filter(([, delay]) => delay === 1000).length).toBeGreaterThan(countdownIntervalsBeforeResume));
   });
+  it("reports a restored network connection on the next assigned-exam heartbeat without pausing the timer", async () => {
+    let performanceTime = 1000;
+    let heartbeatCount = 0;
+    vi.spyOn(performance, "now").mockImplementation(() => performanceTime);
+    const serverNow = new Date(Date.now()).toISOString();
+    const deadline = new Date(Date.parse(serverNow) + 60_000).toISOString();
+    const assignment = { id: "assignment-reconnect", availableFrom: null, dueAt: null, exam: { title: "Reconnect exam", description: "Lifecycle test" }, version: 1, questionCount: 1, durationMinutes: 1, submission: null };
+    const examPackage = { assignmentId: assignment.id, title: assignment.exam.title, version: 1, durationMinutes: 1, dueAt: null, instructions: "", questions: [{ id: "exam-question-reconnect", position: 0, subject: "Maths", topic: null, text: "Reconnect question", options: ["A", "B", "C", "D"], marks: 1, negativeMarks: 0 }] };
+    fetchMock.mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const path = String(input);
+      if (path.endsWith("/auth/me")) return Promise.resolve(response(200, { user: { id: 4, email: "student@example.com", role: "STUDENT" } }));
+      if (path.endsWith("/bank")) return Promise.resolve(response(200, { total: 0, subjects: [] }));
+      if (path.endsWith("/announcements/active") || path.endsWith("/announcements")) return Promise.resolve(response(200, { announcements: [] }));
+      if (path.endsWith("/exams/assigned")) return Promise.resolve(response(200, { assignments: [assignment] }));
+      if (path.endsWith(`/exams/assignments/${assignment.id}/package`)) return Promise.resolve(response(200, { package: examPackage }));
+      if (path.endsWith(`/exams/assignments/${assignment.id}/session/start`)) return Promise.resolve(response(200, { session: { startedAt: serverNow, serverTime: serverNow, deadline, status: "ACTIVE" } }));
+      if (path.endsWith(`/exams/assignments/${assignment.id}/answers`) && init?.method !== "PUT") return Promise.resolve(response(200, { revision: 0, answers: [] }));
+      if (path.endsWith(`/exams/assignments/${assignment.id}/session/heartbeat`)) {
+        heartbeatCount += 1;
+        if (heartbeatCount === 1) return Promise.resolve(response(503, { error: "Temporary heartbeat service outage" }));
+        return Promise.resolve(response(200, { serverTime: new Date(Date.now()).toISOString(), deadline, sessionStatus: "ACTIVE" }));
+      }
+      return Promise.resolve(response(200, { ok: true, revision: 1 }));
+    });
+    const intervalSpy = vi.spyOn(window, "setInterval");
+    render(<App />);
+    fireEvent.click(await screen.findByRole("button", { name: /Assigned exams/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "Start examination" }));
+    expect(await screen.findByText("Reconnect question")).toBeInTheDocument();
+    const heartbeat = intervalSpy.mock.calls.find(([, delay]) => delay === 15000)?.[0] as (() => void) | undefined;
+    expect(heartbeat).toBeTypeOf("function");
+    await act(async () => { heartbeat?.(); await Promise.resolve(); });
+    expect(screen.queryByText("Session paused or awaiting invigilator action. The server-controlled timer is held.")).not.toBeInTheDocument();
+    performanceTime += 1000;
+    await act(async () => { heartbeat?.(); await Promise.resolve(); });
+    const heartbeatBodies = fetchMock.mock.calls.filter(([input]) => String(input).endsWith(`/exams/assignments/${assignment.id}/session/heartbeat`)).map(([, init]) => JSON.parse(String(init?.body)));
+    expect(heartbeatBodies.map((body) => body.event)).toEqual(["HEARTBEAT", "CONNECTION_RESTORED"]);
+    expect(screen.getByText("01:00 remaining")).toBeInTheDocument();
+  });
   it("counts down practice time from the API clock and automatically submits at expiry", async () => {
     let performanceTime = 2000;
     vi.spyOn(performance, "now").mockImplementation(() => performanceTime);

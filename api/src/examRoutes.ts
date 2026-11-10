@@ -1681,13 +1681,17 @@ export function examRouter(db: PrismaClient): Router {
         submittedAt: Date;
         receivedAt: Date;
       };
+      let duplicateSubmission = false;
       try {
         submission = await db.$transaction(async (tx) => {
         const existing = await tx.examSubmission.findUnique({
           where: { assignmentId: assignment.id },
         });
         if (existing) {
-          if (existing.attemptUuid === input.attemptUuid) return existing;
+          if (existing.attemptUuid === input.attemptUuid) {
+            duplicateSubmission = true;
+            return existing;
+          }
           throw conflict("An attempt has already been submitted for this assignment.");
         }
 
@@ -1746,6 +1750,13 @@ export function examRouter(db: PrismaClient): Router {
           data: { status: "COMPLETED", endedAt: serverSubmittedAt, lastActivityAt: serverSubmittedAt },
         });
         if (completedSession.count !== 1) {
+          const concurrentSubmission = await tx.examSubmission.findUnique({
+            where: { assignmentId: assignment.id },
+          });
+          if (concurrentSubmission?.attemptUuid === input.attemptUuid) {
+            duplicateSubmission = true;
+            return concurrentSubmission;
+          }
           throw conflict("The exam session changed before submission was finalized. Refresh and contact the invigilator.");
         }
 
@@ -1802,7 +1813,7 @@ export function examRouter(db: PrismaClient): Router {
         throw error;
       }
 
-      res.status(201).json({ ok: true, duplicate: false, submission });
+      res.status(duplicateSubmission ? 200 : 201).json({ ok: true, duplicate: duplicateSubmission, submission });
     } catch (error) {
       next(error);
     }

@@ -393,7 +393,7 @@ describe("versioned exam management", () => {
       expect((await request("/exams/assignments/" + assignment.id + "/answers", "GET", undefined, fixture.cookies[1])).status).toBe(404);
       expect((await request("/exams/assignments/" + assignment.id + "/result", "GET", undefined, fixture.cookies[1])).status).toBe(404);
     });
-    it("rejects terminated and expired sessions and retains post-deadline submissions for review", async () => {
+    it("rejects terminated and expired sessions, grades inside the grace window and reviews late submissions", async () => {
       const terminatedAssignment = fixture.assignments[2]; const terminatedStudent = fixture.cookies[2];
       const startedC = await request("/exams/assignments/" + terminatedAssignment.id + "/session/start", "POST", {}, terminatedStudent);
       const sessionC = (startedC.json.session as { id: string }).id;

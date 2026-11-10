@@ -14,6 +14,7 @@ let server: TestServer;
 describe("announcement API", () => {
   let adminCookie = "";
   let studentCookie = "";
+  let secondStudentCookie = "";
 
   beforeAll(async () => {
     server = await startTestServer(buildApp);
@@ -35,6 +36,10 @@ describe("announcement API", () => {
     expect(student.id).toBeGreaterThan(0);
     adminCookie = (await signIn(server.baseUrl, admin.email)).cookie;
     studentCookie = (await signIn(server.baseUrl, student.email)).cookie;
+    const secondStudent = await server.db.user.create({
+      data: { email: "announcement-second-student@example.test", passwordHash: hashPassword("correct-horse-battery"), role: "STUDENT" },
+    });
+    secondStudentCookie = (await signIn(server.baseUrl, secondStudent.email)).cookie;
   });
 
   afterAll(async () => {
@@ -82,8 +87,15 @@ describe("announcement API", () => {
       .not.toEqual(expect.arrayContaining([expect.objectContaining({ id: announcementId })]));
 
     const historyAfterRead = await getJson(`${server.baseUrl}/announcements`, studentCookie);
-    expect((historyAfterRead.json as { announcements: { id: string; seenAt: string | null }[] }).announcements)
-      .toEqual(expect.arrayContaining([expect.objectContaining({ id: announcementId, seenAt: expect.any(String) })]));
+    expect((historyAfterRead.json as { announcements: { id: string; seenAt: string | null; acknowledgedAt: string | null }[] }).announcements)
+      .toEqual(expect.arrayContaining([expect.objectContaining({ id: announcementId, seenAt: expect.any(String), acknowledgedAt: expect.any(String) })]));
+
+    const secondStudentFeed = await getJson(`${server.baseUrl}/announcements/active`, secondStudentCookie);
+    expect((secondStudentFeed.json as { announcements: { id: string }[] }).announcements)
+      .toEqual(expect.arrayContaining([expect.objectContaining({ id: announcementId })]));
+    const secondStudentHistory = await getJson(`${server.baseUrl}/announcements`, secondStudentCookie);
+    expect((secondStudentHistory.json as { announcements: { id: string; acknowledgedAt: string | null }[] }).announcements)
+      .toEqual(expect.arrayContaining([expect.objectContaining({ id: announcementId, acknowledgedAt: null })]));
 
     const deleted = await fetch(`${server.baseUrl}/admin/announcements/${announcementId}`, {
       method: "DELETE",

@@ -8,7 +8,7 @@ import { QuestionInputSchema } from "../src/questions.js";
 const csvPath = resolve(dirname(fileURLToPath(import.meta.url)), "../../content/question-drafts/operating-systems.csv");
 const table = parseCsv(readFileSync(csvPath, "utf8"));
 const headers = table.headers.map((header) => header.toLowerCase());
-const cell = (row: string[], name: string) => row[headers.indexOf(name)] ?? "";
+const cell = (row: string[], name: string) => row[headers.indexOf(name.toLowerCase())] ?? "";
 
 describe("Operating Systems question draft batch", () => {
   it("contains 10 single-subject MCQs with four options, explanations, difficulty and NEEDS HUMAN REVIEW markers", () => {

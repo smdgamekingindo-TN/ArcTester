@@ -93,6 +93,45 @@ describe("live Vite application", () => {
     );
   });
 
+  it("opens the notification inbox and marks assignment/result notices as read", async () => {
+    fetchMock.mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const path = String(input);
+      if (path.endsWith("/auth/me")) return Promise.resolve(response(200, {
+        user: { id: 4, email: "student@example.com", role: "STUDENT" },
+      }));
+      if (path.endsWith("/bank")) return Promise.resolve(response(200, { total: 0, subjects: [] }));
+      if (path.endsWith("/notifications?unread=true") || path.endsWith("/notifications")) {
+        return Promise.resolve(response(200, {
+          notifications: [{
+            id: "notification-result-1",
+            kind: "EXAM_RESULT",
+            title: "Exam result available",
+            message: "Your mock exam has been graded.",
+            href: "/assignments/assignment-1/result",
+            createdAt: "2026-11-10T09:00:00.000Z",
+            readAt: null,
+            expiresAt: null,
+          }],
+        }));
+      }
+      if (path.endsWith("/notifications/notification-result-1/read") && init?.method === "POST") {
+        return Promise.resolve(response(200, { ok: true, readAt: "2026-11-10T09:01:00.000Z" }));
+      }
+      return Promise.resolve(response(200, { ok: true, announcements: [] }));
+    });
+
+    render(<App />);
+    fireEvent.click(await screen.findByRole("button", { name: "Notifications (1)" }));
+    expect(await screen.findByRole("heading", { name: "Notification inbox" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Exam result available" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Mark as read" }));
+    await waitFor(() => expect(screen.getByText("READ")).toBeInTheDocument());
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("/notifications/notification-result-1/read"),
+      expect.objectContaining({ method: "POST", credentials: "include" })
+    );
+  });
+
   it("loads published announcements into the student dashboard and announcements view", async () => {
     fetchMock.mockImplementation((input: RequestInfo | URL) => {
       const path = String(input);

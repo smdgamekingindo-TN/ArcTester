@@ -455,9 +455,22 @@ export default function App() {
         if (sessionIdentityRef.current === requestIdentity) setHasSavedPracticeAttempt(false);
         return;
       }
-      const recovery = JSON.parse(raw) as PracticeRecovery;
-      if (!Number.isInteger(recovery.attemptId) || recovery.attemptId <= 0) {
-        throw new Error("The saved practice recovery record is invalid.");
+      let recovery: PracticeRecovery;
+      try {
+        recovery = JSON.parse(raw) as PracticeRecovery;
+      } catch {
+        await SecureStore.deleteItemAsync(practiceRecoveryKey(user.id));
+        setHasSavedPracticeAttempt(false);
+        throw new Error("The saved practice recovery record was corrupted and has been cleared.");
+      }
+      if (
+        !Number.isInteger(recovery.attemptId) || recovery.attemptId <= 0 ||
+        !recovery.answers || typeof recovery.answers !== "object" ||
+        !Number.isInteger(recovery.currentQuestionIndex)
+      ) {
+        await SecureStore.deleteItemAsync(practiceRecoveryKey(user.id));
+        setHasSavedPracticeAttempt(false);
+        throw new Error("The saved practice recovery record was invalid and has been cleared.");
       }
       const restored = await api<Test>(`/tests/${recovery.attemptId}`);
       if (sessionIdentityRef.current !== requestIdentity) return;

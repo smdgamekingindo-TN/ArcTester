@@ -211,7 +211,7 @@ describe("question administration route contracts", () => {
     const csv = [
       "subject,topic,text,optionA,optionB,optionC,optionD,correctIndex,explanation,source,difficulty",
       "Imported CSV Subject,Imported CSV Topic,Question imported through the CSV route,A,B,C,D,2,CSV route regression,Question admin route tests,easy",
-    ].join("\\n");
+    ].join("\n");
     const csvImport = await postJson(`${server.baseUrl}/admin/questions/import/csv`, { content: csv }, adminCookie);
     expect(csvImport.status).toBe(200);
     expect(csvImport.json).toMatchObject({ ok: true, report: { added: 1, duplicates: 0, total: 1, invalid: [] } });

@@ -96,6 +96,39 @@ describe("question administration route contracts", () => {
         difficulty: "medium",
       },
     });
+
+    const patched = await fetch(`${server.baseUrl}/admin/questions/${questionId}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json", cookie: adminCookie },
+      body: JSON.stringify({
+        subject: "Question Admin Systems",
+        topic: "Route Contracts",
+        text: "Which queue operation removes the front element?",
+        options: ["enqueue", "dequeue", "peek", "search"],
+        correctIndex: 1,
+        explanation: "Dequeue removes the front item.",
+        source: "Question admin route tests",
+        difficulty: "easy",
+      }),
+    });
+    expect(patched.status).toBe(200);
+    expect(await patched.json()).toMatchObject({
+      ok: true,
+      question: { id: questionId, difficulty: "easy" },
+    });
+    const studentPatch = await fetch(`${server.baseUrl}/admin/questions/${questionId}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json", cookie: studentCookie },
+      body: JSON.stringify({
+        subject: "Question Admin Systems",
+        topic: "Route Contracts",
+        text: "Student edit",
+        options: ["A", "B", "C", "D"],
+        correctIndex: 0,
+        difficulty: "easy",
+      }),
+    });
+    expect(studentPatch.status).toBe(403);
     expect((await putJson(`${server.baseUrl}/admin/questions/${questionId}`, { text: "Student edit" }, studentCookie)).status).toBe(403);
   });
 

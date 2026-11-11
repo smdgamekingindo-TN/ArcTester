@@ -186,11 +186,11 @@ describe("question administration route contracts", () => {
     expect((await postJson(`${server.baseUrl}/admin/questions/bulk-delete`, { ids: [questionId] }, studentCookie)).status).toBe(403);
   });
 
-  it("imports JSON question rows through the admin route and rejects student access", async () => {
+  it("imports JSON and CSV through each admin import route and rejects student access", async () => {
     const payload = [{
       subject: "Imported Route Subject",
       topic: "Imported Route Topic",
-      text: "Question imported through the question admin endpoint",
+      text: "Question imported through the generic question admin endpoint",
       options: ["A", "B", "C", "D"],
       correctIndex: 3,
       explanation: "Route-level import regression.",
@@ -207,6 +207,29 @@ describe("question administration route contracts", () => {
       format: "json",
       content: JSON.stringify(payload),
     }, adminCookie)).json).toMatchObject({ report: { added: 0, duplicates: 1, total: 1, invalid: [] } });
+
+    const csv = [
+      "subject,topic,text,optionA,optionB,optionC,optionD,correctIndex,explanation,source,difficulty",
+      "Imported CSV Subject,Imported CSV Topic,Question imported through the CSV route,A,B,C,D,2,CSV route regression,Question admin route tests,easy",
+    ].join("\\n");
+    const csvImport = await postJson(`${server.baseUrl}/admin/questions/import/csv`, { content: csv }, adminCookie);
+    expect(csvImport.status).toBe(200);
+    expect(csvImport.json).toMatchObject({ ok: true, report: { added: 1, duplicates: 0, total: 1, invalid: [] } });
+
+    const jsonImport = await postJson(`${server.baseUrl}/admin/questions/import/json`, {
+      questions: [[
+        "Imported Tuple Subject",
+        "Question imported through the JSON tuple route",
+        ["A", "B", "C", "D"],
+        1,
+        "JSON tuple route regression.",
+      ]],
+    }, adminCookie);
+    expect(jsonImport.status).toBe(200);
+    expect(jsonImport.json).toMatchObject({ ok: true, report: { added: 1, duplicates: 0, total: 1, invalid: [] } });
+
     expect((await postJson(`${server.baseUrl}/admin/questions/import`, { format: "json", content: "[]" }, studentCookie)).status).toBe(403);
+    expect((await postJson(`${server.baseUrl}/admin/questions/import/csv`, { content: csv }, studentCookie)).status).toBe(403);
+    expect((await postJson(`${server.baseUrl}/admin/questions/import/json`, { questions: [] }, studentCookie)).status).toBe(403);
   });
 });

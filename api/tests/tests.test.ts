@@ -378,6 +378,9 @@ describe("submit + result", () => {
       count: 1,
     })) as { json: { attemptId: number; questions: { id: number }[] } };
     const questionId = created.json.questions[0].id;
+    const previousStat = await server.db.stat.findUnique({
+      where: { userId_questionId: { userId, questionId } },
+    });
     const payload = { answers: [{ questionId, selectedIndex: 0 }] };
     const [first, second] = await Promise.all([
       api.post(`/tests/${created.json.attemptId}/submit`, payload),
@@ -387,7 +390,7 @@ describe("submit + result", () => {
     const stat = await server.db.stat.findUniqueOrThrow({
       where: { userId_questionId: { userId, questionId } },
     });
-    expect(stat.seen).toBe(1);
+    expect(stat.seen).toBe((previousStat?.seen ?? 0) + 1);
   });
 
   it("rejects answers for foreign questions", async () => {

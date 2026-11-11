@@ -376,14 +376,32 @@ describe("versioned exam management", () => {
     const usedQuestion = await server.db.question.findUniqueOrThrow({
       where: { questionHash: "exam-route-question-fifo-unique" },
     });
+    await server.db.attempt.create({
+      data: {
+        userId: studentId,
+        mode: "practice",
+        startedAt: new Date(Date.now() - 60_000),
+        finishedAt: new Date(),
+        answers: {
+          create: {
+            questionId: usedQuestion.id,
+            chosen: usedQuestion.correctIndex,
+            isCorrect: true,
+            subjectSnapshot: "Computer Science",
+            topicSnapshot: "Data Structures",
+            difficultySnapshot: "easy",
+            textSnapshot: usedQuestion.text,
+            optionsSnapshot: usedQuestion.options,
+            correctIndexSnapshot: usedQuestion.correctIndex,
+            explanationSnapshot: usedQuestion.explanation,
+          },
+        },
+      },
+    });
     const blocked = await request(`/admin/questions/${usedQuestion.id}`, "DELETE", undefined, adminCookie);
     expect(blocked.status).toBe(409);
     expect(await server.db.question.findUnique({ where: { id: usedQuestion.id } })).not.toBeNull();
 
-    const version = await server.db.examVersion.findFirstOrThrow({
-      where: { examId },
-      orderBy: { version: "desc" },
-    });
     const options = ["Snapshot A", "Snapshot B", "Snapshot C", "Snapshot D"];
     const source = await server.db.question.create({
       data: {
@@ -397,27 +415,26 @@ describe("versioned exam management", () => {
         questionHash: "exam-route-question-delete-snapshot-unique",
       },
     });
-    await server.db.examVersionQuestion.create({
-      data: {
-        examVersionId: version.id,
-        sourceQuestionId: source.id,
-        position: 99,
-        subject: "Computer Science",
-        topic: "Data Structures",
-        text: source.text,
-        options: source.options,
-        correctIndex: source.correctIndex,
-        explanation: source.explanation,
-        marks: 2,
-        negativeMarks: 0.5,
-      },
+    const created = await request("/admin/exams", "POST", {
+      title: "Snapshot deletion safety regression",
+      description: "Verify that source deletion preserves the immutable version.",
+      instructions: "Choose the correct answer.",
+      durationMinutes: 15,
+      shuffleQuestions: false,
+      shuffleOptions: false,
+      questions: [{ questionId: source.id, marks: 2, negativeMarks: 0.5 }],
+    }, adminCookie);
+    expect(created.status).toBe(201);
+    const snapshotExamId = (created.json.exam as { id: string }).id;
+    const version = await server.db.examVersion.findFirstOrThrow({
+      where: { examId: snapshotExamId },
     });
 
     const deleted = await request(`/admin/questions/${source.id}`, "DELETE", undefined, adminCookie);
     expect(deleted.status).toBe(200);
     expect(await server.db.question.findUnique({ where: { id: source.id } })).toBeNull();
     const snapshot = await server.db.examVersionQuestion.findFirstOrThrow({
-      where: { examVersionId: version.id, position: 99 },
+      where: { examVersionId: version.id },
     });
     expect(snapshot).toMatchObject({
       sourceQuestionId: null,
@@ -428,6 +445,7 @@ describe("versioned exam management", () => {
       marks: 2,
       negativeMarks: 0.5,
     });
+    await server.db.exam.delete({ where: { id: snapshotExamId } });
   });
 
   describe("PostgreSQL formal exam lifecycle", () => {

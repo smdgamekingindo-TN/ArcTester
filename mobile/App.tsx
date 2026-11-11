@@ -676,6 +676,7 @@ export default function App() {
 
   async function signOut() {
     sessionIdentityRef.current = null;
+    setBusy(false);
     await SecureStore.deleteItemAsync("arctester-token");
     setToken(null);
     setUser(null);

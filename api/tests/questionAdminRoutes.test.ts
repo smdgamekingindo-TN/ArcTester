@@ -224,7 +224,7 @@ describe("question administration route contracts", () => {
       .toEqual(expect.arrayContaining([expect.objectContaining({
         name: "Question Admin Systems",
         questionCount: 1,
-        topics: expect.arrayContaining([{ name: "Route Contracts" }]),
+        topics: expect.arrayContaining([expect.objectContaining({ name: "Route Contracts" })]),
       })]));
 
     const createdSubject = await postJson(`${server.baseUrl}/admin/subjects`, { name: "Question Admin Created Subject" }, adminCookie);

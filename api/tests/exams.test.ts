@@ -858,6 +858,21 @@ describe("versioned exam management", () => {
   });
 
   it("returns exam attendance and question-level report data", async () => {
+    const report = await request(`/admin/exams/${examId}/report`, "GET", undefined, adminCookie);
+    expect(report.status).toBe(200);
+    const data = report.json.report as { assigned: number; submitted: number; questions: Array<{ correct: number; responses: number }> };
+    expect(data.assigned).toBe(1);
+    expect(data.submitted).toBe(1);
+    expect(data.questions[0]).toMatchObject({ correct: 1, responses: 1 });
+
+    const audit = await request(`/admin/exams/assignments/${assignmentId}/audit`, "GET", undefined, adminCookie);
+    expect(audit.status).toBe(200);
+    const auditBody = audit.json.audit as { events: Array<{ type: string; actor: { email: string } | null }> };
+    expect(auditBody.events.some((event) => event.type === "INVIGILATOR_PAUSE" && event.actor?.email === "exam-admin@arctester.test")).toBe(true);
+    expect(auditBody.events.some((event) => event.type === "SUBMITTED" && event.actor?.email === "exam-student@arctester.test")).toBe(true);
+    const student = await request(`/admin/exams/${examId}/report`, "GET", undefined, studentCookie);
+    expect(student.status).toBe(403);
+
     const secondStudent = await server.db.user.findUniqueOrThrow({
       where: { email: "other-student@arctester.test" },
       select: { id: true },
@@ -873,16 +888,15 @@ describe("versioned exam management", () => {
 
     const attendance = await request("/admin/exams/attendance", "GET", undefined, adminCookie);
     expect(attendance.status).toBe(200);
-    const row = (attendance.json.attendance as Array<{ assignmentId: string; attendanceStatus: string }>).find((item) => item.assignmentId === assignmentId);
-    expect(row?.attendanceStatus).toBe("SUBMITTED");
-    const unstarted = (attendance.json.attendance as Array<{
+    const rows = attendance.json.attendance as Array<{
       assignmentId: string;
       attendanceStatus: string;
       connectivity: string;
       session: unknown;
       submission: unknown;
-    }>).find((item) => item.assignmentId === unstartedId);
-    expect(unstarted).toMatchObject({
+    }>;
+    expect(rows.find((item) => item.assignmentId === assignmentId)?.attendanceStatus).toBe("SUBMITTED");
+    expect(rows.find((item) => item.assignmentId === unstartedId)).toMatchObject({
       assignmentId: unstartedId,
       attendanceStatus: "NOT_STARTED",
       connectivity: "NOT_STARTED",
@@ -890,19 +904,12 @@ describe("versioned exam management", () => {
       submission: null,
     });
 
-    const report = await request(`/admin/exams/${examId}/report`, "GET", undefined, adminCookie);
-    expect(report.status).toBe(200);
-    const data = report.json.report as { assigned: number; submitted: number; questions: Array<{ correct: number; responses: number }> };
-    expect(data.assigned).toBe(1);
-    expect(data.submitted).toBe(1);
-    expect(data.questions[0]).toMatchObject({ correct: 1, responses: 1 });
-    const audit = await request(`/admin/exams/assignments/${assignmentId}/audit`, "GET", undefined, adminCookie);
-    expect(audit.status).toBe(200);
-    const auditBody = audit.json.audit as { events: Array<{ type: string; actor: { email: string } | null }> };
-    expect(auditBody.events.some((event) => event.type === "INVIGILATOR_PAUSE" && event.actor?.email === "exam-admin@arctester.test")).toBe(true);
-    expect(auditBody.events.some((event) => event.type === "SUBMITTED" && event.actor?.email === "exam-student@arctester.test")).toBe(true);
-    const student = await request(`/admin/exams/${examId}/report`, "GET", undefined, studentCookie);
-    expect(student.status).toBe(403);
+    // Keep the shared fixture isolated for later tests that create their own
+    // assignment for this student and exam version.
+    await server.db.studentNotification.deleteMany({
+      where: { userId: secondStudent.id, dedupeKey: `exam-assignment:${unstartedId}` },
+    });
+    await server.db.examAssignment.delete({ where: { id: unstartedId } });
   });
 
   it("shows administrator analytics and blocks student access", async () => {

@@ -480,6 +480,8 @@ export default function App() {
     setAnnouncements([]);
     setNotifications([]);
     setUnreadNotificationCount(0);
+    setRefreshingAnnouncements(false);
+    setRefreshingNotifications(false);
     setTest(null);
     setCurrentQuestionIndex(0);
     setShowExams(false);

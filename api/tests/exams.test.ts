@@ -402,6 +402,16 @@ describe("versioned exam management", () => {
     expect(blocked.status).toBe(409);
     expect(await server.db.question.findUnique({ where: { id: usedQuestion.id } })).not.toBeNull();
 
+    // Do not let this regression fixture affect the analytics sample-size
+    // assertions later in this same integration suite.
+    const historyAttempt = await server.db.attempt.findFirstOrThrow({
+      where: { userId: studentId, answers: { some: { questionId: usedQuestion.id } } },
+      orderBy: { startedAt: "desc" },
+      select: { id: true },
+    });
+    await server.db.attemptAnswer.deleteMany({ where: { attemptId: historyAttempt.id } });
+    await server.db.attempt.delete({ where: { id: historyAttempt.id } });
+
     const options = ["Snapshot A", "Snapshot B", "Snapshot C", "Snapshot D"];
     const source = await server.db.question.create({
       data: {

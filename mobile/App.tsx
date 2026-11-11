@@ -105,6 +105,7 @@ export default function App() {
   const [test, setTest] = useState<Test | null>(null);
   const [result, setResult] = useState<PracticeResult | null>(null);
   const [hasSavedPracticeAttempt, setHasSavedPracticeAttempt] = useState(false);
+  const [checkingPracticeRecovery, setCheckingPracticeRecovery] = useState(false);
   const [showExams, setShowExams] = useState(false);
   const [activeTab, setActiveTab] = useState<"home" | "profile">("home");
   const [answers, setAnswers] = useState<Record<number, number>>({});
@@ -289,6 +290,7 @@ export default function App() {
         );
       })
       .catch(() => undefined);
+    setCheckingPracticeRecovery(true);
     void SecureStore.getItemAsync(practiceRecoveryKey(user.id)).then((raw) => {
       if (!isCurrentSession() || !raw) return;
       try {
@@ -301,7 +303,9 @@ export default function App() {
       } catch {
         void SecureStore.deleteItemAsync(practiceRecoveryKey(user.id));
       }
-    }).catch(() => undefined);
+    }).catch(() => undefined).finally(() => {
+      if (isCurrentSession()) setCheckingPracticeRecovery(false);
+    });
     return () => { cancelled = true; };
   }, [token, user]);
 
@@ -524,6 +528,10 @@ export default function App() {
   }
 
   async function startPractice(subject?: string) {
+    if (checkingPracticeRecovery) {
+      setError("Checking this account for a saved practice attempt. Try again in a moment.");
+      return;
+    }
     if (hasSavedPracticeAttempt) {
       setError("Resume or submit your saved practice before starting another one.");
       return;
@@ -680,6 +688,7 @@ export default function App() {
     setTest(null);
     setResult(null);
     setHasSavedPracticeAttempt(false);
+    setCheckingPracticeRecovery(false);
     setAnswers({});
     setCurrentQuestionIndex(0);
     setShowExams(false);

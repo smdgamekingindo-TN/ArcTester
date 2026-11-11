@@ -189,6 +189,8 @@ For a native app, no cookie is needed: use `POST /auth/token` and send
 | `npm run build:mobile` | Export Expo app bundles |
 | `npm run build:desktop:win` | Package Windows installer (after web build) |
 
+Windows installer builds are also validated by GitHub Actions and uploaded as a workflow artifact.
+
 Question bank (run from the repo root):
 
 | Command                                              | What it does                       |

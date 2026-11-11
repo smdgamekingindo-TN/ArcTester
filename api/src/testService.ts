@@ -468,7 +468,7 @@ export async function getResult(
   if (!attempt) throw notFound("Test not found.");
   if (!attempt.finishedAt) throw forbidden("Submit the test before viewing the result.");
 
-  const breakdown = new Map<string, { correct: number; total: number }>();
+  const breakdown = new Map<string, { correct: number; incorrect: number; unanswered: number; total: number }>();
   let score = 0;
   let incorrect = 0;
   let unanswered = 0;

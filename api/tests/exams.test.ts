@@ -372,6 +372,64 @@ describe("versioned exam management", () => {
     expect((await request(`/admin/exams/${examId}/latest-version`, "GET", undefined, studentCookie)).status).toBe(403);
   });
 
+  it("protects practice history while preserving immutable exam snapshots on question deletion", async () => {
+    const usedQuestion = await server.db.question.findUniqueOrThrow({
+      where: { questionHash: "exam-route-question-fifo-unique" },
+    });
+    const blocked = await request(`/admin/questions/${usedQuestion.id}`, "DELETE", undefined, adminCookie);
+    expect(blocked.status).toBe(409);
+    expect(await server.db.question.findUnique({ where: { id: usedQuestion.id } })).not.toBeNull();
+
+    const version = await server.db.examVersion.findFirstOrThrow({
+      where: { examId },
+      orderBy: { version: "desc" },
+    });
+    const options = ["Snapshot A", "Snapshot B", "Snapshot C", "Snapshot D"];
+    const source = await server.db.question.create({
+      data: {
+        subjectId: usedQuestion.subjectId,
+        text: "Snapshot-only source question for deletion regression",
+        options: JSON.stringify(options),
+        correctIndex: 2,
+        explanation: "The immutable snapshot must survive source deletion.",
+        source: "test",
+        difficulty: "easy",
+        questionHash: "exam-route-question-delete-snapshot-unique",
+      },
+    });
+    await server.db.examVersionQuestion.create({
+      data: {
+        examVersionId: version.id,
+        sourceQuestionId: source.id,
+        position: 99,
+        subject: "Computer Science",
+        topic: "Data Structures",
+        text: source.text,
+        options: source.options,
+        correctIndex: source.correctIndex,
+        explanation: source.explanation,
+        marks: 2,
+        negativeMarks: 0.5,
+      },
+    });
+
+    const deleted = await request(`/admin/questions/${source.id}`, "DELETE", undefined, adminCookie);
+    expect(deleted.status).toBe(200);
+    expect(await server.db.question.findUnique({ where: { id: source.id } })).toBeNull();
+    const snapshot = await server.db.examVersionQuestion.findFirstOrThrow({
+      where: { examVersionId: version.id, position: 99 },
+    });
+    expect(snapshot).toMatchObject({
+      sourceQuestionId: null,
+      text: source.text,
+      options: JSON.stringify(options),
+      correctIndex: 2,
+      explanation: source.explanation,
+      marks: 2,
+      negativeMarks: 0.5,
+    });
+  });
+
   describe("PostgreSQL formal exam lifecycle", () => {
     let fixture!: { examId: string; assignments: Array<{ id: string; studentId: number }>; studentIds: number[]; cookies: string[]; questionSnapshotId: string; lateAssignmentId?: string };
     const emails = ["lifecycle-a@arctester.test", "lifecycle-b@arctester.test", "lifecycle-c@arctester.test", "lifecycle-d@arctester.test", "lifecycle-race@arctester.test"];

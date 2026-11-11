@@ -19,7 +19,7 @@ permissions:
   contents: read
 
 jobs:
-  android-debug:
+  android-release:
     name: Build Android installable APK
     runs-on: ubuntu-latest
     timeout-minutes: 35
@@ -46,10 +46,10 @@ jobs:
           EXPO_PUBLIC_API_URL: https://example.invalid
         run: npm run build:mobile:android
 
-      - name: Upload debug APK
+      - name: Upload standalone APK
         uses: actions/upload-artifact@v4
         with:
           name: arctester-android-apk
-          path: mobile/android/app/build/outputs/apk/debug/app-release.apk
+          path: mobile/android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
           retention-days: 14

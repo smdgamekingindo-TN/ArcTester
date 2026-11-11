@@ -28,6 +28,8 @@ type Announcement = {
   message: string;
   publishedAt: string;
   expiresAt: string | null;
+  seenAt?: string | null;
+  acknowledgedAt?: string | null;
 };
 type Notification = {
   id: string;
@@ -277,6 +279,23 @@ export default function App() {
       if (sessionIdentityRef.current === requestIdentity) setError((cause as Error).message);
     } finally {
       if (sessionIdentityRef.current === requestIdentity) setRefreshingNotifications(false);
+    }
+  }
+
+  async function acknowledgeAnnouncement(id: string) {
+    const requestIdentity = sessionIdentityRef.current;
+    try {
+      const result = await api<{ seenAt: string; acknowledgedAt: string | null }>(
+        `/announcements/${encodeURIComponent(id)}/acknowledge`,
+        { method: "POST" },
+      );
+      if (sessionIdentityRef.current === requestIdentity) {
+        setAnnouncements((items) => items.map((item) => item.id === id
+          ? { ...item, seenAt: result.seenAt, acknowledgedAt: result.acknowledgedAt }
+          : item));
+      }
+    } catch (cause) {
+      if (sessionIdentityRef.current === requestIdentity) setError((cause as Error).message);
     }
   }
 
@@ -701,6 +720,13 @@ export default function App() {
                   <Text style={styles.announcementDate}>
                     {new Date(announcement.publishedAt).toLocaleString()}
                   </Text>
+                  {announcement.seenAt ? (
+                    <Text style={styles.announcementDate}>Seen</Text>
+                  ) : (
+                    <TouchableOpacity onPress={() => void acknowledgeAnnouncement(announcement.id)} style={styles.secondary}>
+                      <Text style={styles.secondaryText}>Mark as seen</Text>
+                    </TouchableOpacity>
+                  )}
                 </Animated.View>
               ))
             )}

@@ -184,6 +184,58 @@ describe("question administration route contracts", () => {
     expect((await postJson(`${server.baseUrl}/admin/questions/bulk-delete`, { ids: [questionId] }, studentCookie)).status).toBe(403);
   });
 
+  it("manages subject/topic taxonomy and bulk-updates question difficulty with admin-only access", async () => {
+    const subjects = await getJson(`${server.baseUrl}/admin/subjects`, adminCookie);
+    expect(subjects.status).toBe(200);
+    expect((subjects.json as { subjects: Array<{ name: string; questionCount: number; topics: Array<{ name: string }> }> }).subjects)
+      .toEqual(expect.arrayContaining([expect.objectContaining({
+        name: "Question Admin Systems",
+        questionCount: 1,
+        topics: expect.arrayContaining([{ name: "Route Contracts" }]),
+      })]));
+
+    const createdSubject = await postJson(`${server.baseUrl}/admin/subjects`, { name: "Question Admin Created Subject" }, adminCookie);
+    expect(createdSubject.status).toBe(201);
+    const createdSubjectId = (createdSubject.json as { subject: { id: number } }).subject.id;
+    const repeatedSubject = await postJson(`${server.baseUrl}/admin/subjects`, { name: "Question Admin Created Subject" }, adminCookie);
+    expect((repeatedSubject.json as { subject: { id: number } }).subject.id).toBe(createdSubjectId);
+
+    const createdTopic = await postJson(`${server.baseUrl}/admin/subjects/${createdSubjectId}/topics`, { name: "Temporary Topic" }, adminCookie);
+    expect(createdTopic.status).toBe(201);
+    const createdTopicId = (createdTopic.json as { topic: { id: number; name: string } }).topic.id;
+    expect((createdTopic.json as { topic: { name: string } }).topic.name).toBe("Temporary Topic");
+    const repeatedTopic = await postJson(`${server.baseUrl}/admin/subjects/${createdSubjectId}/topics`, { name: "Temporary Topic" }, adminCookie);
+    expect((repeatedTopic.json as { topic: { id: number } }).topic.id).toBe(createdTopicId);
+
+    const deletedTopic = await fetch(`${server.baseUrl}/admin/topics/${createdTopicId}`, {
+      method: "DELETE",
+      headers: { cookie: adminCookie },
+    });
+    expect(deletedTopic.status).toBe(200);
+    expect(await deletedTopic.json()).toMatchObject({ ok: true, deleted: createdTopicId });
+
+    const bulkUpdated = await fetch(`${server.baseUrl}/admin/questions/bulk`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json", cookie: adminCookie },
+      body: JSON.stringify({ ids: [questionId], difficulty: "hard" }),
+    });
+    expect(bulkUpdated.status).toBe(200);
+    expect(await bulkUpdated.json()).toMatchObject({ ok: true, updated: 1 });
+    expect((await server.db.question.findUniqueOrThrow({ where: { id: questionId } })).difficulty).toBe("hard");
+
+    expect((await getJson(`${server.baseUrl}/admin/subjects`, studentCookie)).status).toBe(403);
+    expect((await postJson(`${server.baseUrl}/admin/subjects`, { name: "Student Subject" }, studentCookie)).status).toBe(403);
+    expect((await postJson(`${server.baseUrl}/admin/subjects/${createdSubjectId}/topics`, { name: "Student Topic" }, studentCookie)).status).toBe(403);
+    const studentDelete = await fetch(`${server.baseUrl}/admin/topics/${createdTopicId}`, { method: "DELETE", headers: { cookie: studentCookie } });
+    expect(studentDelete.status).toBe(403);
+    const studentBulkUpdate = await fetch(`${server.baseUrl}/admin/questions/bulk`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json", cookie: studentCookie },
+      body: JSON.stringify({ ids: [questionId], difficulty: "easy" }),
+    });
+    expect(studentBulkUpdate.status).toBe(403);
+  });
+
   it("imports JSON and CSV through each admin import route and rejects student access", async () => {
     const payload = [{
       subject: "Imported Route Subject",

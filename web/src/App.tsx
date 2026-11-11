@@ -106,6 +106,7 @@ export default function App() {
     announcements,
     activeAnnouncements,
     notifications: studentNotifications,
+    unreadNotificationCount,
     refreshAnnouncements,
     refreshNotifications,
     dismissAnnouncement,
@@ -771,7 +772,7 @@ export default function App() {
         examActive={Boolean(activeAssignmentPackage)}
         pendingExamCount={assignedExams.filter((item) => !item.submission).length}
         unreadAnnouncementCount={announcements.filter((item) => !item.seenAt).length}
-        unreadNotificationCount={studentNotifications.filter((item) => !item.readAt).length}
+        unreadNotificationCount={unreadNotificationCount}
         theme={theme}
         onToggleTheme={() => setTheme((current) => current === "light" ? "dark" : "light")}
         email={user.email}

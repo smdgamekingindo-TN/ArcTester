@@ -69,6 +69,9 @@ export default function App() {
   const [secondsLeft, setSecondsLeft] = useState(20 * 60);
   const [busy, setBusy] = useState(false);
   const [reduceMotion, setReduceMotion] = useState(false);
+  const sessionIdentity = token && user ? `${user.id}:${token}` : null;
+  const sessionIdentityRef = useRef<string | null>(sessionIdentity);
+  sessionIdentityRef.current = sessionIdentity;
   const questionTransition = useRef(new Animated.Value(1)).current;
   const progress = useRef(new Animated.Value(0)).current;
   const [error, setError] = useState("");
@@ -198,6 +201,9 @@ export default function App() {
 
   useEffect(() => {
     if (!token || !user) return;
+    const requestIdentity = `${user.id}:${token}`;
+    let cancelled = false;
+    const isCurrentSession = () => !cancelled && sessionIdentityRef.current === requestIdentity;
     const registerDevice = async () => {
       let fingerprint = await SecureStore.getItemAsync("arctester-device-fingerprint");
       if (!fingerprint) {
@@ -219,15 +225,16 @@ export default function App() {
         }),
       });
     };
-    registerDevice().catch((cause) => setError((cause as Error).message));
+    registerDevice().catch((cause) => { if (isCurrentSession()) setError((cause as Error).message); });
     api<Bank>("/bank")
-      .then(setBank)
-      .catch((cause) => setError((cause as Error).message));
+      .then((result) => { if (isCurrentSession()) setBank(result); })
+      .catch((cause) => { if (isCurrentSession()) setError((cause as Error).message); });
     api<{ announcements: Announcement[] }>("/announcements")
-      .then((result) => setAnnouncements(result.announcements))
+      .then((result) => { if (isCurrentSession()) setAnnouncements(result.announcements); })
       .catch(() => undefined);
     api<{ notifications: Notification[]; unreadCount?: number }>("/notifications")
       .then((result) => {
+        if (!isCurrentSession()) return;
         const items = Array.isArray(result.notifications) ? result.notifications : [];
         setNotifications(items);
         setUnreadNotificationCount(
@@ -237,24 +244,28 @@ export default function App() {
         );
       })
       .catch(() => undefined);
+    return () => { cancelled = true; };
   }, [token, user]);
 
   async function refreshAnnouncements() {
+    const requestIdentity = sessionIdentityRef.current;
     setRefreshingAnnouncements(true);
     try {
       const result = await api<{ announcements: Announcement[] }>("/announcements");
-      setAnnouncements(result.announcements);
+      if (sessionIdentityRef.current === requestIdentity) setAnnouncements(result.announcements);
     } catch (cause) {
-      setError((cause as Error).message);
+      if (sessionIdentityRef.current === requestIdentity) setError((cause as Error).message);
     } finally {
       setRefreshingAnnouncements(false);
     }
   }
 
   async function refreshNotifications() {
+    const requestIdentity = sessionIdentityRef.current;
     setRefreshingNotifications(true);
     try {
       const result = await api<{ notifications: Notification[]; unreadCount?: number }>("/notifications");
+      if (sessionIdentityRef.current !== requestIdentity) return;
       const items = Array.isArray(result.notifications) ? result.notifications : [];
       setNotifications(items);
       setUnreadNotificationCount(
@@ -263,25 +274,27 @@ export default function App() {
           : items.filter((item) => !item.readAt).length,
       );
     } catch (cause) {
-      setError((cause as Error).message);
+      if (sessionIdentityRef.current === requestIdentity) setError((cause as Error).message);
     } finally {
-      setRefreshingNotifications(false);
+      if (sessionIdentityRef.current === requestIdentity) setRefreshingNotifications(false);
     }
   }
 
   async function markNotificationRead(id: string) {
+    const requestIdentity = sessionIdentityRef.current;
     try {
       const result = await api<{ readAt: string; alreadyRead?: boolean }>(
         `/notifications/${encodeURIComponent(id)}/read`,
         { method: "POST", body: JSON.stringify({}) },
       );
+      if (sessionIdentityRef.current !== requestIdentity) return;
       const current = notifications.find((item) => item.id === id);
       if (current && !current.readAt && result.alreadyRead !== true) {
         setUnreadNotificationCount((count) => Math.max(0, count - 1));
       }
       setNotifications((items) => items.map((item) => item.id === id ? { ...item, readAt: result.readAt } : item));
     } catch (cause) {
-      setError((cause as Error).message);
+      if (sessionIdentityRef.current === requestIdentity) setError((cause as Error).message);
     }
   }
 
@@ -440,6 +453,7 @@ export default function App() {
   }
 
   async function signOut() {
+    sessionIdentityRef.current = null;
     await SecureStore.deleteItemAsync("arctester-token");
     setToken(null);
     setUser(null);

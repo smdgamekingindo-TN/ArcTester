@@ -204,3 +204,42 @@ describe("useStudentCommunications account isolation", () => {
     expect(setError).not.toHaveBeenCalled();
   });
 });
+
+
+describe("useStudentCommunications unread totals", () => {
+  it("uses the server unread count even when the inbox response is capped and decrements after a successful read", async () => {
+    const request = vi.fn(async (path: string) => {
+      if (path === "/notifications") {
+        return {
+          unreadCount: 147,
+          notifications: [{
+            id: "latest-notice",
+            kind: "EXAM_RESULT",
+            title: "Result available",
+            message: "Your result is ready.",
+            href: "/assignments",
+            createdAt: "2026-11-11T08:00:00.000Z",
+            readAt: null,
+            expiresAt: null,
+          }],
+        };
+      }
+      if (path.endsWith("/read")) return { readAt: "2026-11-11T09:00:00.000Z", alreadyRead: false };
+      return { announcements: [] };
+    });
+    const { result } = renderHook(() => useStudentCommunications({
+      userRole: "STUDENT",
+      userId: 303,
+      activePage: "notifications",
+      request: request as unknown as StudentCommunicationsRequest,
+      setError: vi.fn(),
+      setBusy: vi.fn(),
+    }));
+
+    await waitFor(() => expect(result.current.unreadNotificationCount).toBe(147));
+    expect(result.current.notifications).toHaveLength(1);
+    await act(async () => { await result.current.markNotificationRead("latest-notice"); });
+    expect(result.current.unreadNotificationCount).toBe(146);
+    expect(result.current.notifications[0].readAt).toBe("2026-11-11T09:00:00.000Z");
+  });
+});

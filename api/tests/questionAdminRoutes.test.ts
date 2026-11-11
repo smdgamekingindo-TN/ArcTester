@@ -7,7 +7,6 @@ import { getJson, postJson, signIn, startTestServer, type TestServer } from "./s
 let server: TestServer;
 let adminCookie = "";
 let studentCookie = "";
-let adminId = 0;
 let studentId = 0;
 let questionId = 0;
 let examId = "";
@@ -30,7 +29,6 @@ describe("question administration route contracts", () => {
     const student = await server.db.user.create({
       data: { email: "question-student@arctester.test", passwordHash: hashPassword("question-student-password"), role: "STUDENT" },
     });
-    adminId = admin.id;
     studentId = student.id;
     adminCookie = (await signIn(server.baseUrl, admin.email, "question-admin-password")).cookie;
     studentCookie = (await signIn(server.baseUrl, student.email, "question-student-password")).cookie;

@@ -25,8 +25,8 @@ export function announcementRouter(db: PrismaClient): Router {
         const input = CreateAnnouncementSchema.parse(req.body);
         const startsAt = input.startsAt ? new Date(input.startsAt) : new Date();
         const expiresAt = input.expiresAt ? new Date(input.expiresAt) : null;
-        if (expiresAt && expiresAt.getTime() <= startsAt.getTime()) {
-          return next(badRequest("Announcement expiry must be after its publish time."));
+        if (expiresAt && expiresAt.getTime() <= Math.max(startsAt.getTime(), Date.now())) {
+          return next(badRequest("Announcement expiry must be after its publish time and in the future."));
         }
 
         const announcement = await db.announcement.create({

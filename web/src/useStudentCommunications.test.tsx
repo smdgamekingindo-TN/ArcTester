@@ -127,6 +127,7 @@ describe("useStudentCommunications", () => {
     rerender({ role: "ADMIN" });
     expect(result.current.notifications).toEqual([]);
   });
+});
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -141,7 +142,7 @@ describe("useStudentCommunications account isolation", () => {
       const next = deferred<unknown>();
       pending.set(path, [...(pending.get(path) ?? []), next]);
       return next.promise;
-    }) as StudentCommunicationsRequest;
+    }) as unknown as StudentCommunicationsRequest;
     const setError = vi.fn();
     const setBusy = vi.fn();
 
@@ -202,5 +203,4 @@ describe("useStudentCommunications account isolation", () => {
     });
     expect(setError).not.toHaveBeenCalled();
   });
-});
 });

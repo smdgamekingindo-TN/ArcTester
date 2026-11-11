@@ -250,6 +250,35 @@ describe("POST /tests", () => {
 });
 
 describe("submit + result", () => {
+  it("reports incorrect and unanswered counts separately in overall and subject results", async () => {
+    const created = await api.post("/tests", {
+      mode: "practice",
+      subject: "Maths",
+      count: 2,
+    });
+    expect(created.status).toBe(201);
+    const attempt = created.json as { attemptId: number; questions: { id: number }[] };
+    expect(attempt.questions).toHaveLength(2);
+    const question = await server.db.question.findUniqueOrThrow({
+      where: { id: attempt.questions[0].id },
+    });
+    const submitted = await api.post(`/tests/${attempt.attemptId}/submit`, {
+      answers: [{ questionId: question.id, selectedIndex: (question.correctIndex + 1) % 4 }],
+    });
+    expect(submitted.status).toBe(200);
+
+    const response = await api.get(`/tests/${attempt.attemptId}/result`);
+    expect(response.status).toBe(200);
+    expect(response.json).toMatchObject({
+      score: 0,
+      incorrect: 1,
+      unanswered: 1,
+      total: 2,
+      breakdown: [{ subject: "Maths", correct: 0, incorrect: 1, unanswered: 1, total: 2 }],
+    });
+  });
+
+
   it("scores, persists, and reveals answers only after submit", async () => {
     const created = (await api.post(`/tests`, {
       mode: "practice",

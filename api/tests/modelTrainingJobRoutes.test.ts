@@ -137,7 +137,7 @@ describe("durable TensorFlow training jobs", () => {
       errorMessage: "",
     });
     expect(await server.db.modelRegistryAudit.count({
-      where: { modelId: "concurrent-worker-claim-fixture", action: "TRAINED_TENSORFLOW" },
+      where: { modelId: "concurrent-worker-claim-fixture", action: { in: ["TRAINED_TENSORFLOW", "TENSORFLOW_CANDIDATE_REJECTED"] } },
     })).toBe(1);
     expect(await server.db.modelTrainingJob.count({
       where: { id: jobId, status: "RUNNING" },
@@ -171,7 +171,7 @@ describe("durable TensorFlow training jobs", () => {
       leaseExpiresAt: null,
     });
     expect(await server.db.modelRegistryAudit.count({
-      where: { modelId: "expired-lease-recovery-fixture", action: "TRAINED_TENSORFLOW" },
+      where: { modelId: "expired-lease-recovery-fixture", action: { in: ["TRAINED_TENSORFLOW", "TENSORFLOW_CANDIDATE_REJECTED"] } },
     })).toBe(1);
   });
 

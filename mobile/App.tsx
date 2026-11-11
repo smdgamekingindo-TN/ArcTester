@@ -572,6 +572,19 @@ export default function App() {
 
   useEffect(() => {
     if (!test) return;
+    const deadlineMs = test.deadline ? Date.parse(test.deadline) : Number.NaN;
+    const serverNowMs = Date.parse(test.serverNow);
+    if (Number.isFinite(deadlineMs) && Number.isFinite(serverNowMs)) {
+      // Recalculate from the server deadline on every tick. This catches up
+      // after the app is backgrounded instead of trusting throttled intervals.
+      const serverOffsetMs = serverNowMs - Date.now();
+      const tick = () => {
+        setSecondsLeft(Math.max(0, Math.ceil((deadlineMs - (Date.now() + serverOffsetMs)) / 1000)));
+      };
+      tick();
+      const timer = setInterval(tick, 1000);
+      return () => clearInterval(timer);
+    }
     const timer = setInterval(() => {
       setSecondsLeft((remaining) => Math.max(0, remaining - 1));
     }, 1000);

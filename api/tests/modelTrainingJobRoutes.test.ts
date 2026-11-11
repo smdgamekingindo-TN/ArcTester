@@ -144,6 +144,37 @@ describe("durable TensorFlow training jobs", () => {
     })).toBe(0);
   });
 
+  it("reclaims an expired worker lease and completes the interrupted job", async () => {
+    const stale = await server.db.modelTrainingJob.create({
+      data: {
+        datasetId,
+        createdById: (await server.db.user.findFirstOrThrow({ where: { email: "training-job-admin@example.com" } })).id,
+        modelId: "expired-lease-recovery-fixture",
+        epochs: 1,
+        batchSize: 16,
+        status: "RUNNING",
+        progress: 35,
+        workerId: "worker-that-crashed",
+        leaseExpiresAt: new Date(Date.now() - 1_000),
+        startedAt: new Date(Date.now() - 60_000),
+      },
+    });
+
+    expect(await runNextModelTrainingJob(server.db, "replacement-worker")).toBe(true);
+
+    const recovered = await server.db.modelTrainingJob.findUniqueOrThrow({ where: { id: stale.id } });
+    expect(recovered).toMatchObject({
+      status: "SUCCEEDED",
+      progress: 100,
+      workerId: "replacement-worker",
+      errorMessage: "",
+      leaseExpiresAt: null,
+    });
+    expect(await server.db.modelRegistryAudit.count({
+      where: { modelId: "expired-lease-recovery-fixture", action: "TRAINED_TENSORFLOW" },
+    })).toBe(1);
+  });
+
   it("rejects invalid datasets before creating a queued job", async () => {
     const invalid = await server.db.modelDataset.create({
       data: {

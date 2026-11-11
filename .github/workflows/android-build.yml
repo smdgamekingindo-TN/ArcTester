@@ -37,7 +37,6 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-          cache: gradle
 
       - name: Install Expo dependencies
         run: npm install --prefix mobile --no-audit --no-fund

@@ -23,7 +23,7 @@ describe("AdminAttendanceRegister", () => {
     render(<AdminAttendanceRegister rows={rows} total={2} page={1} pageSize={25} loading={false} updatedAt="2026-11-10T12:00:00.000Z" onPageChange={vi.fn()} onRefresh={vi.fn()} />);
     expect(screen.getByRole("heading", { name: "Attendance register" })).toBeTruthy();
     expect(screen.getByText("not-started@example.test")).toBeTruthy();
-    expect(screen.getByText("NOT STARTED")).toBeTruthy();
+    expect(screen.getAllByText("NOT STARTED")).toHaveLength(2);
     expect(screen.getByText("No session started")).toBeTruthy();
     expect(screen.getByText("submitted@example.test")).toBeTruthy();
     expect(screen.getByText("SUBMITTED")).toBeTruthy();

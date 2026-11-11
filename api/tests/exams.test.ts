@@ -1000,6 +1000,10 @@ describe("versioned exam management", () => {
       title: "Exam result available",
       href: `/assignments/${offlineAssignment.id}/result`,
     });
+    const retiredReviewNotice = await server.db.studentNotification.findFirstOrThrow({
+      where: { userId: secondStudent.id, dedupeKey: `exam-submission:${submission.id}` },
+    });
+    expect(retiredReviewNotice).toMatchObject({ kind: "EXAM_REVIEW", readAt: expect.any(Date) });
     const repeatedRelease = await request(`/admin/submissions/${submission.id}/release`, "POST", {}, adminCookie);
     expect(repeatedRelease.status).toBe(200);
     expect(repeatedRelease.json).toMatchObject({ alreadyReleased: true });

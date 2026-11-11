@@ -21,7 +21,7 @@ describe("AdminAnnouncements", () => {
     const onDelete = vi.fn();
     const confirmMock = vi.fn().mockReturnValue(false);
     vi.stubGlobal("confirm", confirmMock);
-    render(<AdminAnnouncements announcements={[announcement]} title="" message="" expiry="" busy={false} onTitleChange={vi.fn()} onMessageChange={vi.fn()} onExpiryChange={vi.fn()} onCreate={vi.fn()} onRefresh={vi.fn()} onDelete={onDelete} />);
+    render(<AdminAnnouncements announcements={[announcement]} title="" message="" expiry="" publishAt="" busy={false} onTitleChange={vi.fn()} onMessageChange={vi.fn()} onExpiryChange={vi.fn()} onPublishAtChange={vi.fn()} onCreate={vi.fn()} onRefresh={vi.fn()} onDelete={onDelete} />);
     fireEvent.click(screen.getByRole("button", { name: "Delete" }));
     expect(confirmMock).toHaveBeenCalledWith("Delete this announcement? Students will no longer see it.");
     expect(onDelete).not.toHaveBeenCalled();

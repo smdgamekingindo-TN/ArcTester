@@ -4,7 +4,7 @@ import type { PrismaClient } from "@prisma/client";
 import { badRequest, notFound } from "./errors.js";
 import { requireAdmin, requireAuth } from "./auth.js";
 import { importFromCsv, importFromJson } from "./importService.js";
-import { QuestionInputSchema, encodeOptions } from "./questions.js";
+import { QuestionInputSchema, encodeOptions, hashQuestion } from "./questions.js";
 
 const ListSchema = z.object({
   q: z.string().trim().max(300).optional(),

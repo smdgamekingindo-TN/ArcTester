@@ -256,7 +256,7 @@ export default function App() {
     } catch (cause) {
       if (sessionIdentityRef.current === requestIdentity) setError((cause as Error).message);
     } finally {
-      setRefreshingAnnouncements(false);
+      if (sessionIdentityRef.current === requestIdentity) setRefreshingAnnouncements(false);
     }
   }
 

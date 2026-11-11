@@ -86,6 +86,18 @@ describe("announcement API", () => {
     );
     expect(invalid.status).toBe(400);
 
+    const alreadyExpired = await postJson(
+      `${server.baseUrl}/admin/announcements`,
+      {
+        title: "Backdated expired notice",
+        message: "A past publish time cannot make a past expiry valid.",
+        startsAt: new Date(Date.now() - 120_000).toISOString(),
+        expiresAt: new Date(Date.now() - 60_000).toISOString(),
+      },
+      adminCookie,
+    );
+    expect(alreadyExpired.status).toBe(400);
+
     const created = await postJson(
       `${server.baseUrl}/admin/announcements`,
       {

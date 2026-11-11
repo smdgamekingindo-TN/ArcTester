@@ -227,13 +227,15 @@ describe("useStudentCommunications unread totals", () => {
       if (path.endsWith("/read")) return { readAt: "2026-11-11T09:00:00.000Z", alreadyRead: false };
       return { announcements: [] };
     });
+    const setError = vi.fn();
+    const setBusy = vi.fn();
     const { result } = renderHook(() => useStudentCommunications({
       userRole: "STUDENT",
       userId: 303,
       activePage: "notifications",
       request: request as unknown as StudentCommunicationsRequest,
-      setError: vi.fn(),
-      setBusy: vi.fn(),
+      setError,
+      setBusy,
     }));
 
     await waitFor(() => expect(result.current.unreadNotificationCount).toBe(147));

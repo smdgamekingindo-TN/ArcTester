@@ -112,6 +112,38 @@ describe("durable TensorFlow training jobs", () => {
     expect(await runNextModelTrainingJob(server.db, "test-worker-two")).toBe(false);
   });
 
+  it("allows only one worker to claim and finalize a queued job under concurrent polling", async () => {
+    const queued = await request(`/admin/model-datasets/${datasetId}/tensorflow-jobs`, "POST", {
+      modelId: "concurrent-worker-claim-fixture",
+      epochs: 1,
+      batchSize: 16,
+    });
+    expect(queued.status).toBe(202);
+    const jobId = queued.body.job.id;
+
+    // Simulate two API instances polling the same durable queue at once.
+    // The conditional updateMany claim must elect exactly one worker.
+    const claims = await Promise.all([
+      runNextModelTrainingJob(server.db, "test-worker-concurrent-one"),
+      runNextModelTrainingJob(server.db, "test-worker-concurrent-two"),
+    ]);
+    expect(claims.filter(Boolean)).toHaveLength(1);
+
+    const status = await request(`/admin/model-training-jobs/${jobId}`);
+    expect(status.body.job).toMatchObject({
+      id: jobId,
+      status: "SUCCEEDED",
+      progress: 100,
+      errorMessage: "",
+    });
+    expect(await server.db.modelRegistryAudit.count({
+      where: { modelId: "concurrent-worker-claim-fixture", action: "TRAINED_TENSORFLOW" },
+    })).toBe(1);
+    expect(await server.db.modelTrainingJob.count({
+      where: { id: jobId, status: "RUNNING" },
+    })).toBe(0);
+  });
+
   it("rejects invalid datasets before creating a queued job", async () => {
     const invalid = await server.db.modelDataset.create({
       data: {

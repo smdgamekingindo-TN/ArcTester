@@ -449,6 +449,7 @@ export default function App() {
     const requestIdentity = sessionIdentityRef.current;
     setBusy(true);
     setError("");
+    let recoveryAttemptId: number | null = null;
     try {
       const raw = await SecureStore.getItemAsync(practiceRecoveryKey(user.id));
       if (!raw) {
@@ -472,6 +473,7 @@ export default function App() {
         setHasSavedPracticeAttempt(false);
         throw new Error("The saved practice recovery record was invalid and has been cleared.");
       }
+      recoveryAttemptId = recovery.attemptId;
       const restored = await api<Test>(`/tests/${recovery.attemptId}`);
       if (sessionIdentityRef.current !== requestIdentity) return;
       if (restored.mode !== "practice" || !restored.questions.length) {
@@ -494,9 +496,25 @@ export default function App() {
       setHasSavedPracticeAttempt(false);
     } catch (cause) {
       if (sessionIdentityRef.current !== requestIdentity) return;
-      if (cause instanceof ApiRequestError && (cause.status === 404 || cause.status === 409)) {
+      if (cause instanceof ApiRequestError && cause.status === 404) {
         await SecureStore.deleteItemAsync(practiceRecoveryKey(user.id));
         setHasSavedPracticeAttempt(false);
+      } else if (cause instanceof ApiRequestError && cause.status === 409 && recoveryAttemptId !== null) {
+        // The submit may have reached the server before the app lost its response.
+        // Recover the completed result instead of leaving the student stranded.
+        try {
+          const completed = await api<PracticeResult>(`/tests/${recoveryAttemptId}/result`);
+          if (sessionIdentityRef.current === requestIdentity) {
+            await SecureStore.deleteItemAsync(practiceRecoveryKey(user.id));
+            setHasSavedPracticeAttempt(false);
+            setResult(completed);
+            setError("");
+          }
+          return;
+        } catch {
+          // A 409 can also mean an invalid/non-resumable attempt. Preserve the
+          // local copy unless the server definitively says it does not exist.
+        }
       }
       setError((cause as Error).message);
     } finally {

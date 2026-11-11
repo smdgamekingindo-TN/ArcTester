@@ -684,8 +684,18 @@ export function examRouter(db: PrismaClient): Router {
           data: { status: "GRADED" },
         });
         if (changed.count !== 1) return false;
-        // Publish the result notification in the same transaction as release.
-        // A failed notification write must not leave a graded result undisclosed.
+        // Retire the old "awaiting review" notice and publish the result notice
+        // atomically with release so the inbox cannot keep showing stale status.
+        await tx.studentNotification.updateMany({
+          where: {
+            userId: submission.assignment.studentId,
+            dedupeKey: `exam-submission:${submission.id}`,
+            kind: "EXAM_REVIEW",
+            readAt: null,
+          },
+          data: { readAt: new Date() },
+        });
+        // A failed result-notification write must not leave a graded result undisclosed.
         await tx.studentNotification.create({
           data: {
             userId: submission.assignment.studentId,

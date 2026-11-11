@@ -280,7 +280,6 @@ describe("submit + result", () => {
     });
   });
 
-describe("submit + result", () => {
   it("scores, persists, and reveals answers only after submit", async () => {
     const created = (await api.post(`/tests`, {
       mode: "practice",

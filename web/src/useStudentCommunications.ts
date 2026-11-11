@@ -45,6 +45,7 @@ export function useStudentCommunications({
   const [announcements, setAnnouncements] = useState<StudentAnnouncement[]>([]);
   const [activeAnnouncements, setActiveAnnouncements] = useState<StudentAnnouncement[]>([]);
   const [notifications, setNotifications] = useState<StudentNotification[]>([]);
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
 
   // Requests can outlive the authenticated account that started them. Keep an
   // identity token in a ref so late responses cannot populate another account's UI.
@@ -62,19 +63,29 @@ export function useStudentCommunications({
   const refreshNotifications = useCallback(async () => {
     const requestIdentity = identity;
     if (userRole !== "STUDENT") {
-      if (identityRef.current === requestIdentity) setNotifications([]);
+      if (identityRef.current === requestIdentity) {
+        setNotifications([]);
+        setUnreadNotificationCount(0);
+      }
       return;
     }
     const path = activePage === "notifications" ? "/notifications" : "/notifications?unread=true";
-    const response = await request<{ notifications: StudentNotification[] }>(path);
+    const response = await request<{ notifications: StudentNotification[]; unreadCount?: number }>(path);
     if (identityRef.current !== requestIdentity) return;
-    setNotifications(Array.isArray(response.notifications) ? response.notifications : []);
+    const items = Array.isArray(response.notifications) ? response.notifications : [];
+    setNotifications(items);
+    setUnreadNotificationCount(
+      typeof response.unreadCount === "number" && Number.isFinite(response.unreadCount)
+        ? Math.max(0, Math.floor(response.unreadCount))
+        : items.filter((item) => !item.readAt).length,
+    );
   }, [activePage, identity, request, userRole]);
 
   useEffect(() => {
     setAnnouncements([]);
     setActiveAnnouncements([]);
     setNotifications([]);
+    setUnreadNotificationCount(0);
   }, [identity]);
 
   useEffect(() => {
@@ -98,6 +109,7 @@ export function useStudentCommunications({
   useEffect(() => {
     if (userRole !== "STUDENT") {
       setNotifications([]);
+      setUnreadNotificationCount(0);
       return;
     }
     let cancelled = false;
@@ -158,11 +170,15 @@ export function useStudentCommunications({
   async function markNotificationRead(id: string) {
     const requestIdentity = identity;
     try {
-      const result = await request<{ readAt: string }>(
+      const result = await request<{ readAt: string; alreadyRead?: boolean }>(
         `/notifications/${encodeURIComponent(id)}/read`,
         { method: "POST", body: JSON.stringify({}) },
       );
       if (identityRef.current === requestIdentity) {
+        const current = notifications.find((item) => item.id === id);
+        if (current && !current.readAt && result.alreadyRead !== true) {
+          setUnreadNotificationCount((count) => Math.max(0, count - 1));
+        }
         setNotifications((items) => items.map((item) => item.id === id ? { ...item, readAt: result.readAt } : item));
       }
     } catch (cause) {
@@ -174,12 +190,14 @@ export function useStudentCommunications({
     setAnnouncements([]);
     setActiveAnnouncements([]);
     setNotifications([]);
+    setUnreadNotificationCount(0);
   }, []);
 
   return {
     announcements,
     activeAnnouncements,
     notifications,
+    unreadNotificationCount,
     refreshAnnouncements,
     refreshNotifications,
     dismissAnnouncement,

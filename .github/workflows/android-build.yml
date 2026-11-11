@@ -44,12 +44,9 @@ jobs:
       - name: Generate Android project
         run: npm run prebuild:android --prefix mobile
 
-      - name: Inspect Expo Android autolinking metadata
+      - name: Validate Expo SDK dependency alignment
         working-directory: mobile
-        run: |
-          npx expo install --check || true
-          npx expo-modules-autolinking resolve --platform android --json > /tmp/expo-modules.json
-          node -e "const d=require('/tmp/expo-modules.json'); for (const [i,m] of (d.modules || []).entries()) console.log(JSON.stringify({index:i,name:m.name,projects:m.projects?.map(p=>({name:p.name,publication:p.publication}))}));"
+        run: npx expo install --check
 
       - name: Build standalone APK
         env:

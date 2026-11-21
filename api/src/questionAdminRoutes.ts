@@ -85,6 +85,54 @@ export function questionAdminRouter(db: PrismaClient): Router {
       res.json({ ok: true, question });
     } catch (error) { next(error); }
   });
+  router.get("/admin/questions", async (req, res, next) => {
+    try {
+      const filter = ListSchema.parse(req.query);
+      const where = {
+        ...(filter.subject ? { subject: { name: filter.subject } } : {}),
+        ...(filter.topic ? { topic: { name: filter.topic } } : {}),
+        ...(filter.difficulty ? { difficulty: filter.difficulty } : {}),
+        ...(filter.reviewStatus ? { reviewStatus: filter.reviewStatus } : {}),
+        ...(filter.q ? { OR: [
+          { text: { contains: filter.q } },
+          { explanation: { contains: filter.q } },
+          { source: { contains: filter.q } },
+        ] } : {}),
+      };
+      const [total, questions] = await db.$transaction([
+        db.question.count({ where }),
+        db.question.findMany({
+          where, orderBy: { createdAt: "desc" },
+          skip: (filter.page - 1) * filter.limit, take: filter.limit,
+          include: { subject: true, topic: true },
+        }),
+      ]);
+      res.json({ ok: true, total, page: filter.page, limit: filter.limit, pages: Math.ceil(total / filter.limit),
+        questions: questions.map((q) => ({ id: q.id, subject: q.subject.name, topic: q.topic?.name ?? "General",
+          text: q.text, options: JSON.parse(q.options), correctIndex: q.correctIndex,
+          explanation: q.explanation, source: q.source, difficulty: q.difficulty, reviewStatus: q.reviewStatus, createdAt: q.createdAt })) });
+    } catch (error) { next(error); }
+  });
+
+  router.get("/admin/exam-results", async (_req, res, next) => {
+    try {
+      const submissions = await db.examSubmission.findMany({
+        orderBy: { receivedAt: "desc" },
+        take: 200,
+        include: { assignment: { include: {
+          student: { select: { id: true, email: true } },
+          examVersion: { include: { exam: { select: { id: true, title: true } } } },
+        } } },
+      });
+      res.json({ ok: true, results: submissions.map(s => ({
+        id: s.id, status: s.status, score: s.score, maximumScore: s.maximumScore,
+        submittedAt: s.submittedAt, receivedAt: s.receivedAt,
+        student: s.assignment.student, exam: s.assignment.examVersion.exam,
+        version: s.assignment.examVersion.version,
+      })) });
+    } catch (error) { next(error); }
+  });
+
   router.get("/admin/exams/:id/preview", async (req, res, next) => {
     try {
       const exam = await db.exam.findUnique({

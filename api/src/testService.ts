@@ -1,4 +1,5 @@
 // Mock-test engine service: DB access + Phase 2 selection glued together.
+import { getLearningConceptsForTopic } from "./intelligence/conceptKnowledge.js";
 // Routes stay thin (parse/validate/respond); this file owns the workflow.
 
 import type { PrismaClient } from "@prisma/client";
@@ -269,7 +270,7 @@ export async function createTest(
           selected.push(question);
           selectedById.add(question.id);
         }
-
+        added += picked.length;
       }
       if (added === 0) break;
       remaining -= added;

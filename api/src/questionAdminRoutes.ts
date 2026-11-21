@@ -5,7 +5,7 @@ import type { PrismaClient } from "@prisma/client";
 import { badRequest, notFound } from "./errors.js";
 import { requireAdmin, requireAuth } from "./auth.js";
 import { importFromCsv, importFromJson } from "./importService.js";
-import { QuestionInputSchema, encodeOptions, hashQuestion } from "./questions.js";
+import { QuestionInputSchema, QUESTION_TYPES, encodeOptions, hashQuestion } from "./questions.js";
 
 const ListSchema = z.object({
   q: z.string().trim().max(300).optional(),
@@ -16,7 +16,19 @@ const ListSchema = z.object({
   page: z.coerce.number().int().min(1).max(1_000_000).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(25),
 });
-const UpdateSchema = QuestionInputSchema.partial().refine((value) => Object.keys(value).length > 0);
+const UpdateSchema = z.object({
+  subject: z.string().trim().min(1).optional(),
+  topic: z.string().trim().min(1).optional(),
+  text: z.string().trim().min(1).optional(),
+  options: z.array(z.string().trim()).optional(),
+  correctIndex: z.number().int().min(0).optional(),
+  explanation: z.string().optional(),
+  source: z.string().optional(),
+  difficulty: z.enum(["easy", "medium", "hard"]).optional(),
+  questionType: z.enum(QUESTION_TYPES).optional(),
+  promptData: z.record(z.string(), z.unknown()).optional(),
+  answerData: z.record(z.string(), z.unknown()).optional(),
+}).refine((value) => Object.keys(value).length > 0);
 const BulkSchema = z.object({ ids: z.array(z.number().int().positive()).min(1).max(500) });
 const ReviewStatusSchema = z.enum(["DRAFT", "APPROVED", "REJECTED"]);
 const AP_ECET_SUBJECT_QUOTAS: Record<string, number> = { Mathematics: 50, Physics: 25, Chemistry: 25, "Digital Electronics": 6, "Software Engineering": 6, "Computer Organisation and Microprocessors": 8, "Data Structures through C": 10, "Computer Networks": 6, "Operating Systems": 10, DBMS: 8, "Java Programming": 10, "Web Technologies": 8, "Big-data & Cloud Computing": 6, "Android Programming": 6, "Internet Of Things(IoT)": 8, "Python Programming": 8 };

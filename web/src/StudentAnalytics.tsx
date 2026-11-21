@@ -101,6 +101,8 @@ export default function StudentAnalytics({ setActivePage }: StudentAnalyticsProp
               <div className="stat-caption">Correct answers / answered questions</div>
             </div>
           </section>
+        </>
+      )}
 
       {weakTopics && (
         <section className="panel" aria-labelledby="study-recommendations-title">
@@ -161,7 +163,7 @@ export default function StudentAnalytics({ setActivePage }: StudentAnalyticsProp
 
       <div className="row">
         <button className="button button-secondary" onClick={() => setActivePage("learning")}>Open concept library</button>
-        <button className="button button-secondary" onClick={() => setActivePage("materials")}>Offline study materials</button>
+        <button className="button button-secondary" onClick={() => setActivePage("materials")}>Study resources</button>
         <button className="button button-secondary" onClick={() => setActivePage("dashboard")}>Back to study dashboard</button>
       </div>
     </div>

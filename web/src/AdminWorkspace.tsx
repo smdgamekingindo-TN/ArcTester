@@ -60,7 +60,7 @@ export default function AdminWorkspace(p:Props){
  async function loadCatalog(){const r=await api<{subjects:AdminCatalogSubject[]}>("/admin/question-catalog");setCatalog(Array.isArray(r.subjects) ? r.subjects : []);}
  async function loadQuestionReviewProgress(){const r=await api<import("./AdminQuestionBank").QuestionReviewProgress>("/admin/question-review/progress");setReviewProgress(r);}
  async function reviewQuestion(id:number,status:"APPROVED"|"REJECTED",source:string){await run(async()=>{await api(`/admin/questions/${id}/review`,{method:"PATCH",body:JSON.stringify({status,source})});setNotice(status==="APPROVED"?"Question approved for student practice and exams.":"Question rejected.");await Promise.all([loadQuestions(page),loadQuestionReviewProgress()]);});}
- async function bulkReviewQuestions(status:"APPROVED"|"REJECTED"){if(!selected.length)return;await run(async()=>{const count=selected.length;await api("/admin/questions/review/bulk",{method:"PATCH",body:JSON.stringify({ids:selected,status})});setSelected([]);setNotice(`${count} question(s) ${status.toLowerCase()}.`);await Promise.all([loadQuestions(page),loadQuestionReviewProgress()]);});}
+ async function bulkReviewQuestions(status:"APPROVED"|"REJECTED",sources:Array<{id:number;source:string}>){if(!selected.length)return;await run(async()=>{const count=selected.length;await api("/admin/questions/review/bulk",{method:"PATCH",body:JSON.stringify({ids:selected,status,sources})});setSelected([]);setNotice(`${count} question(s) ${status.toLowerCase()}.`);await Promise.all([loadQuestions(page),loadQuestionReviewProgress()]);});}
  async function loadQuestions(nextPage=page){
   const requestId=++questionRequestSequence.current;
   const params=new URLSearchParams({page:String(nextPage),limit:"25"});
@@ -211,7 +211,7 @@ export default function AdminWorkspace(p:Props){
     reviewProgress={reviewProgress}
     onReviewStatusChange={setReviewStatus}
     onReviewQuestion={(id,status,source)=>void reviewQuestion(id,status,source)}
-    onBulkReview={(status)=>void bulkReviewQuestions(status)}
+    onBulkReview={(status,sources)=>void bulkReviewQuestions(status,sources)}
     catalog={catalog}
     filteredTopics={filteredTopics}
     selected={selected}

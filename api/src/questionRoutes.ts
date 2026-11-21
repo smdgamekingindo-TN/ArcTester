@@ -23,7 +23,9 @@ export function questionRouter(db: PrismaClient): Router {
     const subjects = await db.subject.findMany({ select: { name: true, topics: { select: { name: true } } } });
     const catalog = Object.fromEntries(subjects.map((subject) => [subject.name, subject.topics.map((topic) => topic.name)]));
     const issues = validateQuestionDraftCsv(content, catalog);
-    return { issues, total: parseCsv(content).rows.length };
+    let total = 0;
+    try { total = parseCsv(content).rows.length; } catch { /* parser issue is already reported by validator */ }
+    return { issues, total };
   }
 
   router.post("/admin/questions/import/preview", requireAuth, requireAdmin(db), async (req, res, next) => {

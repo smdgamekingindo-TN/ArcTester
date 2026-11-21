@@ -1,0 +1,13 @@
+subject,topic,text,optionA,optionB,optionC,optionD,correctIndex,explanation,source,difficulty
+Digital Electronics,Number Systems,What is hexadecimal A in decimal?,16,10,11,12,1,Hexadecimal A represents decimal ten.,Original AI draft; verify before approval,medium
+Digital Electronics,Logic Gates,What is the output of AND when inputs are 1 and 0?,Depends on clock,High impedance,0,1,2,AND outputs 1 only when both inputs are 1.,Original AI draft; verify before approval,medium
+Digital Electronics,Boolean Algebra,Simplify A + A·B using absorption law.,B,A·B,A+B,A,3,A + A·B = A.,Original AI draft; verify before approval,medium
+Digital Electronics,Multiplexers,How many select lines are needed for an 8-to-1 multiplexer?,3,2,4,8,0,"2³ = 8 inputs, so three select lines.",Original AI draft; verify before approval,medium
+Digital Electronics,Flip-Flops,Which flip-flop stores one bit of state?,Multiplexer,D flip-flop,Full adder,Encoder,1,A flip-flop stores one binary state bit.,Original AI draft; verify before approval,medium
+Digital Electronics,Counters,A 4-bit binary counter has how many distinct states?,8,32,16,4,2,A 4-bit counter has 2⁴ = 16 states.,Original AI draft; verify before approval,medium
+Digital Electronics,Number Systems,What is hexadecimal A in decimal?,11,12,16,10,3,Hexadecimal A represents decimal ten.,Original AI draft; verify before approval,medium
+Digital Electronics,Logic Gates,What is the output of AND when inputs are 1 and 0?,0,1,Depends on clock,High impedance,0,AND outputs 1 only when both inputs are 1.,Original AI draft; verify before approval,medium
+Digital Electronics,Boolean Algebra,Simplify A + A·B using absorption law.,A+B,A,B,A·B,1,A + A·B = A.,Original AI draft; verify before approval,medium
+Digital Electronics,Multiplexers,How many select lines are needed for an 8-to-1 multiplexer?,4,8,3,2,2,"2³ = 8 inputs, so three select lines.",Original AI draft; verify before approval,medium
+Digital Electronics,Flip-Flops,Which flip-flop stores one bit of state?,Full adder,Encoder,Multiplexer,D flip-flop,3,A flip-flop stores one binary state bit.,Original AI draft; verify before approval,medium
+Digital Electronics,Counters,A 4-bit binary counter has how many distinct states?,16,4,8,32,0,A 4-bit counter has 2⁴ = 16 states.,Original AI draft; verify before approval,medium

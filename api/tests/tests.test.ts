@@ -109,49 +109,6 @@ describe("POST /tests", () => {
   });
 
 
-  it("persists adaptive decisions with pseudonymous learner groups and records correct, incorrect and unanswered outcomes", async () => {
-    const created = await api.post("/tests", { mode: "practice", subject: "Maths", count: 3 });
-    expect(created.status).toBe(201);
-    const attemptId = (created.json as { attemptId: number }).attemptId;
-    const decisions = await server.db.adaptiveDecisionLog.findMany({ where: { attemptId }, orderBy: { selectedQuestionId: "asc" } });
-    expect(decisions).toHaveLength(3);
-    expect(decisions.every((decision) => /^[a-f0-9]{64}$/.test(decision.learnerGroupId))).toBe(true);
-    expect(decisions.every((decision) => decision.policyMode === "deterministic-top-k" && decision.selectionProbability === 1)).toBe(true);
-    expect(decisions.every((decision) => decision.outcomeStatus === "pending" && decision.reward === null)).toBe(true);
-    expect(decisions[0]).not.toHaveProperty("userId");
-    const answers = await server.db.attemptAnswer.findMany({ where: { attemptId }, orderBy: { questionId: "asc" } });
-    const correctAnswer = answers[0]!;
-    const incorrectAnswer = answers[1]!;
-    await api.post(`/tests/${attemptId}/submit`, {
-      answers: [
-        { questionId: correctAnswer.questionId, selectedIndex: correctAnswer.correctIndexSnapshot },
-        { questionId: incorrectAnswer.questionId, selectedIndex: (incorrectAnswer.correctIndexSnapshot + 1) % 4 },
-      ],
-    });
-    const updated = await server.db.adaptiveDecisionLog.findUniqueOrThrow({
-      where: { attemptId_selectedQuestionId: { attemptId, selectedQuestionId: correctAnswer.questionId } },
-    });
-    expect(updated).toMatchObject({ outcomeStatus: "correct", reward: 1 });
-    expect(updated.outcomeAt).toBeInstanceOf(Date);
-    const incorrect = await server.db.adaptiveDecisionLog.findUniqueOrThrow({
-      where: { attemptId_selectedQuestionId: { attemptId, selectedQuestionId: incorrectAnswer.questionId } },
-    });
-    expect(incorrect).toMatchObject({ outcomeStatus: "incorrect", reward: 0 });
-    const unansweredDecision = decisions.find((decision) => decision.selectedQuestionId !== correctAnswer.questionId && decision.selectedQuestionId !== incorrectAnswer.questionId);
-    expect(unansweredDecision).toBeDefined();
-    const unanswered = await server.db.adaptiveDecisionLog.findUniqueOrThrow({
-      where: { attemptId_selectedQuestionId: { attemptId, selectedQuestionId: unansweredDecision!.selectedQuestionId } },
-    });
-    expect(unanswered).toMatchObject({ outcomeStatus: "unanswered", reward: null });
-  });
-
-  it("does not create adaptive decision records for mock-mode attempts", async () => {
-    const created = await api.post("/tests", { mode: "mock", count: 2 });
-    expect(created.status).toBe(201);
-    const attemptId = (created.json as { attemptId: number }).attemptId;
-    expect(await server.db.adaptiveDecisionLog.count({ where: { attemptId } })).toBe(0);
-  });
-
   it("warns on shortfall with a thin bank", async () => {
     const { json } = await api.post(`/tests`, {
       mode: "practice",

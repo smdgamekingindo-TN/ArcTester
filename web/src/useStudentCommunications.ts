@@ -80,7 +80,7 @@ export function useStudentCommunications({
     const items = (Array.isArray(response.notifications) ? response.notifications : [])
       .filter((item) => !["EXAM_ASSIGNMENT", "EXAM_RESULT"].includes(item.kind));
     setNotifications(items);
-    setUnreadNotificationCount(items.filter((item) => !item.readAt).length);
+    setUnreadNotificationCount(typeof response.unreadCount === "number" ? response.unreadCount : items.filter((item) => !item.readAt).length);
   }, [activePage, identity, request, userRole]);
 
   useEffect(() => {

@@ -77,13 +77,10 @@ export function useStudentCommunications({
     const path = activePage === "notifications" ? "/notifications" : "/notifications?unread=true";
     const response = await request<{ notifications: StudentNotification[]; unreadCount?: number }>(path);
     if (identityRef.current !== requestIdentity || notificationRequestSequence.current !== requestSequence) return;
-    const items = Array.isArray(response.notifications) ? response.notifications : [];
+    const items = (Array.isArray(response.notifications) ? response.notifications : [])
+      .filter((item) => !["EXAM_ASSIGNMENT", "EXAM_RESULT"].includes(item.kind));
     setNotifications(items);
-    setUnreadNotificationCount(
-      typeof response.unreadCount === "number" && Number.isFinite(response.unreadCount)
-        ? Math.max(0, Math.floor(response.unreadCount))
-        : items.filter((item) => !item.readAt).length,
-    );
+    setUnreadNotificationCount(items.filter((item) => !item.readAt).length);
   }, [activePage, identity, request, userRole]);
 
   useEffect(() => {

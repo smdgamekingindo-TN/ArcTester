@@ -355,13 +355,10 @@ export default function App() {
     api<{ notifications: Notification[]; unreadCount?: number }>("/notifications")
       .then((result) => {
         if (!isCurrentSession() || notificationRequestSequence.current !== initialNotificationRequest) return;
-        const items = Array.isArray(result.notifications) ? result.notifications : [];
+        const items = (Array.isArray(result.notifications) ? result.notifications : [])
+          .filter((item) => !["EXAM_ASSIGNMENT", "EXAM_RESULT"].includes(item.kind));
         setNotifications(items);
-        setUnreadNotificationCount(
-          typeof result.unreadCount === "number" && Number.isFinite(result.unreadCount)
-            ? Math.max(0, Math.floor(result.unreadCount))
-            : items.filter((item) => !item.readAt).length,
-        );
+        setUnreadNotificationCount(items.filter((item) => !item.readAt).length);
       })
       .catch(() => undefined);
     setCheckingPracticeRecovery(true);
@@ -403,13 +400,10 @@ export default function App() {
     try {
       const result = await api<{ notifications: Notification[]; unreadCount?: number }>("/notifications");
       if (sessionIdentityRef.current !== requestIdentity || notificationRequestSequence.current !== requestSequence) return;
-      const items = Array.isArray(result.notifications) ? result.notifications : [];
+      const items = (Array.isArray(result.notifications) ? result.notifications : [])
+        .filter((item) => !["EXAM_ASSIGNMENT", "EXAM_RESULT"].includes(item.kind));
       setNotifications(items);
-      setUnreadNotificationCount(
-        typeof result.unreadCount === "number" && Number.isFinite(result.unreadCount)
-          ? Math.max(0, Math.floor(result.unreadCount))
-          : items.filter((item) => !item.readAt).length,
-      );
+      setUnreadNotificationCount(items.filter((item) => !item.readAt).length);
     } catch (cause) {
       if (
         sessionIdentityRef.current === requestIdentity &&

@@ -11,7 +11,6 @@ import {
   nextStat,
   selectMockTest,
   selectQuestions,
-  type AnswerOutcome,
   type QuestionStat,
   type Shortfall,
   type StatsById,

@@ -1,17 +1,17 @@
 subject,topic,text,optionA,optionB,optionC,optionD,correctIndex,explanation,source,difficulty
-Python Programming,Python Basics,What is the type of the value 3.0 in Python?,bool,float,int,str,1,A numeric literal with a decimal point is a float.,Original AI draft; verify before approval,medium
-Python Programming,Control Flow,Which keyword skips to the next loop iteration?,pass only,return,continue,break,2,continue skips the remaining loop body for this iteration.,Original AI draft; verify before approval,medium
-Python Programming,Data Structures,Which Python collection is mutable and ordered?,tuple,frozenset,str,list,3,Lists are mutable and preserve order.,Original AI draft; verify before approval,medium
-Python Programming,Functions,Which keyword defines a function in Python?,def,func,function,lambda only,0,The def statement defines a named function.,Original AI draft; verify before approval,medium
-Python Programming,File Handling,Which mode opens a file for appending?,x,a,r,w,1,Mode a appends to an existing file or creates it.,Original AI draft; verify before approval,medium
-Python Programming,Exception Handling,Which keyword begins an exception handler?,handle,finally,except,catch,2,Python uses except to handle raised exceptions.,Original AI draft; verify before approval,medium
-Python Programming,Python Basics,What is the type of the value 3.0 in Python?,int,str,bool,float,3,A numeric literal with a decimal point is a float.,Original AI draft; verify before approval,medium
-Python Programming,Control Flow,Which keyword skips to the next loop iteration?,continue,break,pass only,return,0,continue skips the remaining loop body for this iteration.,Original AI draft; verify before approval,medium
-Python Programming,Data Structures,Which Python collection is mutable and ordered?,str,list,tuple,frozenset,1,Lists are mutable and preserve order.,Original AI draft; verify before approval,medium
-Python Programming,Functions,Which keyword defines a function in Python?,function,lambda only,def,func,2,The def statement defines a named function.,Original AI draft; verify before approval,medium
-Python Programming,File Handling,Which mode opens a file for appending?,r,w,x,a,3,Mode a appends to an existing file or creates it.,Original AI draft; verify before approval,medium
-Python Programming,Exception Handling,Which keyword begins an exception handler?,except,catch,handle,finally,0,Python uses except to handle raised exceptions.,Original AI draft; verify before approval,medium
-Python Programming,Python Basics,What is the type of the value 3.0 in Python?,bool,float,int,str,1,A numeric literal with a decimal point is a float.,Original AI draft; verify before approval,medium
-Python Programming,Control Flow,Which keyword skips to the next loop iteration?,pass only,return,continue,break,2,continue skips the remaining loop body for this iteration.,Original AI draft; verify before approval,medium
-Python Programming,Data Structures,Which Python collection is mutable and ordered?,tuple,frozenset,str,list,3,Lists are mutable and preserve order.,Original AI draft; verify before approval,medium
-Python Programming,Functions,Which keyword defines a function in Python?,def,func,function,lambda only,0,The def statement defines a named function.,Original AI draft; verify before approval,medium
+Python Programming,Python Basics,What is the type of the value 3.0 in Python?,bool,float,int,str,1,A numeric literal with a decimal point is a float.,NEEDS HUMAN REVIEW,medium
+Python Programming,Control Flow,Which keyword skips to the next loop iteration?,pass only,return,continue,break,2,continue skips the remaining loop body for this iteration.,NEEDS HUMAN REVIEW,medium
+Python Programming,Data Structures,Which Python collection is mutable and ordered?,tuple,frozenset,str,list,3,Lists are mutable and preserve order.,NEEDS HUMAN REVIEW,medium
+Python Programming,Functions,Which keyword defines a function in Python?,def,func,function,lambda only,0,The def statement defines a named function.,NEEDS HUMAN REVIEW,medium
+Python Programming,File Handling,Which mode opens a file for appending?,x,a,r,w,1,Mode a appends to an existing file or creates it.,NEEDS HUMAN REVIEW,medium
+Python Programming,Exception Handling,Which keyword begins an exception handler?,handle,finally,except,catch,2,Python uses except to handle raised exceptions.,NEEDS HUMAN REVIEW,medium
+Python Programming,Python Basics,What is the type of the value 3.0 in Python?,int,str,bool,float,3,A numeric literal with a decimal point is a float.,NEEDS HUMAN REVIEW,medium
+Python Programming,Control Flow,Which keyword skips to the next loop iteration?,continue,break,pass only,return,0,continue skips the remaining loop body for this iteration.,NEEDS HUMAN REVIEW,medium
+Python Programming,Data Structures,Which Python collection is mutable and ordered?,str,list,tuple,frozenset,1,Lists are mutable and preserve order.,NEEDS HUMAN REVIEW,medium
+Python Programming,Functions,Which keyword defines a function in Python?,function,lambda only,def,func,2,The def statement defines a named function.,NEEDS HUMAN REVIEW,medium
+Python Programming,File Handling,Which mode opens a file for appending?,r,w,x,a,3,Mode a appends to an existing file or creates it.,NEEDS HUMAN REVIEW,medium
+Python Programming,Exception Handling,Which keyword begins an exception handler?,except,catch,handle,finally,0,Python uses except to handle raised exceptions.,NEEDS HUMAN REVIEW,medium
+Python Programming,Python Basics,What is the type of the value 3.0 in Python?,bool,float,int,str,1,A numeric literal with a decimal point is a float.,NEEDS HUMAN REVIEW,medium
+Python Programming,Control Flow,Which keyword skips to the next loop iteration?,pass only,return,continue,break,2,continue skips the remaining loop body for this iteration.,NEEDS HUMAN REVIEW,medium
+Python Programming,Data Structures,Which Python collection is mutable and ordered?,tuple,frozenset,str,list,3,Lists are mutable and preserve order.,NEEDS HUMAN REVIEW,medium
+Python Programming,Functions,Which keyword defines a function in Python?,def,func,function,lambda only,0,The def statement defines a named function.,NEEDS HUMAN REVIEW,medium

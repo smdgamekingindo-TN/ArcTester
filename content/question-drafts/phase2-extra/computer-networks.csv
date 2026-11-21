@@ -1,13 +1,13 @@
 subject,topic,text,optionA,optionB,optionC,optionD,correctIndex,explanation,source,difficulty
-Computer Networks,OSI Model,Which OSI layer is responsible for routing packets between networks?,Session,Network,Data Link,Transport,1,The Network layer performs logical addressing and routing.,Original AI draft; verify before approval,medium
-Computer Networks,IP Addressing,How many bits are in an IPv4 address?,64,128,32,16,2,IPv4 addresses contain 32 bits.,Original AI draft; verify before approval,medium
-Computer Networks,Subnetting,How many usable host addresses are in a typical IPv4 /26 subnet?,64,30,126,62,3,A /26 has 64 addresses; subtract network and broadcast: 62 usable.,Original AI draft; verify before approval,medium
-Computer Networks,Network Services,Which protocol resolves domain names to IP addresses?,DNS,DHCP,FTP,SNMP,0,DNS maps domain names to IP addresses.,Original AI draft; verify before approval,medium
-Computer Networks,Transport Protocols,"Which transport protocol provides reliable, connection-oriented delivery?",ICMP,TCP,UDP,IP,1,TCP provides reliable ordered byte-stream delivery.,Original AI draft; verify before approval,medium
-Computer Networks,Network Security,Which protocol protects HTTP traffic with TLS?,Telnet,TFTP,HTTPS,FTP,2,HTTPS is HTTP secured with TLS.,Original AI draft; verify before approval,medium
-Computer Networks,OSI Model,Which OSI layer is responsible for routing packets between networks?,Data Link,Transport,Session,Network,3,The Network layer performs logical addressing and routing.,Original AI draft; verify before approval,medium
-Computer Networks,IP Addressing,How many bits are in an IPv4 address?,32,16,64,128,0,IPv4 addresses contain 32 bits.,Original AI draft; verify before approval,medium
-Computer Networks,Subnetting,How many usable host addresses are in a typical IPv4 /26 subnet?,126,62,64,30,1,A /26 has 64 addresses; subtract network and broadcast: 62 usable.,Original AI draft; verify before approval,medium
-Computer Networks,Network Services,Which protocol resolves domain names to IP addresses?,FTP,SNMP,DNS,DHCP,2,DNS maps domain names to IP addresses.,Original AI draft; verify before approval,medium
-Computer Networks,Transport Protocols,"Which transport protocol provides reliable, connection-oriented delivery?",UDP,IP,ICMP,TCP,3,TCP provides reliable ordered byte-stream delivery.,Original AI draft; verify before approval,medium
-Computer Networks,Network Security,Which protocol protects HTTP traffic with TLS?,HTTPS,FTP,Telnet,TFTP,0,HTTPS is HTTP secured with TLS.,Original AI draft; verify before approval,medium
+Computer Networks,OSI Model,Which OSI layer is responsible for routing packets between networks?,Session,Network,Data Link,Transport,1,The Network layer performs logical addressing and routing.,NEEDS HUMAN REVIEW,medium
+Computer Networks,IP Addressing,How many bits are in an IPv4 address?,64,128,32,16,2,IPv4 addresses contain 32 bits.,NEEDS HUMAN REVIEW,medium
+Computer Networks,Subnetting,How many usable host addresses are in a typical IPv4 /26 subnet?,64,30,126,62,3,A /26 has 64 addresses; subtract network and broadcast: 62 usable.,NEEDS HUMAN REVIEW,medium
+Computer Networks,Network Services,Which protocol resolves domain names to IP addresses?,DNS,DHCP,FTP,SNMP,0,DNS maps domain names to IP addresses.,NEEDS HUMAN REVIEW,medium
+Computer Networks,Transport Protocols,"Which transport protocol provides reliable, connection-oriented delivery?",ICMP,TCP,UDP,IP,1,TCP provides reliable ordered byte-stream delivery.,NEEDS HUMAN REVIEW,medium
+Computer Networks,Network Security,Which protocol protects HTTP traffic with TLS?,Telnet,TFTP,HTTPS,FTP,2,HTTPS is HTTP secured with TLS.,NEEDS HUMAN REVIEW,medium
+Computer Networks,OSI Model,Which OSI layer is responsible for routing packets between networks?,Data Link,Transport,Session,Network,3,The Network layer performs logical addressing and routing.,NEEDS HUMAN REVIEW,medium
+Computer Networks,IP Addressing,How many bits are in an IPv4 address?,32,16,64,128,0,IPv4 addresses contain 32 bits.,NEEDS HUMAN REVIEW,medium
+Computer Networks,Subnetting,How many usable host addresses are in a typical IPv4 /26 subnet?,126,62,64,30,1,A /26 has 64 addresses; subtract network and broadcast: 62 usable.,NEEDS HUMAN REVIEW,medium
+Computer Networks,Network Services,Which protocol resolves domain names to IP addresses?,FTP,SNMP,DNS,DHCP,2,DNS maps domain names to IP addresses.,NEEDS HUMAN REVIEW,medium
+Computer Networks,Transport Protocols,"Which transport protocol provides reliable, connection-oriented delivery?",UDP,IP,ICMP,TCP,3,TCP provides reliable ordered byte-stream delivery.,NEEDS HUMAN REVIEW,medium
+Computer Networks,Network Security,Which protocol protects HTTP traffic with TLS?,HTTPS,FTP,Telnet,TFTP,0,HTTPS is HTTP secured with TLS.,NEEDS HUMAN REVIEW,medium

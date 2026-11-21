@@ -1,17 +1,17 @@
 subject,topic,text,optionA,optionB,optionC,optionD,correctIndex,explanation,source,difficulty
-Web Technologies,HTML,Which HTML element creates a hyperlink?,<table>,<a>,<p>,<img>,1,The anchor element creates hyperlinks using href.,Original AI draft; verify before approval,medium
-Web Technologies,CSS,Which CSS property controls text color?,background-image,display,color,font-style,2,The color property sets foreground text color.,Original AI draft; verify before approval,medium
-Web Technologies,XML,What must an XML document have exactly one of?,DOCTYPE declaration,CDATA section,Namespace prefix,Root element,3,A well-formed XML document has exactly one document element.,Original AI draft; verify before approval,medium
-Web Technologies,JavaScript,Which operator checks strict equality without type coercion?,===,==,=,!==,0,=== compares value and type without coercion.,Original AI draft; verify before approval,medium
-Web Technologies,AJAX,AJAX enables a page to…,run SQL in the browser,exchange data asynchronously without full reload,compile CSS,replace HTML with XML only,1,AJAX requests and updates data asynchronously.,Original AI draft; verify before approval,medium
-Web Technologies,jQuery,Which jQuery method attaches an event handler?,appendFile(),querySelectorAll(),on(),push(),2,jQuery on() binds event handlers.,Original AI draft; verify before approval,medium
-Web Technologies,HTTP,What does HTTP status 404 indicate?,Unauthorized,Internal Server Error,Created,Not Found,3,404 means the requested resource was not found.,Original AI draft; verify before approval,medium
-Web Technologies,PHP,Which symbol begins a PHP variable name?,$,#,@,&,0,PHP variable names begin with a dollar sign.,Original AI draft; verify before approval,medium
-Web Technologies,HTML,Which HTML element creates a hyperlink?,<table>,<a>,<p>,<img>,1,The anchor element creates hyperlinks using href.,Original AI draft; verify before approval,medium
-Web Technologies,CSS,Which CSS property controls text color?,background-image,display,color,font-style,2,The color property sets foreground text color.,Original AI draft; verify before approval,medium
-Web Technologies,XML,What must an XML document have exactly one of?,DOCTYPE declaration,CDATA section,Namespace prefix,Root element,3,A well-formed XML document has exactly one document element.,Original AI draft; verify before approval,medium
-Web Technologies,JavaScript,Which operator checks strict equality without type coercion?,===,==,=,!==,0,=== compares value and type without coercion.,Original AI draft; verify before approval,medium
-Web Technologies,AJAX,AJAX enables a page to…,run SQL in the browser,exchange data asynchronously without full reload,compile CSS,replace HTML with XML only,1,AJAX requests and updates data asynchronously.,Original AI draft; verify before approval,medium
-Web Technologies,jQuery,Which jQuery method attaches an event handler?,appendFile(),querySelectorAll(),on(),push(),2,jQuery on() binds event handlers.,Original AI draft; verify before approval,medium
-Web Technologies,HTTP,What does HTTP status 404 indicate?,Unauthorized,Internal Server Error,Created,Not Found,3,404 means the requested resource was not found.,Original AI draft; verify before approval,medium
-Web Technologies,PHP,Which symbol begins a PHP variable name?,$,#,@,&,0,PHP variable names begin with a dollar sign.,Original AI draft; verify before approval,medium
+Web Technologies,HTML,Which HTML element creates a hyperlink?,<table>,<a>,<p>,<img>,1,The anchor element creates hyperlinks using href.,NEEDS HUMAN REVIEW,medium
+Web Technologies,CSS,Which CSS property controls text color?,background-image,display,color,font-style,2,The color property sets foreground text color.,NEEDS HUMAN REVIEW,medium
+Web Technologies,XML,What must an XML document have exactly one of?,DOCTYPE declaration,CDATA section,Namespace prefix,Root element,3,A well-formed XML document has exactly one document element.,NEEDS HUMAN REVIEW,medium
+Web Technologies,JavaScript,Which operator checks strict equality without type coercion?,===,==,=,!==,0,=== compares value and type without coercion.,NEEDS HUMAN REVIEW,medium
+Web Technologies,AJAX,AJAX enables a page to…,run SQL in the browser,exchange data asynchronously without full reload,compile CSS,replace HTML with XML only,1,AJAX requests and updates data asynchronously.,NEEDS HUMAN REVIEW,medium
+Web Technologies,jQuery,Which jQuery method attaches an event handler?,appendFile(),querySelectorAll(),on(),push(),2,jQuery on() binds event handlers.,NEEDS HUMAN REVIEW,medium
+Web Technologies,HTTP,What does HTTP status 404 indicate?,Unauthorized,Internal Server Error,Created,Not Found,3,404 means the requested resource was not found.,NEEDS HUMAN REVIEW,medium
+Web Technologies,PHP,Which symbol begins a PHP variable name?,$,#,@,&,0,PHP variable names begin with a dollar sign.,NEEDS HUMAN REVIEW,medium
+Web Technologies,HTML,Which HTML element creates a hyperlink?,<table>,<a>,<p>,<img>,1,The anchor element creates hyperlinks using href.,NEEDS HUMAN REVIEW,medium
+Web Technologies,CSS,Which CSS property controls text color?,background-image,display,color,font-style,2,The color property sets foreground text color.,NEEDS HUMAN REVIEW,medium
+Web Technologies,XML,What must an XML document have exactly one of?,DOCTYPE declaration,CDATA section,Namespace prefix,Root element,3,A well-formed XML document has exactly one document element.,NEEDS HUMAN REVIEW,medium
+Web Technologies,JavaScript,Which operator checks strict equality without type coercion?,===,==,=,!==,0,=== compares value and type without coercion.,NEEDS HUMAN REVIEW,medium
+Web Technologies,AJAX,AJAX enables a page to…,run SQL in the browser,exchange data asynchronously without full reload,compile CSS,replace HTML with XML only,1,AJAX requests and updates data asynchronously.,NEEDS HUMAN REVIEW,medium
+Web Technologies,jQuery,Which jQuery method attaches an event handler?,appendFile(),querySelectorAll(),on(),push(),2,jQuery on() binds event handlers.,NEEDS HUMAN REVIEW,medium
+Web Technologies,HTTP,What does HTTP status 404 indicate?,Unauthorized,Internal Server Error,Created,Not Found,3,404 means the requested resource was not found.,NEEDS HUMAN REVIEW,medium
+Web Technologies,PHP,Which symbol begins a PHP variable name?,$,#,@,&,0,PHP variable names begin with a dollar sign.,NEEDS HUMAN REVIEW,medium

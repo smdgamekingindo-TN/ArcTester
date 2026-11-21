@@ -1,17 +1,17 @@
 subject,topic,text,optionA,optionB,optionC,optionD,correctIndex,explanation,source,difficulty
-DBMS,Relational Model,A row in a relational table is also called a…,view,tuple,domain,schema,1,A row is a tuple; a column is an attribute.,Original AI draft; verify before approval,medium
-DBMS,Normalization,Which normal form removes partial dependency on part of a composite key?,3NF,BCNF,2NF,1NF,2,Second normal form removes partial key dependencies.,Original AI draft; verify before approval,medium
-DBMS,SQL,Which SQL command retrieves rows from a table?,UPDATE,DROP,ALTER,SELECT,3,SELECT queries data.,Original AI draft; verify before approval,medium
-DBMS,SQL Aggregation,Which SQL function returns the number of rows?,COUNT,SUM,AVG,MAX,0,COUNT returns a row count.,Original AI draft; verify before approval,medium
-DBMS,Transactions,Which ACID property means all transaction operations succeed or none do?,Durability,Atomicity,Consistency,Isolation,1,Atomicity is all-or-nothing execution.,Original AI draft; verify before approval,medium
-DBMS,NoSQL and MongoDB,Which MongoDB structure stores documents?,Foreign key,Trigger,Collection,Table row,2,MongoDB collections contain documents.,Original AI draft; verify before approval,medium
-DBMS,PL/SQL,A row in a relational table is also called a…,domain,schema,view,tuple,3,A row is a tuple; a column is an attribute.,Original AI draft; verify before approval,medium
-DBMS,Relational Model,A row in a relational table is also called a…,tuple,domain,schema,view,0,A row is a tuple; a column is an attribute.,Original AI draft; verify before approval,medium
-DBMS,Normalization,Which normal form removes partial dependency on part of a composite key?,BCNF,2NF,1NF,3NF,1,Second normal form removes partial key dependencies.,Original AI draft; verify before approval,medium
-DBMS,SQL,Which SQL command retrieves rows from a table?,DROP,ALTER,SELECT,UPDATE,2,SELECT queries data.,Original AI draft; verify before approval,medium
-DBMS,SQL Aggregation,Which SQL function returns the number of rows?,SUM,AVG,MAX,COUNT,3,COUNT returns a row count.,Original AI draft; verify before approval,medium
-DBMS,Transactions,Which ACID property means all transaction operations succeed or none do?,Atomicity,Consistency,Isolation,Durability,0,Atomicity is all-or-nothing execution.,Original AI draft; verify before approval,medium
-DBMS,NoSQL and MongoDB,Which MongoDB structure stores documents?,Trigger,Collection,Table row,Foreign key,1,MongoDB collections contain documents.,Original AI draft; verify before approval,medium
-DBMS,PL/SQL,Which normal form removes partial dependency on part of a composite key?,3NF,BCNF,2NF,1NF,2,Second normal form removes partial key dependencies.,Original AI draft; verify before approval,medium
-DBMS,Relational Model,A row in a relational table is also called a…,domain,schema,view,tuple,3,A row is a tuple; a column is an attribute.,Original AI draft; verify before approval,medium
-DBMS,Normalization,Which normal form removes partial dependency on part of a composite key?,2NF,1NF,3NF,BCNF,0,Second normal form removes partial key dependencies.,Original AI draft; verify before approval,medium
+DBMS,Relational Model,A row in a relational table is also called a…,view,tuple,domain,schema,1,A row is a tuple; a column is an attribute.,NEEDS HUMAN REVIEW,medium
+DBMS,Normalization,Which normal form removes partial dependency on part of a composite key?,3NF,BCNF,2NF,1NF,2,Second normal form removes partial key dependencies.,NEEDS HUMAN REVIEW,medium
+DBMS,SQL,Which SQL command retrieves rows from a table?,UPDATE,DROP,ALTER,SELECT,3,SELECT queries data.,NEEDS HUMAN REVIEW,medium
+DBMS,SQL Aggregation,Which SQL function returns the number of rows?,COUNT,SUM,AVG,MAX,0,COUNT returns a row count.,NEEDS HUMAN REVIEW,medium
+DBMS,Transactions,Which ACID property means all transaction operations succeed or none do?,Durability,Atomicity,Consistency,Isolation,1,Atomicity is all-or-nothing execution.,NEEDS HUMAN REVIEW,medium
+DBMS,NoSQL and MongoDB,Which MongoDB structure stores documents?,Foreign key,Trigger,Collection,Table row,2,MongoDB collections contain documents.,NEEDS HUMAN REVIEW,medium
+DBMS,PL/SQL,A row in a relational table is also called a…,domain,schema,view,tuple,3,A row is a tuple; a column is an attribute.,NEEDS HUMAN REVIEW,medium
+DBMS,Relational Model,A row in a relational table is also called a…,tuple,domain,schema,view,0,A row is a tuple; a column is an attribute.,NEEDS HUMAN REVIEW,medium
+DBMS,Normalization,Which normal form removes partial dependency on part of a composite key?,BCNF,2NF,1NF,3NF,1,Second normal form removes partial key dependencies.,NEEDS HUMAN REVIEW,medium
+DBMS,SQL,Which SQL command retrieves rows from a table?,DROP,ALTER,SELECT,UPDATE,2,SELECT queries data.,NEEDS HUMAN REVIEW,medium
+DBMS,SQL Aggregation,Which SQL function returns the number of rows?,SUM,AVG,MAX,COUNT,3,COUNT returns a row count.,NEEDS HUMAN REVIEW,medium
+DBMS,Transactions,Which ACID property means all transaction operations succeed or none do?,Atomicity,Consistency,Isolation,Durability,0,Atomicity is all-or-nothing execution.,NEEDS HUMAN REVIEW,medium
+DBMS,NoSQL and MongoDB,Which MongoDB structure stores documents?,Trigger,Collection,Table row,Foreign key,1,MongoDB collections contain documents.,NEEDS HUMAN REVIEW,medium
+DBMS,PL/SQL,Which normal form removes partial dependency on part of a composite key?,3NF,BCNF,2NF,1NF,2,Second normal form removes partial key dependencies.,NEEDS HUMAN REVIEW,medium
+DBMS,Relational Model,A row in a relational table is also called a…,domain,schema,view,tuple,3,A row is a tuple; a column is an attribute.,NEEDS HUMAN REVIEW,medium
+DBMS,Normalization,Which normal form removes partial dependency on part of a composite key?,2NF,1NF,3NF,BCNF,0,Second normal form removes partial key dependencies.,NEEDS HUMAN REVIEW,medium

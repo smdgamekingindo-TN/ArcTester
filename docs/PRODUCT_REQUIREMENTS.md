@@ -1,5 +1,7 @@
 # ArcTester — Product Requirements & Engineering Baseline
 
+> Current delivery scope: mobile-first practice and one timed Full Mock Test. Student assigned-exam/invigilation screens are hidden during the learning-app redesign. Administrator assignment and invigilation APIs remain for compatibility; they are not a student navigation feature. See [docs/ROADMAP.md](ROADMAP.md).
+
 **Product:** ArcTester  
 **Primary audience:** AP ECET Computer Science Engineering diploma candidates  
 **Primary mode:** Offline-first personal study and locally administered practice/examinations  
@@ -7,7 +9,7 @@
 
 ## 1. Product objective
 
-ArcTester helps students prepare for AP ECET CSE through subject-based practice, full mock papers, assigned examinations, reviewable results, and progress analytics. Administrators manage the reusable question bank, build and publish examination versions, assign candidates, communicate notices, and monitor examination sessions.
+ArcTester helps students prepare for AP ECET CSE through subject-based practice, full mock papers, one timed Full Mock Test, reviewable practice results, and progress analytics. Administrators manage the reusable question bank, build and publish examination versions, assign candidates, communicate notices, and monitor examination sessions.
 
 The application must remain usable on modest hardware (including 8 GB RAM systems), be responsive on phones and desktops, and continue to support local/offline operation after dependencies and question content are installed.
 
@@ -15,9 +17,9 @@ The application must remain usable on modest hardware (including 8 GB RAM system
 
 ### Student
 - Sign in using an account provisioned through the invitation flow.
-- View the learning dashboard, available question-bank subjects, assigned examinations, and announcements.
+- View the learning dashboard, available question-bank subjects, the Full Mock Test, and announcements.
 - Create practice sessions by selecting one or more subjects. Topic filters are optional and must never replace subject selection.
-- Take assigned examinations only when their publication and availability rules permit.
+- Take the timed Full Mock Test and review practice results.
 - Review submitted results and explanations where the examination policy allows it.
 - Access only their own attempts, assignments, submissions, and progress.
 

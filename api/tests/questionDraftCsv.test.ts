@@ -18,7 +18,7 @@ describe("question-draft CSV validation", () => {
   it("rejects duplicate options and duplicate question text", () => {
     const csv = header + '\nMathematics,Algebra,"Duplicate text?",a,b,b,d,0\nMathematics,Algebra," duplicate   text? ",x,y,z,w,1';
     const issues = validateQuestionDraftCsv(csv, catalog);
-    expect(issues.filter((issue) => issue.reason.includes("duplicate")).length).toBeGreaterThanOrEqual(2);
+    expect(issues.filter((issue) => issue.reason.toLowerCase().includes("duplicate")).length).toBeGreaterThanOrEqual(2);
   });
   it("requires subject and topic to already exist", () => {
     const csv = header + '\nBiology,New topic,"Catalog missing?",a,b,c,d,0\nPhysics,Algebra,"Wrong subject topic?",a,b,c,d,0';

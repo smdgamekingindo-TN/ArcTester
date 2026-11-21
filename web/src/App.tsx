@@ -101,8 +101,6 @@ export default function App() {
     acknowledgeAnnouncement,
     markNotificationRead,
     markAllNotificationsRead,
-    notificationPreferences,
-    updateNotificationPreferences,
     clear: clearStudentCommunications,
   } = useStudentCommunications({
     userRole: user?.role ?? null,
@@ -574,8 +572,6 @@ export default function App() {
             onRefresh={() => void refreshNotifications().catch((cause) => setError((cause as Error).message))}
             onRead={(id) => void markNotificationRead(id)}
             onMarkAllRead={() => void markAllNotificationsRead()}
-            preferences={notificationPreferences}
-            onPreferenceChange={(patch) => void updateNotificationPreferences(patch)}
             onOpen={(id) => void openStudentNotification(id)}
           />
         ) : activePage === "announcements" ? (

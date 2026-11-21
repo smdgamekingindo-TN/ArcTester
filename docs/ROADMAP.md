@@ -7,7 +7,7 @@
 | Phase | Scope | Status |
 |---|---|---|
 | 0 | Read baseline docs; establish this roadmap | Complete |
-| 1 | Remove ML/desktop scope and student exam-hall UI; retain practice + timed Full Mock Test; convert materials to links | In progress |
+| 1 | Remove ML/desktop scope and student exam-hall UI; retain practice + timed Full Mock Test; convert materials to links | Complete on PR merge |
 | 2 | Admin question review, import validation, human-reviewed content quota, additive question types | Not started |
 | 3 | Rule-based path/lesson engine, XP, levels, goals, streaks, mastery, spaced review, quests/badges | Not started |
 | 4 | Shared design system, original mascot/assets, motion/audio/haptics foundation and gallery | Not started |

@@ -128,8 +128,7 @@ export function selectQuestions<T extends SelectableQuestion>(
     (a, b) => lastSeenTime(statFor(stats, a.id)) - lastSeenTime(statFor(stats, b.id))
   );
 
-  // Prioritize previously missed questions before unseen questions for rule-based revision.
-  const ordered = [...shuffledWrong.map((w) => w.q), ...shuffledUnseen, ...oldestFirst];
+  const ordered = [...shuffledUnseen, ...shuffledWrong.map((w) => w.q), ...oldestFirst];
   return ordered.slice(0, count);
 }
 

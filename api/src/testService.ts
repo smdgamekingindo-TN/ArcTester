@@ -265,7 +265,15 @@ export async function createTest(
       let added = 0;
       for (const entry of active) {
         const available = entry.pool.filter((question) => !selectedById.has(question.id));
-        const picked = selectQuestions(available, stats, Math.min(quota, available.length, remaining - added));
+        const target = Math.min(quota, available.length, remaining - added);
+        // For practice, prioritize missed questions first (simple rule-based spaced review).
+        const missed = available.filter((question) => (stats[String(question.id)]?.wrong ?? 0) > 0);
+        const missedPicked = selectQuestions(missed, stats, target);
+        const pickedIds = new Set(missedPicked.map((question) => question.id));
+        const picked = [
+          ...missedPicked,
+          ...selectQuestions(available.filter((question) => !pickedIds.has(question.id)), stats, target - missedPicked.length),
+        ];
         for (const question of picked) {
           selected.push(question);
           selectedById.add(question.id);

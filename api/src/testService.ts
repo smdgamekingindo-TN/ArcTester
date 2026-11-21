@@ -588,13 +588,13 @@ export async function getResult(
   let unanswered = 0;
   const questions: ResultQuestion[] = attempt.answers.map((a) => {
     if (a.isCorrect) score += 1;
-    else if (JSON.parse(a.responseSnapshot) === null) unanswered += 1;
+    else if (JSON.parse(a.responseSnapshot) === null && a.chosen === null) unanswered += 1;
     else incorrect += 1;
     const subject = a.subjectSnapshot;
     const entry = breakdown.get(subject) ?? { correct: 0, incorrect: 0, unanswered: 0, total: 0 };
     entry.total += 1;
     if (a.isCorrect) entry.correct += 1;
-    else if (JSON.parse(a.responseSnapshot) === null) entry.unanswered += 1;
+    else if (JSON.parse(a.responseSnapshot) === null && a.chosen === null) entry.unanswered += 1;
     else entry.incorrect += 1;
     breakdown.set(subject, entry);
     return {
@@ -607,7 +607,7 @@ export async function getResult(
       questionType: a.questionTypeSnapshot as QuestionType,
       promptData: JSON.parse(a.promptDataSnapshot) as Record<string, unknown>,
       answerData: JSON.parse(a.answerDataSnapshot) as Record<string, unknown>,
-      response: JSON.parse(a.responseSnapshot),
+      response: JSON.parse(a.responseSnapshot) ?? a.chosen,
       selectedIndex: a.chosen,
       correctIndex: a.correctIndexSnapshot,
       isCorrect: a.isCorrect,

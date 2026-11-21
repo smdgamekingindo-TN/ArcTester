@@ -84,18 +84,33 @@ describe("POST /tests", () => {
       create: { subjectId: maths.id, name: "Adaptive Weak Topic" },
     });
     const weakQuestion = await server.db.question.findFirstOrThrow({ where: { subjectId: maths.id } });
+    const strongTopic = await server.db.topic.upsert({
+      where: { subjectId_name: { subjectId: maths.id, name: "Adaptive Strong Topic" } },
+      update: {},
+      create: { subjectId: maths.id, name: "Adaptive Strong Topic" },
+    });
     await server.db.question.update({ where: { id: weakQuestion.id }, data: { topicId: topic.id } });
+    const otherMathsQuestions = await server.db.question.findMany({
+      where: { subjectId: maths.id, id: { not: weakQuestion.id } },
+    });
+    await server.db.question.updateMany({
+      where: { id: { in: otherMathsQuestions.map((question) => question.id) } },
+      data: { topicId: strongTopic.id },
+    });
 
-    for (let index = 0; index < 6; index += 1) {
-      const finishedAt = new Date(Date.now() - (index + 1) * 60_000);
-      const attempt = await server.db.attempt.create({
-        data: { userId, mode: "practice", startedAt: new Date(finishedAt.getTime() - 60_000), finishedAt },
-      });
-      await server.db.attemptAnswer.create({
-        data: {
-          attemptId: attempt.id, questionId: weakQuestion.id, chosen: 1, isCorrect: false,
-          subjectSnapshot: "Maths", topicSnapshot: "Adaptive Weak Topic",
-        },
+    // The practice selector reads the canonical Stat table, which submitTest
+    // updates. Seed that same source of truth rather than orphan attempt answers.
+    const lastSeen = new Date();
+    await server.db.stat.upsert({
+      where: { userId_questionId: { userId, questionId: weakQuestion.id } },
+      update: { seen: 6, wrong: 6, lastSeen },
+      create: { userId, questionId: weakQuestion.id, seen: 6, wrong: 6, lastSeen },
+    });
+    for (const question of otherMathsQuestions) {
+      await server.db.stat.upsert({
+        where: { userId_questionId: { userId, questionId: question.id } },
+        update: { seen: 10, wrong: 1, lastSeen },
+        create: { userId, questionId: question.id, seen: 10, wrong: 1, lastSeen },
       });
     }
 

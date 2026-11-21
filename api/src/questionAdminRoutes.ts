@@ -127,7 +127,8 @@ export function questionAdminRouter(db: PrismaClient): Router {
       ]);
       res.json({ ok: true, total, page: filter.page, limit: filter.limit, pages: Math.ceil(total / filter.limit),
         questions: questions.map((q) => ({ id: q.id, subject: q.subject.name, topic: q.topic?.name ?? "General",
-          text: q.text, options: JSON.parse(q.options), correctIndex: q.correctIndex,
+          text: q.text, options: JSON.parse(q.options), questionType: q.questionType,
+          promptData: JSON.parse(q.promptData), answerData: JSON.parse(q.answerData), correctIndex: q.correctIndex,
           explanation: q.explanation, source: q.source, difficulty: q.difficulty, reviewStatus: q.reviewStatus, createdAt: q.createdAt })) });
     } catch (error) { next(error); }
   });
@@ -193,6 +194,9 @@ export function questionAdminRouter(db: PrismaClient): Router {
         text: patch.text ?? existing.text,
         options: patch.options ?? JSON.parse(existing.options),
         correctIndex: patch.correctIndex ?? existing.correctIndex,
+        questionType: patch.questionType ?? existing.questionType,
+        promptData: patch.promptData ?? JSON.parse(existing.promptData),
+        answerData: patch.answerData ?? JSON.parse(existing.answerData),
         explanation: patch.explanation ?? existing.explanation,
         source: patch.source ?? existing.source,
         difficulty: patch.difficulty ?? existing.difficulty,
@@ -202,7 +206,9 @@ export function questionAdminRouter(db: PrismaClient): Router {
         create: { subjectId: subject.id, name: merged.topic }, update: {} });
       const updated = await db.question.update({ where: { id }, data: {
         subjectId: subject.id, topicId: topic.id, text: merged.text, options: encodeOptions(merged.options),
-        correctIndex: merged.correctIndex, explanation: merged.explanation, source: merged.source,
+        correctIndex: merged.correctIndex, questionType: merged.questionType,
+        promptData: JSON.stringify(merged.promptData), answerData: JSON.stringify(merged.answerData),
+        explanation: merged.explanation, source: merged.source,
         difficulty: merged.difficulty, reviewStatus: "DRAFT", questionHash: hashQuestion(merged.text),
       }, include: { subject: true, topic: true } });
       res.json({ ok: true, question: updated });

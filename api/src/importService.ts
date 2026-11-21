@@ -24,6 +24,9 @@ const CSV_COLUMNS = [
   "explanation",
   "source",
   "difficulty",
+  "questionType",
+  "promptData",
+  "answerData",
 ] as const;
 
 function invalidRow(row: number, reason: string): InvalidRow {
@@ -69,6 +72,9 @@ async function insertValidatedQuestions(
       source: string;
       difficulty: string;
       questionHash: string;
+      questionType: string;
+      promptData: string;
+      answerData: string;
     }> = [];
 
     for (const input of pending) {
@@ -92,6 +98,9 @@ async function insertValidatedQuestions(
         explanation: input.explanation ?? "",
         source: input.source ?? "",
         difficulty: input.difficulty ?? "medium",
+        questionType: input.questionType,
+        promptData: JSON.stringify(input.promptData),
+        answerData: JSON.stringify(input.answerData),
         questionHash: hashQuestion(input.text),
       });
     }
@@ -218,6 +227,9 @@ export async function importFromCsv(db: PrismaClient, content: string, options: 
       explanation: get("explanation"),
       source: get("source") || "csv",
       difficulty: get("difficulty") || "medium",
+      questionType: get("questiontype") || "mcq",
+      promptData: get("promptdata") ? JSON.parse(get("promptdata")) : {},
+      answerData: get("answerdata") ? JSON.parse(get("answerdata")) : {},
     });
     if (!checked.success) {
       report.invalid.push(invalidRow(rowNumber, describeIssue(checked.error)));

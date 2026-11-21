@@ -130,7 +130,7 @@ test.describe("Full Mock Test", () => {
 
     const question = page.locator(".question-card").first();
     await expect(question).toBeVisible({ timeout: 15000 });
-    await expect(page.getByText(/remaining/)).toBeVisible();
+    await expect(page.locator(".exam-countdown, .timer-warning").first()).toBeVisible();
 
     const option = question.locator(".option").first();
     await expect(option).toBeVisible();

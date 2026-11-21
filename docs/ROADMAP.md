@@ -26,8 +26,8 @@ Make AP ECET CSE preparation feel like a fun, short, rewarding learning journey:
 
 | Phase | Scope | Status |
 |---|---|---|
-| 0 | Baseline: read README/docs and establish this single roadmap | In progress |
-| 1 | Cleanup: remove ML/AI and desktop scope, simplify exam-hall UI, link-based materials, reduce repo weight | Not started |
+| 0 | Baseline: read README/docs and establish this single roadmap | Complete |
+| 1 | Cleanup: remove ML/AI and desktop scope, simplify exam-hall UI, link-based materials, reduce repo weight | In progress |
 | 2 | Content engine: admin question review, validation, human-reviewed content quota, additive question types | Not started |
 | 3 | Learning/game backend: path, lessons, XP, levels, goals, streaks, mastery, spaced repetition, quests and badges | Not started |
 | 4 | Design system and motion foundation: tokens, reusable components, original mascot/assets, gallery and performance approach | Not started |

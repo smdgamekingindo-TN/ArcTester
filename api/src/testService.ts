@@ -485,9 +485,6 @@ export async function submitTest(
       });
     }
 
-    const correctIds = rows.filter((row) => row.isCorrect).map((row) => row.questionId);
-    const wrongIds = rows.filter((row) => row.chosen !== null && !row.isCorrect).map((row) => row.questionId);
-    const unansweredIds = rows.filter((row) => row.chosen === null).map((row) => row.questionId);
   });
 
   return { attemptId, score, total: memberIds.size, expired };

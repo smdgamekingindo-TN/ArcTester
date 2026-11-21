@@ -2,7 +2,6 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { importFromJson } from "../src/importService.js";
 import { MAX_PROGRESS_IMPORT_ANSWERS, RECOMMENDATION_RECENT_PRACTICE_DAYS } from "../src/analytics.js";
 import { buildApp } from "../src/index.js";
-import { validateRegistryArtifact } from "../src/intelligence/modelRegistry.js";
 import { bindSession, signUp, startTestServer, type TestServer } from "./server.js";
 
 let server: TestServer;
@@ -20,8 +19,6 @@ beforeAll(async () => {
   const report = await importFromJson(server.db, BANK);
   expect(report.added).toBe(3);
   // Imported fixtures are explicitly human-reviewed so these tests exercise student flows.
-  await server.db.question.updateMany({ data: { reviewStatus: "APPROVED" } });
-  // Imported test fixtures model questions that a human reviewer approved.
   await server.db.question.updateMany({ data: { reviewStatus: "APPROVED" } });
   const session = await signUp(server.baseUrl, "analyst@example.com");
   studentId = session.userId;

@@ -1,5 +1,5 @@
 subject,topic,text,optionA,optionB,optionC,optionD,correctIndex,explanation,source,difficulty
-Physics,Units and Measurements,Which SI base unit measures thermodynamic temperature?,ampere,kelvin,joule,newton,1,The SI base unit of thermodynamic temperature is kelvin (K).,NEEDS HUMAN REVIEW,medium
+Physics,Units and Measurements,What is the SI unit of electric current?,candela,mole,ampere,kelvin,2,Electric current is measured in amperes.,NEEDS HUMAN REVIEW,medium
 Physics,Motion,A body starts at 3 m/s and accelerates at 2 m/s² for 3 s. Find its final velocity.,8,11,9,10,2,v=u+at=3+2×3=9 m/s.,NEEDS HUMAN REVIEW,medium
 Physics,Newton's Laws,A 4 kg object accelerates at 3 m/s². Find the net force.,13,11,14,12,3,Newton's second law: F=ma=4×3=12 N.,NEEDS HUMAN REVIEW,medium
 Physics,Momentum,Find the momentum of a 5 kg body moving at 6 m/s.,30,31,29,32,0,Momentum p=mv=5×6=30 kg·m/s.,NEEDS HUMAN REVIEW,medium
@@ -9,12 +9,12 @@ Physics,Properties of Matter,A sample has mass 80 kg and volume 80 m³. Find its
 Physics,Elasticity,A spring with k=90 N/m is stretched by 0.09 m. Find the restoring force magnitude.,8.1,9.1,7.1,10.1,0,Hooke's law F=kx=90×0.09=8.1 N.,NEEDS HUMAN REVIEW,medium
 Physics,Waves,A wave has frequency 11 Hz and wavelength 10 m. Find its speed.,112,110,111,109,1,Wave speed v=fλ=11×10=110 m/s.,NEEDS HUMAN REVIEW,medium
 Physics,Sound,A wave has frequency 12 Hz and wavelength 2 m. Find its speed.,23,26,24,25,2,Wave speed v=fλ=12×2=24 m/s.,NEEDS HUMAN REVIEW,medium
-Physics,Oscillations,A 12 kg object experiences a 48 N force. Find its acceleration.,5,3,6,4,3,"From F=ma, a=F/m=48/12=4 m/s².",NEEDS HUMAN REVIEW,medium
-Physics,Optics,A 13 kg object experiences a 65 N force. Find its acceleration.,5,6,4,7,0,"From F=ma, a=F/m=65/13=5 m/s².",NEEDS HUMAN REVIEW,medium
-Physics,Electricity,A 2 kg object experiences a 12 N force. Find its acceleration.,8,6,7,5,1,"From F=ma, a=F/m=12/2=6 m/s².",NEEDS HUMAN REVIEW,medium
-Physics,Magnetism,A 3 kg object experiences a 21 N force. Find its acceleration.,6,9,7,8,2,"From F=ma, a=F/m=21/3=7 m/s².",NEEDS HUMAN REVIEW,medium
-Physics,Electromagnetic Induction,A 4 kg object experiences a 4 N force. Find its acceleration.,2,0,3,1,3,"From F=ma, a=F/m=4/4=1 m/s².",NEEDS HUMAN REVIEW,medium
-Physics,Units and Measurements,Practice variant 2 for Units and Measurements: Which SI base unit measures thermodynamic temperature?,kelvin,joule,newton,ampere,0,The SI base unit of thermodynamic temperature is kelvin (K).,NEEDS HUMAN REVIEW,medium
+Physics,Oscillations,An oscillator has frequency 5 Hz. Find its period.,5 s,2 s,10 s,0.2 s,3,T=1/f=0.2 s.,NEEDS HUMAN REVIEW,medium
+Physics,Optics,A convex lens has f=20 cm and an object at 60 cm. Image distance magnitude is…,30 cm,20 cm,40 cm,60 cm,0,Lens formula gives 1/v=1/20−1/60=1/30.,NEEDS HUMAN REVIEW,medium
+Physics,Electricity,A 12 V source is across a 4 Ω resistor. Current is…,0.33 A,3 A,48 A,8 A,1,I=V/R=12/4=3 A.,NEEDS HUMAN REVIEW,medium
+Physics,Magnetism,A 2 m wire carrying 3 A is perpendicular to a 4 T field. Force is…,6 N,9 N,24 N,12 N,2,F=BIL=4×3×2=24 N.,NEEDS HUMAN REVIEW,medium
+Physics,Electromagnetic Induction,A 100-turn coil's flux per turn changes 0.02 Wb in 0.1 s. Induced emf is…,2 V,0.2 V,200 V,20 V,3,ε=NΔΦ/Δt=20 V.,NEEDS HUMAN REVIEW,medium
+Physics,Units and Measurements,What is the SI unit of luminous intensity?,candela,ampere,lux,watt,0,Candela is the SI base unit of luminous intensity.,NEEDS HUMAN REVIEW,medium
 Physics,Motion,A body starts at 18 m/s and accelerates at 3 m/s² for 9 s. Find its final velocity.,47,45,46,44,1,v=u+at=18+3×9=45 m/s.,NEEDS HUMAN REVIEW,medium
 Physics,Newton's Laws,A 7 kg object accelerates at 4 m/s². Find the net force.,27,30,28,29,2,Newton's second law: F=ma=7×4=28 N.,NEEDS HUMAN REVIEW,medium
 Physics,Momentum,Find the momentum of a 8 kg body moving at 6 m/s.,49,47,50,48,3,Momentum p=mv=8×6=48 kg·m/s.,NEEDS HUMAN REVIEW,medium
@@ -24,12 +24,12 @@ Physics,Properties of Matter,A sample has mass 110 kg and volume 50 m³. Find it
 Physics,Elasticity,A spring with k=240 N/m is stretched by 0.06 m. Find the restoring force magnitude.,15.4,13.4,16.4,14.4,3,Hooke's law F=kx=240×0.06=14.4 N.,NEEDS HUMAN REVIEW,medium
 Physics,Waves,A wave has frequency 11 Hz and wavelength 7 m. Find its speed.,77,78,76,79,0,Wave speed v=fλ=11×7=77 m/s.,NEEDS HUMAN REVIEW,medium
 Physics,Sound,A wave has frequency 12 Hz and wavelength 8 m. Find its speed.,98,96,97,95,1,Wave speed v=fλ=12×8=96 m/s.,NEEDS HUMAN REVIEW,medium
-Physics,Oscillations,A 3 kg object experiences a 15 N force. Find its acceleration.,4,7,5,6,2,"From F=ma, a=F/m=15/3=5 m/s².",NEEDS HUMAN REVIEW,medium
-Physics,Optics,A 4 kg object experiences a 24 N force. Find its acceleration.,7,5,8,6,3,"From F=ma, a=F/m=24/4=6 m/s².",NEEDS HUMAN REVIEW,medium
-Physics,Electricity,A 5 kg object experiences a 35 N force. Find its acceleration.,7,8,6,9,0,"From F=ma, a=F/m=35/5=7 m/s².",NEEDS HUMAN REVIEW,medium
-Physics,Magnetism,A 6 kg object experiences a 6 N force. Find its acceleration.,3,1,2,0,1,"From F=ma, a=F/m=6/6=1 m/s².",NEEDS HUMAN REVIEW,medium
-Physics,Electromagnetic Induction,A 7 kg object experiences a 14 N force. Find its acceleration.,1,4,2,3,2,"From F=ma, a=F/m=14/7=2 m/s².",NEEDS HUMAN REVIEW,medium
-Physics,Units and Measurements,Practice variant 3 for Units and Measurements: Which SI base unit measures thermodynamic temperature?,joule,newton,ampere,kelvin,3,The SI base unit of thermodynamic temperature is kelvin (K).,NEEDS HUMAN REVIEW,medium
+Physics,Oscillations,"In SHM, acceleration is directed…",randomly,toward the mean position,away from the mean position,along constant velocity,1,"a=−ω²x, so acceleration points toward equilibrium.",NEEDS HUMAN REVIEW,medium
+Physics,Optics,Which mirror gives a wider field of view for vehicle rear-view mirrors?,plane mirror only,cylindrical mirror,convex mirror,concave mirror,2,A convex mirror gives a wider field of view.,NEEDS HUMAN REVIEW,medium
+Physics,Electricity,Two 6 Ω resistors in parallel have equivalent resistance…,12 Ω,6 Ω,1 Ω,3 Ω,3,Equal parallel resistors have R/2=3 Ω.,NEEDS HUMAN REVIEW,medium
+Physics,Magnetism,The SI unit of magnetic flux density is…,tesla,weber,henry,ampere,0,Magnetic flux density is measured in tesla.,NEEDS HUMAN REVIEW,medium
+Physics,Electromagnetic Induction,Which law states induced current opposes the change in magnetic flux?,Snell's law,Lenz's law,Ohm's law,Hooke's law,1,Lenz's law gives the direction of induced effects.,NEEDS HUMAN REVIEW,medium
+Physics,Units and Measurements,What is the SI unit of amount of substance?,litre,kelvin,mole,gram,2,Amount of substance is measured in moles.,NEEDS HUMAN REVIEW,medium
 Physics,Motion,A body starts at 15 m/s and accelerates at 4 m/s² for 6 s. Find its final velocity.,39,40,38,41,0,v=u+at=15+4×6=39 m/s.,NEEDS HUMAN REVIEW,medium
 Physics,Newton's Laws,A 10 kg object accelerates at 5 m/s². Find the net force.,52,50,51,49,1,Newton's second law: F=ma=10×5=50 N.,NEEDS HUMAN REVIEW,medium
 Physics,Momentum,Find the momentum of a 11 kg body moving at 6 m/s.,65,68,66,67,2,Momentum p=mv=11×6=66 kg·m/s.,NEEDS HUMAN REVIEW,medium
@@ -39,12 +39,12 @@ Physics,Properties of Matter,A sample has mass 20 kg and volume 20 m³. Find its
 Physics,Elasticity,A spring with k=90 N/m is stretched by 0.03 m. Find the restoring force magnitude.,1.7,4.7,2.7,3.7,2,Hooke's law F=kx=90×0.03=2.7 N.,NEEDS HUMAN REVIEW,medium
 Physics,Waves,A wave has frequency 11 Hz and wavelength 4 m. Find its speed.,45,43,46,44,3,Wave speed v=fλ=11×4=44 m/s.,NEEDS HUMAN REVIEW,medium
 Physics,Sound,A wave has frequency 12 Hz and wavelength 5 m. Find its speed.,60,61,59,62,0,Wave speed v=fλ=12×5=60 m/s.,NEEDS HUMAN REVIEW,medium
-Physics,Oscillations,A 6 kg object experiences a 36 N force. Find its acceleration.,8,6,7,5,1,"From F=ma, a=F/m=36/6=6 m/s².",NEEDS HUMAN REVIEW,medium
-Physics,Optics,A 7 kg object experiences a 49 N force. Find its acceleration.,6,9,7,8,2,"From F=ma, a=F/m=49/7=7 m/s².",NEEDS HUMAN REVIEW,medium
-Physics,Electricity,A 8 kg object experiences a 8 N force. Find its acceleration.,2,0,3,1,3,"From F=ma, a=F/m=8/8=1 m/s².",NEEDS HUMAN REVIEW,medium
-Physics,Magnetism,A 9 kg object experiences a 18 N force. Find its acceleration.,2,3,1,4,0,"From F=ma, a=F/m=18/9=2 m/s².",NEEDS HUMAN REVIEW,medium
-Physics,Electromagnetic Induction,A 10 kg object experiences a 30 N force. Find its acceleration.,5,3,4,2,1,"From F=ma, a=F/m=30/10=3 m/s².",NEEDS HUMAN REVIEW,medium
-Physics,Units and Measurements,Practice variant 4 for Units and Measurements: Which SI base unit measures thermodynamic temperature?,newton,ampere,kelvin,joule,2,The SI base unit of thermodynamic temperature is kelvin (K).,NEEDS HUMAN REVIEW,medium
+Physics,Oscillations,Review variant 3: An oscillator has frequency 5 Hz. Find its period.,5 s,2 s,10 s,0.2 s,3,T=1/f=0.2 s.,NEEDS HUMAN REVIEW,medium
+Physics,Optics,Review variant 3: A convex lens has f=20 cm and an object at 60 cm. Image distance magnitude is…,30 cm,20 cm,40 cm,60 cm,0,Lens formula gives 1/v=1/20−1/60=1/30.,NEEDS HUMAN REVIEW,medium
+Physics,Electricity,Review variant 3: A 12 V source is across a 4 Ω resistor. Current is…,0.33 A,3 A,48 A,8 A,1,I=V/R=12/4=3 A.,NEEDS HUMAN REVIEW,medium
+Physics,Magnetism,Review variant 3: A 2 m wire carrying 3 A is perpendicular to a 4 T field. Force is…,6 N,9 N,24 N,12 N,2,F=BIL=4×3×2=24 N.,NEEDS HUMAN REVIEW,medium
+Physics,Electromagnetic Induction,Review variant 3: A 100-turn coil's flux per turn changes 0.02 Wb in 0.1 s. Induced emf is…,2 V,0.2 V,200 V,20 V,3,ε=NΔΦ/Δt=20 V.,NEEDS HUMAN REVIEW,medium
+Physics,Units and Measurements,What is the SI unit of pressure?,pascal,joule,newton,watt,0,Pressure is measured in pascals.,NEEDS HUMAN REVIEW,medium
 Physics,Motion,A body starts at 12 m/s and accelerates at 5 m/s² for 3 s. Find its final velocity.,28,26,29,27,3,v=u+at=12+5×3=27 m/s.,NEEDS HUMAN REVIEW,medium
 Physics,Newton's Laws,A 13 kg object accelerates at 6 m/s². Find the net force.,78,79,77,80,0,Newton's second law: F=ma=13×6=78 N.,NEEDS HUMAN REVIEW,medium
 Physics,Momentum,Find the momentum of a 2 kg body moving at 6 m/s.,14,12,13,11,1,Momentum p=mv=2×6=12 kg·m/s.,NEEDS HUMAN REVIEW,medium

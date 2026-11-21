@@ -8,10 +8,10 @@ Chemistry,Chemical Kinetics,Concentration changes by 7 mol/L in 6 s. Find the av
 Chemistry,Thermochemistry,A reaction releases 16 kJ of heat to the surroundings. What is the sign of ΔH for the reaction?,positive,zero,cannot be determined,negative,3,"Heat is released in an exothermic reaction, so the system's enthalpy change is negative.",NEEDS HUMAN REVIEW,medium
 Chemistry,Redox Reactions,Find the oxidation number of chlorine in NaCl.,-2,-1,1,0,1,"In NaCl, sodium is +1 and the neutral compound requires chlorine to be −1.",NEEDS HUMAN REVIEW,medium
 Chemistry,Electrochemistry,At which electrode does reduction occur in an electrochemical cell?,electrolyte,cathode,anode,salt bridge,1,Reduction always occurs at the cathode (Red Cat).,NEEDS HUMAN REVIEW,medium
-Chemistry,Organic Chemistry,Which functional group characterizes a amine?,–NO₂,–X,–NH₂,–OH,2,The characteristic functional group of a amine is –NH₂.,NEEDS HUMAN REVIEW,medium
-Chemistry,Polymers,Which functional group characterizes a alcohol?,–CHO,–COOH,–X,–OH,3,The characteristic functional group of a alcohol is –OH.,NEEDS HUMAN REVIEW,medium
-Chemistry,Corrosion,Which functional group characterizes a carboxylic acid?,–COOH,–OH,–NH₂,–X,0,The characteristic functional group of a carboxylic acid is –COOH.,NEEDS HUMAN REVIEW,medium
-Chemistry,Water Chemistry,Which functional group characterizes a aldehyde?,–X,–CHO,–CO–,–O–,1,The characteristic functional group of a aldehyde is –CHO.,NEEDS HUMAN REVIEW,medium
+Chemistry,Organic Chemistry,Which functional group characterizes an alcohol?,–NH₂,–OH,–CHO,–COOH,1,Alcohols contain the hydroxyl group.,NEEDS HUMAN REVIEW,medium
+Chemistry,Polymers,Which monomer forms polyethylene?,ethanol,ethanoic acid,ethene,ethyne,2,Ethene polymerizes to polyethylene.,NEEDS HUMAN REVIEW,medium
+Chemistry,Corrosion,Rust is mainly described as…,iron sulfide,calcium carbonate,sodium oxide,hydrated iron(III) oxide,3,Rust is hydrated iron(III) oxide.,NEEDS HUMAN REVIEW,medium
+Chemistry,Water Chemistry,Temporary hardness is mainly caused by…,calcium and magnesium bicarbonates,sodium chloride,dissolved nitrogen,sugar,0,Bicarbonates cause temporary hardness.,NEEDS HUMAN REVIEW,medium
 Chemistry,Atomic Structure,An isotope has atomic number 19 and mass number 28. How many neutrons does it contain?,8,11,9,10,2,Neutrons = mass number − atomic number = 28−19=9.,NEEDS HUMAN REVIEW,medium
 Chemistry,Periodic Table,"For a neutral chlorine atom in its main-group family, how many valence electrons does it have?",8,6,9,7,3,The main-group valence electron count for chlorine is 7.,NEEDS HUMAN REVIEW,medium
 Chemistry,Chemical Bonding,What is the predominant bond type in NaCl?,ionic,covalent,metallic,coordinate,0,NaCl is classified as having predominantly ionic bonding.,NEEDS HUMAN REVIEW,medium
@@ -21,10 +21,10 @@ Chemistry,Chemical Kinetics,Concentration changes by 2 mol/L in 1 s. Find the av
 Chemistry,Thermochemistry,A reaction releases 29 kJ of heat to the surroundings. What is the sign of ΔH for the reaction?,negative,positive,zero,cannot be determined,0,"Heat is released in an exothermic reaction, so the system's enthalpy change is negative.",NEEDS HUMAN REVIEW,medium
 Chemistry,Redox Reactions,Find the oxidation number of oxygen in H₂O.,0,-3,-2,-1,2,"In water, hydrogen is +1; two hydrogens balance oxygen at −2.",NEEDS HUMAN REVIEW,medium
 Chemistry,Electrochemistry,Practice variant 2 for Electrochemistry: At which electrode does reduction occur in an electrochemical cell?,salt bridge,electrolyte,cathode,anode,2,Reduction always occurs at the cathode (Red Cat).,NEEDS HUMAN REVIEW,medium
-Chemistry,Organic Chemistry,Practice variant 2 for Organic Chemistry: Which functional group characterizes a aldehyde?,–CO–,–O–,–X,–CHO,3,The characteristic functional group of a aldehyde is –CHO.,NEEDS HUMAN REVIEW,medium
-Chemistry,Polymers,Which functional group characterizes a ketone?,–CO–,–CHO,–COOH,–X,0,The characteristic functional group of a ketone is –CO–.,NEEDS HUMAN REVIEW,medium
-Chemistry,Corrosion,Practice variant 2 for Corrosion: Which functional group characterizes a amine?,–X,–NH₂,–OH,–NO₂,1,The characteristic functional group of a amine is –NH₂.,NEEDS HUMAN REVIEW,medium
-Chemistry,Water Chemistry,Practice variant 2 for Water Chemistry: Which functional group characterizes a alcohol?,–COOH,–X,–OH,–CHO,2,The characteristic functional group of a alcohol is –OH.,NEEDS HUMAN REVIEW,medium
+Chemistry,Organic Chemistry,Which functional group characterizes an aldehyde?,–COOH,–CHO,–CO–,–OH,1,Aldehydes contain the –CHO group.,NEEDS HUMAN REVIEW,medium
+Chemistry,Polymers,Which monomer forms PVC?,propene,glucose,vinyl chloride,styrene,2,PVC is poly(vinyl chloride).,NEEDS HUMAN REVIEW,medium
+Chemistry,Corrosion,Galvanization coats iron with…,copper,silver,lead,zinc,3,Zinc coating protects iron.,NEEDS HUMAN REVIEW,medium
+Chemistry,Water Chemistry,Permanent hardness is commonly caused by calcium/magnesium…,sulfates and chlorides,bicarbonates only,sodium salts only,oxygen,0,Sulfates and chlorides cause permanent hardness.,NEEDS HUMAN REVIEW,medium
 Chemistry,Atomic Structure,An isotope has atomic number 12 and mass number 24. How many neutrons does it contain?,13,11,14,12,3,Neutrons = mass number − atomic number = 24−12=12.,NEEDS HUMAN REVIEW,medium
 Chemistry,Periodic Table,"For a neutral oxygen atom in its main-group family, how many valence electrons does it have?",6,7,5,8,0,The main-group valence electron count for oxygen is 6.,NEEDS HUMAN REVIEW,medium
 Chemistry,Chemical Bonding,What is the predominant bond type in MgO?,coordinate,ionic,hydrogen,metallic,1,MgO is classified as having predominantly ionic bonding.,NEEDS HUMAN REVIEW,medium
@@ -34,10 +34,10 @@ Chemistry,Chemical Kinetics,Concentration changes by 6 mol/L in 2 s. Find the av
 Chemistry,Thermochemistry,A reaction releases 42 kJ of heat to the surroundings. What is the sign of ΔH for the reaction?,cannot be determined,negative,positive,zero,1,"Heat is released in an exothermic reaction, so the system's enthalpy change is negative.",NEEDS HUMAN REVIEW,medium
 Chemistry,Redox Reactions,Find the oxidation number of sulfur in H₂SO₄.,4,5,7,6,3,"For neutral H₂SO₄, 2(+1)+S+4(−2)=0, so S=+6.",NEEDS HUMAN REVIEW,medium
 Chemistry,Electrochemistry,Practice variant 3 for Electrochemistry: At which electrode does reduction occur in an electrochemical cell?,anode,salt bridge,electrolyte,cathode,3,Reduction always occurs at the cathode (Red Cat).,NEEDS HUMAN REVIEW,medium
-Chemistry,Organic Chemistry,Practice variant 3 for Organic Chemistry: Which functional group characterizes a alcohol?,–OH,–CHO,–COOH,–X,0,The characteristic functional group of a alcohol is –OH.,NEEDS HUMAN REVIEW,medium
-Chemistry,Polymers,Practice variant 2 for Polymers: Which functional group characterizes a carboxylic acid?,–X,–COOH,–OH,–NH₂,1,The characteristic functional group of a carboxylic acid is –COOH.,NEEDS HUMAN REVIEW,medium
-Chemistry,Corrosion,Practice variant 3 for Corrosion: Which functional group characterizes a aldehyde?,–O–,–X,–CHO,–CO–,2,The characteristic functional group of a aldehyde is –CHO.,NEEDS HUMAN REVIEW,medium
-Chemistry,Water Chemistry,Practice variant 2 for Water Chemistry: Which functional group characterizes a ketone?,–CHO,–COOH,–X,–CO–,3,The characteristic functional group of a ketone is –CO–.,NEEDS HUMAN REVIEW,medium
+Chemistry,Organic Chemistry,Which functional group characterizes a ketone?,–O–,–CO–,–CHO,–COOH,1,Ketones contain a carbonyl group within the carbon chain.,NEEDS HUMAN REVIEW,medium
+Chemistry,Polymers,Which monomer forms polystyrene?,vinyl chloride,formaldehyde,styrene,ethene,2,Polystyrene is made from styrene.,NEEDS HUMAN REVIEW,medium
+Chemistry,Corrosion,"During corrosion, iron primarily undergoes…",reduction,polymerization,neutralization,oxidation,3,Iron loses electrons and is oxidized.,NEEDS HUMAN REVIEW,medium
+Chemistry,Water Chemistry,Which method removes temporary hardness?,boiling,adding sugar,freezing only,filter paper only,0,Boiling decomposes bicarbonates.,NEEDS HUMAN REVIEW,medium
 Chemistry,Atomic Structure,An isotope has atomic number 25 and mass number 40. How many neutrons does it contain?,15,16,14,17,0,Neutrons = mass number − atomic number = 40−25=15.,NEEDS HUMAN REVIEW,medium
 Chemistry,Periodic Table,"For a neutral sodium atom in its main-group family, how many valence electrons does it have?",3,1,2,0,1,The main-group valence electron count for sodium is 1.,NEEDS HUMAN REVIEW,medium
 Chemistry,Chemical Bonding,What is the predominant bond type in H₂?,metallic,coordinate,covalent,ionic,2,H₂ is classified as having predominantly covalent bonding.,NEEDS HUMAN REVIEW,medium
@@ -47,5 +47,5 @@ Chemistry,Chemical Kinetics,Concentration changes by 10 mol/L in 3 s. Find the a
 Chemistry,Thermochemistry,A reaction releases 55 kJ of heat to the surroundings. What is the sign of ΔH for the reaction?,zero,cannot be determined,negative,positive,2,"Heat is released in an exothermic reaction, so the system's enthalpy change is negative.",NEEDS HUMAN REVIEW,medium
 Chemistry,Redox Reactions,Find the oxidation number of carbon in CO₂.,4,2,3,6,0,"For neutral CO₂, C+2(−2)=0, so carbon is +4.",NEEDS HUMAN REVIEW,medium
 Chemistry,Electrochemistry,Practice variant 4 for Electrochemistry: At which electrode does reduction occur in an electrochemical cell?,cathode,anode,salt bridge,electrolyte,0,Reduction always occurs at the cathode (Red Cat).,NEEDS HUMAN REVIEW,medium
-Chemistry,Organic Chemistry,Practice variant 3 for Organic Chemistry: Which functional group characterizes a ketone?,–X,–CO–,–CHO,–COOH,1,The characteristic functional group of a ketone is –CO–.,NEEDS HUMAN REVIEW,medium
-Chemistry,Polymers,Practice variant 3 for Polymers: Which functional group characterizes a amine?,–NO₂,–X,–NH₂,–OH,2,The characteristic functional group of a amine is –NH₂.,NEEDS HUMAN REVIEW,medium
+Chemistry,Organic Chemistry,Which functional group characterizes a carboxylic acid?,–CHO,–COOH,–OH,–NH₂,1,Carboxylic acids contain the carboxyl group.,NEEDS HUMAN REVIEW,medium
+Chemistry,Polymers,Which is a natural polymer?,"nylon-6,6",polystyrene,cellulose,PVC,2,Cellulose is a natural polysaccharide.,NEEDS HUMAN REVIEW,medium

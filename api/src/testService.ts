@@ -266,9 +266,30 @@ export async function createTest(
       for (const entry of active) {
         const available = entry.pool.filter((question) => !selectedById.has(question.id));
         const target = Math.min(quota, available.length, remaining - added);
-        // For practice, prioritize missed questions first (simple rule-based spaced review).
+        // Simple topic-level revision: prioritize the topic with the weakest
+        // historical accuracy, then its total missed answers. This is rule-based
+        // and deliberately does not depend on an ML model or persisted model log.
+        const topicPerformance = new Map<string, { seen: number; wrong: number }>();
+        for (const question of available) {
+          const stat = stats[String(question.id)];
+          if (!stat || stat.seen <= 0) continue;
+          const topic = question.topic ?? "General";
+          const aggregate = topicPerformance.get(topic) ?? { seen: 0, wrong: 0 };
+          aggregate.seen += stat.seen;
+          aggregate.wrong += stat.wrong;
+          topicPerformance.set(topic, aggregate);
+        }
         const missed = available.filter((question) => (stats[String(question.id)]?.wrong ?? 0) > 0);
-        const missedPicked = selectQuestions(missed, stats, target);
+        const missedPicked = [...missed].sort((a, b) => {
+          const aTopic = topicPerformance.get(a.topic ?? "General") ?? { seen: 0, wrong: 0 };
+          const bTopic = topicPerformance.get(b.topic ?? "General") ?? { seen: 0, wrong: 0 };
+          const aAccuracy = aTopic.seen ? aTopic.wrong / aTopic.seen : 0;
+          const bAccuracy = bTopic.seen ? bTopic.wrong / bTopic.seen : 0;
+          return bAccuracy - aAccuracy
+            || bTopic.wrong - aTopic.wrong
+            || (stats[String(b.id)]?.wrong ?? 0) - (stats[String(a.id)]?.wrong ?? 0)
+            || a.id - b.id;
+        }).slice(0, target);
         const pickedIds = new Set(missedPicked.map((question) => question.id));
         const picked = [
           ...missedPicked,

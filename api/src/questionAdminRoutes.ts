@@ -57,16 +57,34 @@ export function questionAdminRouter(db: PrismaClient): Router {
 
   router.patch("/admin/questions/review/bulk", async (req, res, next) => {
     try {
-      const input = z.object({ ids: z.array(z.number().int().positive()).min(1).max(500), status: ReviewStatusSchema }).parse(req.body);
+      const input = z.object({
+        ids: z.array(z.number().int().positive()).min(1).max(500),
+        status: ReviewStatusSchema,
+        sources: z.array(z.object({ id: z.number().int().positive(), source: z.string().trim().max(500) })).optional(),
+      }).parse(req.body);
       if (new Set(input.ids).size !== input.ids.length) return next(badRequest("Question IDs must be unique."));
+      const sources = input.sources ?? [];
+      if (new Set(sources.map((item) => item.id)).size !== sources.length) return next(badRequest("Question source entries must have unique IDs."));
+      if (sources.some((item) => !input.ids.includes(item.id))) return next(badRequest("Sources may only be supplied for selected questions."));
+      const sourceById = new Map(sources.map((item) => [item.id, item.source.trim()]));
       const result = await db.$transaction(async (tx) => {
         const questions = await tx.question.findMany({ where: { id: { in: input.ids } }, select: { id: true, source: true } });
         if (questions.length !== input.ids.length) throw badRequest("One or more selected questions do not exist.");
         if (input.status === "APPROVED") {
-          const missingSource = questions.filter((question) => !hasReviewableSource(question.source)).map((question) => question.id);
-          if (missingSource.length) throw badRequest("Add a real source before approving every selected question. Missing source for: " + missingSource.join(", ") + ".");
+          const missingSource = questions.filter((question) => {
+            const source = sourceById.get(question.id) ?? question.source;
+            return !hasReviewableSource(source);
+          }).map((question) => question.id);
+          if (missingSource.length) throw badRequest("Add a real source for every selected question before bulk approval. Missing source for: " + missingSource.join(", ") + ".");
         }
-        return tx.question.updateMany({ where: { id: { in: input.ids } }, data: { reviewStatus: input.status } });
+        for (const question of questions) {
+          const source = sourceById.get(question.id);
+          await tx.question.update({ where: { id: question.id }, data: {
+            reviewStatus: input.status,
+            ...(source === undefined ? {} : { source }),
+          } });
+        }
+        return { count: questions.length };
       });
       res.json({ ok: true, updated: result.count, reviewStatus: input.status });
     } catch (error) { next(error); }

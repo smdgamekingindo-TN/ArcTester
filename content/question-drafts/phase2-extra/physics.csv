@@ -14,7 +14,7 @@ Physics,Optics,A 13 kg object experiences a 65 N force. Find its acceleration.,5
 Physics,Electricity,A 2 kg object experiences a 12 N force. Find its acceleration.,8,6,7,5,1,"From F=ma, a=F/m=12/2=6 m/s².",NEEDS HUMAN REVIEW,medium
 Physics,Magnetism,A 3 kg object experiences a 21 N force. Find its acceleration.,6,9,7,8,2,"From F=ma, a=F/m=21/3=7 m/s².",NEEDS HUMAN REVIEW,medium
 Physics,Electromagnetic Induction,A 4 kg object experiences a 4 N force. Find its acceleration.,2,0,3,1,3,"From F=ma, a=F/m=4/4=1 m/s².",NEEDS HUMAN REVIEW,medium
-Physics,Units and Measurements,Which SI base unit measures thermodynamic temperature?,kelvin,joule,newton,ampere,0,The SI base unit of thermodynamic temperature is kelvin (K).,NEEDS HUMAN REVIEW,medium
+Physics,Units and Measurements,Practice variant 2 for Units and Measurements: Which SI base unit measures thermodynamic temperature?,kelvin,joule,newton,ampere,0,The SI base unit of thermodynamic temperature is kelvin (K).,NEEDS HUMAN REVIEW,medium
 Physics,Motion,A body starts at 18 m/s and accelerates at 3 m/s² for 9 s. Find its final velocity.,47,45,46,44,1,v=u+at=18+3×9=45 m/s.,NEEDS HUMAN REVIEW,medium
 Physics,Newton's Laws,A 7 kg object accelerates at 4 m/s². Find the net force.,27,30,28,29,2,Newton's second law: F=ma=7×4=28 N.,NEEDS HUMAN REVIEW,medium
 Physics,Momentum,Find the momentum of a 8 kg body moving at 6 m/s.,49,47,50,48,3,Momentum p=mv=8×6=48 kg·m/s.,NEEDS HUMAN REVIEW,medium
@@ -29,7 +29,7 @@ Physics,Optics,A 4 kg object experiences a 24 N force. Find its acceleration.,7,
 Physics,Electricity,A 5 kg object experiences a 35 N force. Find its acceleration.,7,8,6,9,0,"From F=ma, a=F/m=35/5=7 m/s².",NEEDS HUMAN REVIEW,medium
 Physics,Magnetism,A 6 kg object experiences a 6 N force. Find its acceleration.,3,1,2,0,1,"From F=ma, a=F/m=6/6=1 m/s².",NEEDS HUMAN REVIEW,medium
 Physics,Electromagnetic Induction,A 7 kg object experiences a 14 N force. Find its acceleration.,1,4,2,3,2,"From F=ma, a=F/m=14/7=2 m/s².",NEEDS HUMAN REVIEW,medium
-Physics,Units and Measurements,Which SI base unit measures thermodynamic temperature?,joule,newton,ampere,kelvin,3,The SI base unit of thermodynamic temperature is kelvin (K).,NEEDS HUMAN REVIEW,medium
+Physics,Units and Measurements,Practice variant 3 for Units and Measurements: Which SI base unit measures thermodynamic temperature?,joule,newton,ampere,kelvin,3,The SI base unit of thermodynamic temperature is kelvin (K).,NEEDS HUMAN REVIEW,medium
 Physics,Motion,A body starts at 15 m/s and accelerates at 4 m/s² for 6 s. Find its final velocity.,39,40,38,41,0,v=u+at=15+4×6=39 m/s.,NEEDS HUMAN REVIEW,medium
 Physics,Newton's Laws,A 10 kg object accelerates at 5 m/s². Find the net force.,52,50,51,49,1,Newton's second law: F=ma=10×5=50 N.,NEEDS HUMAN REVIEW,medium
 Physics,Momentum,Find the momentum of a 11 kg body moving at 6 m/s.,65,68,66,67,2,Momentum p=mv=11×6=66 kg·m/s.,NEEDS HUMAN REVIEW,medium
@@ -44,7 +44,7 @@ Physics,Optics,A 7 kg object experiences a 49 N force. Find its acceleration.,6,
 Physics,Electricity,A 8 kg object experiences a 8 N force. Find its acceleration.,2,0,3,1,3,"From F=ma, a=F/m=8/8=1 m/s².",NEEDS HUMAN REVIEW,medium
 Physics,Magnetism,A 9 kg object experiences a 18 N force. Find its acceleration.,2,3,1,4,0,"From F=ma, a=F/m=18/9=2 m/s².",NEEDS HUMAN REVIEW,medium
 Physics,Electromagnetic Induction,A 10 kg object experiences a 30 N force. Find its acceleration.,5,3,4,2,1,"From F=ma, a=F/m=30/10=3 m/s².",NEEDS HUMAN REVIEW,medium
-Physics,Units and Measurements,Which SI base unit measures thermodynamic temperature?,newton,ampere,kelvin,joule,2,The SI base unit of thermodynamic temperature is kelvin (K).,NEEDS HUMAN REVIEW,medium
+Physics,Units and Measurements,Practice variant 4 for Units and Measurements: Which SI base unit measures thermodynamic temperature?,newton,ampere,kelvin,joule,2,The SI base unit of thermodynamic temperature is kelvin (K).,NEEDS HUMAN REVIEW,medium
 Physics,Motion,A body starts at 12 m/s and accelerates at 5 m/s² for 3 s. Find its final velocity.,28,26,29,27,3,v=u+at=12+5×3=27 m/s.,NEEDS HUMAN REVIEW,medium
 Physics,Newton's Laws,A 13 kg object accelerates at 6 m/s². Find the net force.,78,79,77,80,0,Newton's second law: F=ma=13×6=78 N.,NEEDS HUMAN REVIEW,medium
 Physics,Momentum,Find the momentum of a 2 kg body moving at 6 m/s.,14,12,13,11,1,Momentum p=mv=2×6=12 kg·m/s.,NEEDS HUMAN REVIEW,medium

@@ -124,6 +124,8 @@ test.describe("Full Mock Test", () => {
     await loginUi(page, studentEmail, "StudentPass123!");
 
     await expect(page.getByRole("navigation", { name: "Student navigation" })).toBeVisible();
+    await page.getByRole("navigation", { name: "Student navigation" })
+      .getByRole("button", { name: "Practice", exact: true }).click();
     await page.getByRole("button", { name: "Start mock test" }).click();
 
     const question = page.locator(".question-card").first();

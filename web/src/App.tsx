@@ -205,7 +205,7 @@ export default function App() {
   }, [user, test, result]);
 
   async function openStudentNotification(id: string) {
-    await markStudentNotificationRead(id);
+    await markNotificationRead(id);
   }
 
   useEffect(() => {

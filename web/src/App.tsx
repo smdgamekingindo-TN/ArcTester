@@ -54,7 +54,7 @@ function OnlineStatusBanner() {
   return (
     !isOnline && (
       <div className="error" style={{ padding: "8px 16px", marginBottom: "8px", textAlign: "center" }}>
-        <strong>Offline</strong> &mdash; You are currently offline. Exam results and submissions require a connection.
+        <strong>Offline</strong> &mdash; You are currently offline. Some learning updates require a connection.
       </div>
     )
   );

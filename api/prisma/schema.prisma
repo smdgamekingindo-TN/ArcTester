@@ -108,6 +108,8 @@ model User {
   privateQuestions StudentPrivateQuestion[]
   practiceSets StudentPracticeSet[]
   mcpKeys StudentMcpKey[]
+  adminMcpKeys AdminMcpKey[]
+  adminMcpAuditLogs AdminMcpAuditLog[]
 
   @@index([role, accessStatus])
 }
@@ -771,4 +773,29 @@ model StudentMcpKey {
   lastUsedAt  DateTime?
   revokedAt   DateTime?
   @@index([userId, revokedAt])
+}
+
+model AdminMcpKey {
+  id          String   @id @default(cuid())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      Int
+  name        String
+  keyHash     String   @unique
+  scopes      String[]
+  createdAt   DateTime @default(now())
+  lastUsedAt  DateTime?
+  revokedAt   DateTime?
+  @@index([userId, revokedAt])
+}
+
+model AdminMcpAuditLog {
+  id          String   @id @default(cuid())
+  actor       User     @relation(fields: [actorId], references: [id], onDelete: Cascade)
+  actorId     Int
+  tool        String
+  success     Boolean
+  summary     String   @default("")
+  createdAt   DateTime @default(now())
+  @@index([actorId, createdAt])
+  @@index([createdAt])
 }

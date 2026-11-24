@@ -10,18 +10,16 @@ describe("StudentPracticeHistory", () => {
   beforeEach(() => mockedRequest.mockReset());
 
   it("lists completed attempts and opens the saved answer review", async () => {
-    mockedRequest.mockImplementation(async (path) => {
-      if (path.startsWith("/analytics/history")) return {
+    mockedRequest
+      .mockResolvedValueOnce({
         items: [{ attemptId: 41, mode: "mock", startedAt: "2026-11-24T02:00:00.000Z", finishedAt: "2026-11-24T05:00:00.000Z", score: 150, total: 200, expired: false }],
         page: 1, limit: 10, total: 1, totalPages: 1,
-      } as never;
-      if (path === "/tests/41/result") return {
+      } as never)
+      .mockResolvedValueOnce({
         attemptId: 41, mode: "mock", score: 1, incorrect: 0, unanswered: 0, total: 1,
         breakdown: [{ subject: "CSE", correct: 1, incorrect: 0, unanswered: 0, total: 1 }],
         questions: [{ questionId: 7, text: "A review test question", options: ["A", "B"], questionType: "mcq", answerData: {}, response: 0, selectedIndex: 0, correctIndex: 0, isCorrect: true, explanation: "Correct." }],
-      } as never;
-      throw new Error("Unexpected request " + path);
-    });
+      } as never);
 
     render(<StudentPracticeHistory />);
     expect(await screen.findByRole("heading", { name: "Full mock · Attempt #41" })).toBeInTheDocument();

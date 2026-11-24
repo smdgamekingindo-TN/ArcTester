@@ -99,6 +99,65 @@ export function studentMcpRouter(db: PrismaClient): Router {
     } catch (error) { next(error); }
   });
 
+  router.get("/student/private-questions", requireAuth, requireStudent, async (req: AuthedRequest, res, next) => {
+    try {
+      const query = z.object({ search: z.string().max(200).optional(), subject: z.string().max(100).optional(), limit: z.coerce.number().int().min(1).max(100).default(50) }).parse(req.query);
+      const questions = await db.studentPrivateQuestion.findMany({ where: { userId: req.user!.id, ...(query.subject ? { subject: query.subject } : {}), ...(query.search ? { text: { contains: query.search, mode: "insensitive" } } : {}) }, orderBy: { updatedAt: "desc" }, take: query.limit });
+      res.json({ ok: true, questions });
+    } catch (error) { next(error); }
+  });
+  router.post("/student/private-questions", requireAuth, requireStudent, async (req: AuthedRequest, res, next) => {
+    try {
+      const input = QuestionInput.parse(req.body);
+      const question = await db.studentPrivateQuestion.create({ data: { ...input, userId: req.user!.id, options: input.options as never } });
+      res.status(201).json({ ok: true, question });
+    } catch (error) { next(error); }
+  });
+  router.patch("/student/private-questions/:id", requireAuth, requireStudent, async (req: AuthedRequest, res, next) => {
+    try {
+      const patch = QuestionInput.partial().parse(req.body);
+      const existing = await db.studentPrivateQuestion.findFirst({ where: { id: req.params.id, userId: req.user!.id } });
+      if (!existing) return next(notFound("Private question not found."));
+      const merged = QuestionInput.parse({ ...existing, ...patch, options: patch.options ?? existing.options });
+      const question = await db.studentPrivateQuestion.update({ where: { id: existing.id }, data: { ...merged, options: merged.options as never } });
+      res.json({ ok: true, question });
+    } catch (error) { next(error); }
+  });
+  router.delete("/student/private-questions/:id", requireAuth, requireStudent, async (req: AuthedRequest, res, next) => {
+    try {
+      const result = await db.studentPrivateQuestion.deleteMany({ where: { id: req.params.id, userId: req.user!.id } });
+      if (!result.count) return next(notFound("Private question not found."));
+      res.json({ ok: true, deleted: true });
+    } catch (error) { next(error); }
+  });
+  router.post("/student/private-questions/import", requireAuth, requireStudent, expressJsonLimit, async (req: AuthedRequest, res, next) => {
+    try {
+      const input = z.object({ questions: z.array(QuestionInput).min(1).max(500) }).parse(req.body);
+      const result = await db.studentPrivateQuestion.createMany({ data: input.questions.map(q => ({ ...q, userId: req.user!.id, options: q.options as never })) });
+      res.status(201).json({ ok: true, imported: result.count });
+    } catch (error) { next(error); }
+  });
+  router.get("/student/practice-sets", requireAuth, requireStudent, async (req: AuthedRequest, res, next) => {
+    try {
+      const sets = await db.studentPracticeSet.findMany({ where: { userId: req.user!.id }, orderBy: { updatedAt: "desc" }, take: 100 });
+      res.json({ ok: true, practiceTests: sets });
+    } catch (error) { next(error); }
+  });
+  router.post("/student/practice-sets", requireAuth, requireStudent, async (req: AuthedRequest, res, next) => {
+    try {
+      const input = PracticeSetInput.parse(req.body);
+      const set = await db.studentPracticeSet.create({ data: { ...input, userId: req.user!.id, questions: input.questions as never } });
+      res.status(201).json({ ok: true, practiceTest: set });
+    } catch (error) { next(error); }
+  });
+  router.delete("/student/practice-sets/:id", requireAuth, requireStudent, async (req: AuthedRequest, res, next) => {
+    try {
+      const result = await db.studentPracticeSet.deleteMany({ where: { id: req.params.id, userId: req.user!.id } });
+      if (!result.count) return next(notFound("Practice test not found."));
+      res.json({ ok: true, deleted: true });
+    } catch (error) { next(error); }
+  });
+
   // Streamable HTTP MCP endpoint. Each key is student-owned and scope-limited.
   router.post("/mcp/student", expressJsonLimit, authenticateMcp.bind(null, db), async (req: Request & { studentMcpKey?: StudentKey }, res) => {
     const body = req.body as { jsonrpc?: unknown; id?: unknown; method?: unknown; params?: unknown };

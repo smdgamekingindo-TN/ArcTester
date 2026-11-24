@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import { Router, type Request, type Response, type NextFunction } from "express";
+import express, { Router, type Request, type Response, type NextFunction } from "express";
 import { z } from "zod";
 import type { PrismaClient } from "@prisma/client";
 import { badRequest, forbidden, notFound } from "./errors.js";
@@ -193,5 +193,5 @@ export function studentMcpRouter(db: PrismaClient): Router {
 }
 
 function expressJsonLimit(req: Request, res: Response, next: NextFunction) {
-  return import("express").then(({ default: express }) => express.json({ limit: "8mb" })(req, res, next));
+  express.json({ limit: "8mb" })(req, res, next);
 }

@@ -5,7 +5,7 @@ import type { PrismaClient } from "@prisma/client";
 import { forbidden, badRequest, notFound } from "./errors.js";
 import { requireAuth, requireAdmin, type AuthedRequest } from "./auth.js";
 import { importFromJson } from "./importService.js";
-import { QuestionInputSchema, encodeOptions } from "./questions.js";
+import { QuestionInputSchema } from "./questions.js";
 
 const PREFIX = "arc_admin_";
 const SCOPES = ["questions:read", "questions:create", "questions:review", "papers:create", "papers:read", "announcements:write", "activity:read"] as const;

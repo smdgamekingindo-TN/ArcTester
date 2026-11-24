@@ -105,6 +105,9 @@ model User {
   lessonDrafts LessonDraft[]
   uploadedLessonAudio LessonAudioAsset[]
   createdLessonVersions LessonVersion[]
+  privateQuestions StudentPrivateQuestion[]
+  practiceSets StudentPracticeSet[]
+  mcpKeys StudentMcpKey[]
 
   @@index([role, accessStatus])
 }
@@ -724,4 +727,48 @@ model LessonAudioAsset {
 
   @@unique([lessonDraftId, sceneIndex])
   @@index([lessonDraftId, narrationHash])
+}
+
+/// Student-owned practice content is isolated from the public/admin ECET bank.
+model StudentPrivateQuestion {
+  id          String   @id @default(cuid())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      Int
+  subject     String
+  topic       String   @default("General")
+  text        String
+  options     Json     @default("[]")
+  correctIndex Int     @default(0)
+  explanation String   @default("")
+  difficulty  String   @default("medium")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  @@index([userId, subject, topic])
+  @@index([userId, updatedAt])
+}
+
+model StudentPracticeSet {
+  id          String   @id @default(cuid())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      Int
+  title       String
+  description String   @default("")
+  durationMinutes Int  @default(20)
+  questions   Json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  @@index([userId, updatedAt])
+}
+
+model StudentMcpKey {
+  id          String   @id @default(cuid())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      Int
+  name        String
+  keyHash     String   @unique
+  scopes      String[]
+  createdAt   DateTime @default(now())
+  lastUsedAt  DateTime?
+  revokedAt   DateTime?
+  @@index([userId, revokedAt])
 }

@@ -173,6 +173,8 @@ export default function StudentAssignedExams() {
       setError((cause as Error).message || "Submission failed. Your answers are still available; try again.");
     } finally { setBusy(false); }
   };
+  useEffect(() => () => { if (saveTimerRef.current !== null) window.clearTimeout(saveTimerRef.current); }, []);
+
   useEffect(() => {
     if (active && remainingSeconds === 0 && !submittingRef.current) void submitExam();
   // submitExam intentionally uses the active exam snapshot and current answer state.

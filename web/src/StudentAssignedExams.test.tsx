@@ -46,7 +46,7 @@ describe("StudentAssignedExams", () => {
       "/exams/assignments/assignment-1/answers",
       expect.objectContaining({ method: "PUT" }),
     ));
-    fireEvent.click(screen.getByRole("button", { name: "Review & submit" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Review & submit" })[0]);
     fireEvent.click(screen.getByRole("button", { name: "Submit exam" }));
     await waitFor(() => expect(mockedRequest).toHaveBeenCalledWith(
       "/exams/assignments/assignment-1/submission",

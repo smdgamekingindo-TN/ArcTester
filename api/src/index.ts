@@ -126,7 +126,7 @@ export function buildApp(database: PrismaClient = db): express.Express {
   // lesson audio is base64 JSON (up to 12 MiB decoded), so parse it here with
   // enough headroom for the encoded payload; ordinary API requests stay at 1 MiB.
   app.use((req, res, next) => {
-    if (req.path === "/admin/questions/import" || req.path === "/analytics/import" || req.path === "/mcp/student") {
+    if (req.path === "/admin/questions/import" || req.path === "/analytics/import" || req.path === "/mcp/student" || req.path === "/student/private-questions/import") {
       return next();
     }
     const isLessonAudioUpload = /^\/admin\/lesson-drafts\/[^/]+\/scenes\/\d+\/audio$/.test(req.path);

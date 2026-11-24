@@ -43,8 +43,14 @@ export default function StudentAssignedExams() {
   const [now, setNow] = useState(Date.now());
   const [showSubmit, setShowSubmit] = useState(false);
   const [viewSubmission, setViewSubmission] = useState<Assignment | null>(null);
+  const [activeQuestionIndex, setActiveQuestionIndex] = useState(0);
+  const [markedForReview, setMarkedForReview] = useState<Set<string>>(new Set());
   const revisionRef = useRef(0);
   const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const saveTimerRef = useRef<number | null>(null);
+  const answersRef = useRef<Record<string, number | null>>({});
+  const dirtyRef = useRef(false);
+  const submissionUuidRef = useRef("");
   const submittingRef = useRef(false);
 
   const refresh = useCallback(async () => {
@@ -94,9 +100,15 @@ export default function StudentAssignedExams() {
         `/exams/assignments/${encodeURIComponent(assignment.id)}/answers`,
       );
       revisionRef.current = saved.revision ?? 0;
-      setAnswers(Object.fromEntries((saved.answers ?? []).map((answer) => [answer.examQuestionId, answer.selectedIndex])));
+      const restoredAnswers = Object.fromEntries((saved.answers ?? []).map((answer) => [answer.examQuestionId, answer.selectedIndex]));
+      answersRef.current = restoredAnswers;
+      setAnswers(restoredAnswers);
       saveQueueRef.current = Promise.resolve();
+      dirtyRef.current = false;
+      submissionUuidRef.current = crypto.randomUUID();
       submittingRef.current = false;
+      setActiveQuestionIndex(0);
+      setMarkedForReview(new Set());
       setShowSubmit(false);
       setActive({ assignment, exam, startedAt: session.startedAt, deadline: session.deadline });
     } catch (cause) {
@@ -106,24 +118,38 @@ export default function StudentAssignedExams() {
     }
   };
 
+  const flushAnswerSave = async () => {
+    if (!active) return;
+    if (saveTimerRef.current !== null) { window.clearTimeout(saveTimerRef.current); saveTimerRef.current = null; }
+    if (!dirtyRef.current) { await saveQueueRef.current; return; }
+    dirtyRef.current = false;
+    const snapshot = answersRef.current;
+    const payload: SavedAnswer[] = active.exam.questions.map((question) => ({ examQuestionId: question.id, selectedIndex: snapshot[question.id] ?? null }));
+    const queuedSave = saveQueueRef.current.catch(() => undefined).then(async () => {
+      const response = await request<{ revision: number }>("/exams/assignments/" + encodeURIComponent(active.assignment.id) + "/answers",
+        { method: "PUT", body: JSON.stringify({ revision: revisionRef.current, answers: payload }) });
+      revisionRef.current = response.revision;
+    });
+    saveQueueRef.current = queuedSave.catch((cause) => {
+      dirtyRef.current = true;
+      setError("Answer save failed. Your selections remain on screen. " + ((cause as Error).message || "Try submitting again."));
+      throw cause;
+    }).finally(() => setSaving(dirtyRef.current));
+    await saveQueueRef.current;
+  };
+
   const selectAnswer = (questionId: string, selectedIndex: number) => {
     if (!active || submittingRef.current) return;
-    const next = { ...answers, [questionId]: selectedIndex };
+    const next = { ...answersRef.current, [questionId]: selectedIndex };
+    answersRef.current = next;
     setAnswers(next);
-    const payload: SavedAnswer[] = active.exam.questions.map((question) => ({
-      examQuestionId: question.id,
-      selectedIndex: next[question.id] ?? null,
-    }));
+    dirtyRef.current = true;
     setSaving(true);
-    saveQueueRef.current = saveQueueRef.current.catch(() => undefined).then(async () => {
-      const response = await request<{ revision: number }>(
-        `/exams/assignments/${encodeURIComponent(active.assignment.id)}/answers`,
-        { method: "PUT", body: JSON.stringify({ revision: revisionRef.current, answers: payload }) },
-      );
-      revisionRef.current = response.revision;
-    }).catch((cause) => {
-      setError(`Answer save failed. Your current selections remain on screen; submit when ready. ${(cause as Error).message}`);
-    }).finally(() => setSaving(false));
+    if (saveTimerRef.current !== null) window.clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = window.setTimeout(() => {
+      saveTimerRef.current = null;
+      void flushAnswerSave().catch(() => undefined);
+    }, 350);
   };
 
   const submitExam = async () => {
@@ -132,36 +158,21 @@ export default function StudentAssignedExams() {
     setBusy(true);
     setError("");
     try {
-      await saveQueueRef.current;
-      const payload = active.exam.questions.map((question) => ({
-        examQuestionId: question.id,
-        selectedIndex: answers[question.id] ?? null,
-      }));
-      const response = await request<{ submission: { status: string; score: number | null; maximumScore: number | null } }>(
-        `/exams/assignments/${encodeURIComponent(active.assignment.id)}/submission`,
-        { method: "POST", body: JSON.stringify({
-          attemptUuid: crypto.randomUUID(),
-          startedAt: active.startedAt,
-          submittedAt: new Date().toISOString(),
-          revision: revisionRef.current,
-          answers: payload,
-        }) },
-      );
+      await flushAnswerSave();
+      const payload = active.exam.questions.map((question) => ({ examQuestionId: question.id, selectedIndex: answersRef.current[question.id] ?? null }));
+      const response = await request<{ submission: { status: string; score: number | null; maximumScore: number | null } }>("/exams/assignments/" + encodeURIComponent(active.assignment.id) + "/submission",
+        { method: "POST", body: JSON.stringify({ attemptUuid: submissionUuidRef.current || crypto.randomUUID(), startedAt: active.startedAt, submittedAt: new Date().toISOString(), revision: revisionRef.current, answers: payload }) });
       setActive(null);
       setAnswers({});
+      answersRef.current = {};
       setShowSubmit(false);
-      setNotice(response.submission?.status === "REVIEW_REQUIRED"
-        ? "Exam submitted. Your attempt is awaiting administrator review."
-        : "Exam submitted successfully.");
+      setNotice(response.submission?.status === "REVIEW_REQUIRED" ? "Exam submitted. Your attempt is awaiting administrator review." : "Exam submitted successfully.");
       await refresh();
     } catch (cause) {
       submittingRef.current = false;
       setError((cause as Error).message || "Submission failed. Your answers are still available; try again.");
-    } finally {
-      setBusy(false);
-    }
+    } finally { setBusy(false); }
   };
-
   useEffect(() => {
     if (active && remainingSeconds === 0 && !submittingRef.current) void submitExam();
   // submitExam intentionally uses the active exam snapshot and current answer state.

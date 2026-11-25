@@ -27,8 +27,11 @@ export default function AuthScreen({ email, password, register, busy, error, aca
       if (match) onAcademicChange("collegeCode", match.code);
     }
     if (field === "branchName") {
-      const match = AP_DIPLOMA_BRANCHES.find((branch) => branch.name.toLocaleLowerCase() === value.trim().toLocaleLowerCase());
-      if (match) onAcademicChange("branchCode", match.code);
+      const matches = AP_DIPLOMA_BRANCHES.filter((branch) => branch.name.toLocaleLowerCase() === value.trim().toLocaleLowerCase());
+      const uniqueCodes = [...new Set(matches.map((branch) => branch.code))];
+      // A branch name may exist in both C-23 and C-26 with different codes.
+      // Do not silently pick the wrong scheme when the name is ambiguous.
+      onAcademicChange("branchCode", uniqueCodes.length === 1 ? uniqueCodes[0] : "");
     }
   }
   return (

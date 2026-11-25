@@ -24,7 +24,8 @@ export default function StudentConceptLibrary({ api, darkMode }: { api: Api; dar
     const params = new URLSearchParams();
     if (query.trim()) params.set("q", query.trim());
     if (subject) params.set("subject", subject);
-    apiRef.current<LibraryResponse>("/concept-library" + (params.size ? "?" + params.toString() : ""))
+    const queryString = params.toString();
+    apiRef.current<LibraryResponse>("/concept-library" + (queryString ? "?" + queryString : ""))
       .then((value) => { if (active) setResult(value); })
       .catch((cause) => { if (active) setError(cause instanceof Error ? cause.message : "Could not load concepts."); })
       .finally(() => { if (active) setLoading(false); });

@@ -23,16 +23,21 @@ export function conceptLibraryRouter(db: PrismaClient): Router {
       if (!profile || profile.role !== "STUDENT") {
         return res.status(403).json({ error: "The student concept library is available to student accounts." });
       }
+      const branchOptions = {
+        branchCode: profile.branchCode ?? undefined,
+        branchName: profile.branchName ?? undefined,
+      };
       const concepts = listLearningConcepts({
         query: query.q,
         subject: query.subject,
         limit: query.limit,
-        branchCode: profile.branchCode ?? undefined,
-        branchName: profile.branchName ?? undefined,
+        ...branchOptions,
       });
+      const subjects = Array.from(new Set(listLearningConcepts({ ...branchOptions, limit: 50 }).map((concept) => concept.subject))).sort();
       return res.json({
         ok: true,
         branch: { code: profile.branchCode, name: profile.branchName },
+        subjects,
         count: concepts.length,
         concepts,
       });

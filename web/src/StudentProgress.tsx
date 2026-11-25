@@ -136,7 +136,7 @@ export default function StudentProgress() {
             <div className="section-head"><div><p className="eyebrow">RECENT ACTIVITY</p><h2>Practice trend</h2></div></div>
             {overview.practice.trend.length ? <>
               <div className="practice-trend-chart" role="img" aria-label="Practice accuracy across recent completed attempts">
-                {overview.practice.trend.map((attempt, index) => (
+                {overview.practice.trend.slice().reverse().map((attempt, index) => (
                   <div className="practice-trend-column" key={attempt.attemptId}>
                     <span className="practice-trend-value">{percentage(attempt.accuracy)}</span>
                     <div className="practice-trend-track">

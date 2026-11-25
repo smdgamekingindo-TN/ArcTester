@@ -127,7 +127,6 @@ describe("auth", () => {
 
   it("requires academic identity fields for new student registration", async () => {
     const res = await postJsonWithCookie(`${server.baseUrl}/auth/register`, {
-      ...STUDENT_PROFILE,
       email: "missing-profile@example.com",
       password: "secret1234",
     });

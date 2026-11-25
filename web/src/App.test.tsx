@@ -600,9 +600,11 @@ describe("live Vite application", () => {
     expect(screen.getByText("3")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /View detailed progress/ }));
-    expect(await screen.findByRole("heading", { name: "More ways to learn are on the way" })).toBeInTheDocument();
-    expect(screen.getByText("Learning summary")).toBeInTheDocument();
-    expect(screen.getByText("Progress dashboard")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Your progress" })).toBeInTheDocument();
+    expect(screen.getByText("Completed practice tests")).toBeInTheDocument();
+    expect(screen.getByText("Practice accuracy")).toBeInTheDocument();
+    expect(screen.getByText("Official submissions")).toBeInTheDocument();
+    expect(screen.getByText("80%")).toBeInTheDocument();
   });
 
   it("retries dashboard analytics after an incomplete response", async () => {

@@ -39,7 +39,7 @@ export default function AuthScreen({ email, password, register, busy, error, aca
       <a className="brand" href="#dashboard"><span className="brand-mark">A</span><span>ArcTester</span></a>
       <p className="eyebrow">{register ? "YOUR COLLEGE. YOUR BRANCH. YOUR PREPARATION." : "YOUR PERSONAL PRACTICE SPACE"}</p>
       <h1>{register ? "Create your account" : "Welcome back"}</h1>
-      <p className="muted">{register ? "Join ArcTester with your institute and diploma branch. Your account will be reviewed by an administrator before student access." : "Sign in to continue your preparation."}</p>
+      <p className="muted">{register ? "Join ArcTester with your institute and diploma branch. An administrator will review your account before student access." : "Sign in to continue your preparation."}</p>
       <form onSubmit={handleSubmit}>
         {register ? <>
           <label>Full name<input autoComplete="name" required minLength={2} maxLength={100} value={academicProfile.fullName} onChange={(event) => onAcademicChange("fullName", event.target.value)} /></label>

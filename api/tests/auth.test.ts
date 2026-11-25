@@ -24,6 +24,15 @@ const BANK: unknown[] = [
 
 const cookieJar = new Map<string, string>();
 
+const STUDENT_PROFILE = {
+  fullName: "Test Student",
+  collegeName: "Test Polytechnic",
+  collegeCode: "999",
+  postalPin: "533001",
+  branchName: "Diploma in Computer Engineering",
+  branchCode: "DCME",
+};
+
 function setCookieFromResponse(res: Response): void {
   const setCookie = res.headers.getSetCookie?.() ?? [];
   for (const cookie of setCookie) {
@@ -106,12 +115,21 @@ describe("auth", () => {
 
   it("registers a student without an invitation and leaves approval pending", async () => {
     const res = await postJsonWithCookie(`${server.baseUrl}/auth/register`, {
+      ...STUDENT_PROFILE,
       email: "alice@example.com",
       password: "secret1234",
     });
     expect(res.status).toBe(201);
     expect((res.json as { ok: boolean; user: { accessStatus: string } }).ok).toBe(true);
     expect((res.json as { user: { accessStatus: string } }).user.accessStatus).toBe("PENDING");
+  });
+
+  it("requires academic identity fields for new student registration", async () => {
+    const res = await postJsonWithCookie(`${server.baseUrl}/auth/register`, {
+      email: "missing-profile@example.com",
+      password: "secret1234",
+    });
+    expect(res.status).toBe(400);
   });
 
   it("rejects duplicate email", async () => {

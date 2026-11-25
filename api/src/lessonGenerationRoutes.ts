@@ -5,12 +5,25 @@ import type { PrismaClient } from "@prisma/client";
 import { requireAdmin, requireAuth, type AuthedRequest } from "./auth.js";
 import { badRequest, notFound } from "./errors.js";
 import { LessonScriptSchema, LessonStoryboardSchema } from "./lessonGeneration.js";
+import { isContentAudienceVisible, type ContentAudience } from "./contentAudience.js";
 
 const UpdateLessonDraftSchema = z.object({
   title: z.string().trim().min(3).max(160),
   script: z.unknown(),
   storyboard: z.unknown(),
-}).strict();
+  audienceScope: z.enum(["ALL", "COLLEGE", "BRANCH"]).optional(),
+  targetCollegeCode: z.string().trim().max(40).nullable().optional(),
+  targetCollegeName: z.string().trim().max(160).nullable().optional(),
+  targetBranchCode: z.string().trim().max(40).nullable().optional(),
+  targetBranchName: z.string().trim().max(160).nullable().optional(),
+}).strict().superRefine((input, ctx) => {
+  if (input.audienceScope === "COLLEGE" && !input.targetCollegeCode?.trim() && !input.targetCollegeName?.trim()) {
+    ctx.addIssue({ code: "custom", message: "A college code or name is required.", path: ["targetCollegeName"] });
+  }
+  if (input.audienceScope === "BRANCH" && !input.targetBranchCode?.trim() && !input.targetBranchName?.trim()) {
+    ctx.addIssue({ code: "custom", message: "A branch code or name is required.", path: ["targetBranchName"] });
+  }
+});
 
 const ImportLessonPackageSchema = z.object({
   title: z.string().trim().min(3).max(160),
@@ -19,9 +32,20 @@ const ImportLessonPackageSchema = z.object({
   fileName: z.string().trim().min(1).max(180).optional(),
   script: LessonScriptSchema,
   storyboard: LessonStoryboardSchema,
+  audienceScope: z.enum(["ALL", "COLLEGE", "BRANCH"]).default("ALL"),
+  targetCollegeCode: z.string().trim().max(40).default(""),
+  targetCollegeName: z.string().trim().max(160).default(""),
+  targetBranchCode: z.string().trim().max(40).default(""),
+  targetBranchName: z.string().trim().max(160).default(""),
 }).strict().superRefine((input, ctx) => {
   if (input.title !== input.script.title) {
     ctx.addIssue({ code: "custom", message: "Package title must match the lesson script title.", path: ["title"] });
+  }
+  if (input.audienceScope === "COLLEGE" && !input.targetCollegeCode && !input.targetCollegeName) {
+    ctx.addIssue({ code: "custom", message: "A college code or name is required.", path: ["targetCollegeName"] });
+  }
+  if (input.audienceScope === "BRANCH" && !input.targetBranchCode && !input.targetBranchName) {
+    ctx.addIssue({ code: "custom", message: "A branch code or name is required.", path: ["targetBranchName"] });
   }
 });
 
@@ -186,7 +210,7 @@ export function lessonGenerationRouter(db: PrismaClient): Router {
     try {
       const drafts = await db.lessonDraft.findMany({
         orderBy: { updatedAt: "desc" }, take: 100,
-        select: { id: true, title: true, subject: true, topic: true, status: true, provider: true, model: true, createdAt: true, updatedAt: true },
+        select: { id: true, title: true, subject: true, topic: true, status: true, provider: true, model: true, audienceScope: true, targetCollegeCode: true, targetCollegeName: true, targetBranchCode: true, targetBranchName: true, createdAt: true, updatedAt: true },
       });
       res.json({ ok: true, drafts });
     } catch (error) { next(error); }
@@ -212,7 +236,14 @@ export function lessonGenerationRouter(db: PrismaClient): Router {
       if (existing.status !== "DRAFT") return next(badRequest("Only unpublished lesson drafts can be edited."));
       const updated = await db.lessonDraft.updateMany({
         where: { id, status: "DRAFT" },
-        data: { title: input.title, scriptJson: JSON.stringify(script), storyboardJson: JSON.stringify(storyboard) },
+        data: {
+          title: input.title, scriptJson: JSON.stringify(script), storyboardJson: JSON.stringify(storyboard),
+          ...(input.audienceScope !== undefined ? { audienceScope: input.audienceScope } : {}),
+          ...(input.targetCollegeCode !== undefined ? { targetCollegeCode: input.targetCollegeCode || null } : {}),
+          ...(input.targetCollegeName !== undefined ? { targetCollegeName: input.targetCollegeName || null } : {}),
+          ...(input.targetBranchCode !== undefined ? { targetBranchCode: input.targetBranchCode || null } : {}),
+          ...(input.targetBranchName !== undefined ? { targetBranchName: input.targetBranchName || null } : {}),
+        },
       });
       if (updated.count !== 1) return next(badRequest("Only unpublished lesson drafts can be edited."));
       const draft = await db.lessonDraft.findUnique({ where: { id } });
@@ -283,6 +314,11 @@ export function lessonGenerationRouter(db: PrismaClient): Router {
           sourceText: "Imported static lesson content. No AI generation was requested.",
           scriptJson: JSON.stringify(input.script),
           storyboardJson: JSON.stringify(input.storyboard),
+          audienceScope: input.audienceScope,
+          targetCollegeCode: input.targetCollegeCode || null,
+          targetCollegeName: input.targetCollegeName || null,
+          targetBranchCode: input.targetBranchCode || null,
+          targetBranchName: input.targetBranchName || null,
           provider: "admin-upload",
           model: "static-json-v1",
           status: "DRAFT",

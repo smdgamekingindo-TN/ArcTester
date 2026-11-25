@@ -161,7 +161,7 @@ export const StudentAcademicProfileSchema = z.object({
   fullName: z.string().trim().min(2, "Enter your full name.").max(100),
   collegeName: z.string().trim().min(2, "Enter your college name.").max(180),
   collegeCode: z.string().trim().min(1, "Enter your college PIN / institute code.").max(16),
-  postalPin: z.string().trim().regex(/^\\d{6}$/, "Postal PIN must contain 6 digits.").or(z.literal("")).optional(),
+  postalPin: z.string().trim().regex(/^\d{6}$/, "Postal PIN must contain 6 digits.").or(z.literal("")).optional(),
   branchName: z.string().trim().min(2, "Choose or enter your diploma branch.").max(120),
   branchCode: z.string().trim().max(24).or(z.literal("")).optional(),
 });

@@ -133,9 +133,10 @@ export interface ConceptSearchOptions {
 function conceptBranchFamilies(branchCode?: string, branchName?: string): string[] {
   const code = (branchCode ?? "").trim().toLocaleUpperCase();
   const name = (branchName ?? "").trim().toLocaleLowerCase();
-  const computingCodes = new Set(["CM", "DCME", "DCSE", "DIT", "CAI", "AIM", "DAIM", "DAI", "CIOT", "CCN", "CCB", "DCT"]);
-  const computingHints = ["computer", "information technology", "artificial intelligence", "machine learning", "cloud computing", "big data", "internet of things", "networking"];
-  if (computingCodes.has(code) || computingHints.some((hint) => name.includes(hint))) return ["COMPUTING"];
+  const computingCodes = new Set(["CM", "DCME", "DCSE", "DIT", "CAI", "AIM", "DAIM", "DAI", "CIOT", "CCN", "CCB", "DCT", "CSE", "CS", "IT", "CST", "CSD", "AI", "ML", "CCP"]);
+  const normalizedCode = code.replace(/[^A-Z0-9]/g, "");
+  const computingHints = ["computer", "information technology", "artificial intelligence", "machine learning", "cloud computing", "big data", "internet of things", "networking", "software engineering", "data science", "cyber security", "programming", "computer applications"];
+  if (computingCodes.has(code) || computingCodes.has(normalizedCode) || computingHints.some((hint) => name.includes(hint))) return ["COMPUTING"];
   return [];
 }
 

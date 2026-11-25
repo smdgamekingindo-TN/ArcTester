@@ -14,7 +14,7 @@ describe("academic registration helpers", () => {
   it("searches institution names and codes and supports custom typed names", () => {
     expect(searchColleges("Andhra Polytechnic").some((item) => item.code === "010")).toBe(true);
     expect(searchColleges("010").some((item) => item.name === "Andhra Polytechnic, Kakinada")).toBe(true);
-    expect("My New Polytechnic".trim()).toBe("My New Polytechnic");
+    expect(validateAcademicRegistration({ ...valid, collegeName: "My New Polytechnic", collegeCode: "MY-01", branchName: "Diploma in a custom branch", branchCode: "" })).toBeNull();
   });
 
   it("searches both legacy and C-26 diploma branches", () => {

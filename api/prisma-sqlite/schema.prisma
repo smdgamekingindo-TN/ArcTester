@@ -94,6 +94,8 @@ model User {
   examSessions        ExamSession[]
   examSessionEvents   ExamSessionEvent[] @relation("SessionEventActor")
 
+  @@index([collegeName])
+  @@index([branchName])
   @@index([role, accessStatus])
 }
 

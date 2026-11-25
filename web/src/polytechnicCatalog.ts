@@ -48,6 +48,20 @@ export const AP_POLYTECHNIC_COLLEGES: CollegeOption[] = [
   { name: "Government Polytechnic, Madakasira", code: "206", district: "Ananthapuramu" },
   { name: "Government Polytechnic, Rayadurg", code: "165", district: "Ananthapuramu" },
   { name: "Government Polytechnic for Women, Hindupur", code: "058", district: "Ananthapuramu" },
+  { name: "Government Polytechnic for Women, Srikakulam", code: "088", district: "Srikakulam" },
+  { name: "M.R.A.G.R. Government Polytechnic, Vizianagaram", code: "038", district: "Vizianagaram" },
+  { name: "Government Polytechnic, Parvathipuram", code: "163", district: "Parvathipuram Manyam" },
+  { name: "Smt. Satrucharla Sasikala Devi Government Polytechnic, Chinnamaregi", code: "332", district: "Parvathipuram Manyam" },
+  { name: "Government Polytechnic, Rayachoti", code: "213", district: "Annamayya" },
+  { name: "Government Polytechnic, Machilipatnam", code: "215", district: "Krishna" },
+  { name: "Government Polytechnic, Atmakur", code: "305", district: "SPSR Nellore" },
+  { name: "Government Polytechnic, Repalle", code: "306", district: "Bapatla" },
+  { name: "Government Polytechnic, Narpala", code: "527", district: "Ananthapuramu" },
+  { name: "Government Polytechnic, Kamalapuram", code: "199", district: "YSR Kadapa" },
+  { name: "Government Polytechnic, Tadipatri", code: "198", district: "Ananthapuramu" },
+  { name: "Government Polytechnic, Madakasira", code: "206", district: "Ananthapuramu" },
+  { name: "Government Polytechnic, Rayadurg", code: "165", district: "Ananthapuramu" },
+  { name: "Government Polytechnic for Women, Hindupur", code: "058", district: "Ananthapuramu" },
 ];
 
 export const AP_DIPLOMA_BRANCHES: BranchOption[] = [

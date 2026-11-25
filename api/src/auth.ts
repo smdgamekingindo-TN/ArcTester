@@ -458,7 +458,7 @@ export function authRouter(db: PrismaClient): Router {
       if (user.accessStatus !== "APPROVED") return next(forbidden(user.accessStatus === "REJECTED" ? "Your account was not approved. Contact your administrator." : "Your account is waiting for administrator approval."));
       const token = signJwt({ sub: String(user.id), email: user.email, sv: user.sessionVersion });
       setSessionCookie(res, token);
-      res.json({ ok: true, user: { id: user.id, email: user.email, role: user.role } });
+      res.json({ ok: true, user: { id: user.id, email: user.email, role: user.role, fullName: user.fullName, collegeName: user.collegeName, collegeCode: user.collegeCode, postalPin: user.postalPin, branchName: user.branchName, branchCode: user.branchCode } });
     } catch (error) {
       next(error);
     }

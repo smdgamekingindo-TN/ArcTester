@@ -122,6 +122,8 @@ model User {
   modelRegistryAudits ModelRegistryAudit[]
   modelEvaluations ModelEvaluation[]
 
+  @@index([collegeName])
+  @@index([branchName])
   @@index([role, accessStatus])
 }
 

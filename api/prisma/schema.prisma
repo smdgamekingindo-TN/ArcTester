@@ -480,7 +480,7 @@ model StudyMaterial {
   updatedAt      DateTime @updatedAt
 
   @@index([status, subject, title])
-  @@index([audienceScope, targetCollegeCode, targetBranchCode])
+  @@index([audienceScope, targetCollegeCode, targetBranchCode], map: "StudyMaterial_audience_target_idx")
   @@index([uploadedById, createdAt])
 }
 

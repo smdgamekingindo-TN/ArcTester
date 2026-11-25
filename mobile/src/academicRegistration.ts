@@ -41,7 +41,7 @@ export function validateAcademicRegistration(profile: AcademicRegistration): str
   if (profile.fullName.trim().length < 2) return "Enter your full name.";
   if (profile.collegeName.trim().length < 2) return "Search or enter your college name.";
   if (!profile.collegeCode.trim()) return "Enter your college PIN / institute code.";
-  if (profile.postalPin && !/^\\d{6}$/.test(profile.postalPin.trim())) return "Postal PIN must contain 6 digits.";
+  if (profile.postalPin && !/^\d{6}$/.test(profile.postalPin.trim())) return "Postal PIN must contain 6 digits.";
   if (profile.branchName.trim().length < 2) return "Search or enter your diploma branch.";
   return null;
 }

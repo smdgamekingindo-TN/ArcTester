@@ -44,7 +44,7 @@ export default function AuthScreen({ email, password, register, busy, error, aca
         {register ? <>
           <label>Full name<input autoComplete="name" required minLength={2} maxLength={100} value={academicProfile.fullName} onChange={(event) => onAcademicChange("fullName", event.target.value)} /></label>
           <label>College / Polytechnic<input list="ap-polytechnic-options" autoComplete="organization" required minLength={2} maxLength={180} placeholder="Search or type your college name" value={academicProfile.collegeName} onChange={(event) => changeAcademic("collegeName", event.target.value)} /></label>
-          <datalist id="ap-polytechnic-options">{AP_POLYTECHNIC_COLLEGES.map((college) => <option key={college.code} value={college.name} label={college.code + " · " + college.district} />)}</datalist>
+          <datalist id="ap-polytechnic-options">{AP_POLYTECHNIC_COLLEGES.map((college) => <option key={college.code} value={college.name} label={college.code + (college.district ? " · " + college.district : "")} />)}</datalist>
           <p className="auth-field-hint">College not listed? Type its full name. You can register with a custom college.</p>
           <label>College PIN / institute code<input required maxLength={16} inputMode="text" autoComplete="off" placeholder="SBTET institute code, e.g. 010" value={academicProfile.collegeCode} onChange={(event) => onAcademicChange("collegeCode", event.target.value)} /></label>
           <label>Postal PIN code (optional)<input inputMode="numeric" pattern="[0-9]{6}" maxLength={6} autoComplete="postal-code" placeholder="6-digit postal PIN" value={academicProfile.postalPin} onChange={(event) => onAcademicChange("postalPin", event.target.value)} /></label>

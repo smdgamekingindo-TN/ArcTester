@@ -957,3 +957,8 @@ html[data-reduce-motion="true"] *,html[data-reduce-motion="true"] *::before,html
 
 .about-repository-link{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border:1px solid var(--border);border-radius:12px;color:var(--accent);font-size:12px;font-weight:850;text-decoration:none}
 .about-repository-link:hover{border-color:var(--accent);background:var(--accent-soft)}
+
+/* Student registration academic identity fields */
+.auth-field-hint{margin:-8px 0 2px;color:var(--muted);font-size:11px;line-height:1.55}
+.auth-card input[list]{text-overflow:ellipsis}
+.auth-card input[list]:focus{border-color:var(--accent)}

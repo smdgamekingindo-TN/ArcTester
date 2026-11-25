@@ -488,7 +488,7 @@ export function authRouter(db: PrismaClient): Router {
         token,
         tokenType: "Bearer",
         expiresIn: JWT_TTL_SECONDS,
-        user: { id: user.id, email: user.email, role: user.role },
+        user: { id: user.id, email: user.email, role: user.role, fullName: user.fullName, collegeName: user.collegeName, collegeCode: user.collegeCode, postalPin: user.postalPin, branchName: user.branchName, branchCode: user.branchCode },
       });
     } catch (error) {
       next(error);

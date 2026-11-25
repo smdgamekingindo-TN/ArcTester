@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { AP_DIPLOMA_BRANCHES } from "./polytechnicCatalog";
 
 const API = (import.meta.env.VITE_API_URL || "https://arctester.onrender.com").replace(/\/+$/, "");
 const MAX_IMPORT_FILE_BYTES = 256 * 1024;

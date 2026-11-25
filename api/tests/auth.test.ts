@@ -275,7 +275,7 @@ describe("auth", () => {
 
   it("changes password, rotates the current session and revokes the previous session", async () => {
     const email = "password-change@example.com";
-    await postJsonWithCookie(`${server.baseUrl}/auth/register`, { email, password: "old-password-123" });
+    await postJsonWithCookie(`${server.baseUrl}/auth/register`, { ...STUDENT_PROFILE, email, password: "old-password-123" });
     await server.db.user.update({ where: { email }, data: { accessStatus: "APPROVED" } });
     const login = await postJsonWithCookie(`${server.baseUrl}/auth/login`, { email, password: "old-password-123" });
     expect(login.status).toBe(200);

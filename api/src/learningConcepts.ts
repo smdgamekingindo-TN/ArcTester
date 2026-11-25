@@ -128,6 +128,8 @@ export interface ConceptSearchOptions {
   limit?: number;
   branchCode?: string;
   branchName?: string;
+  /** Opt in to hiding branch-tagged concepts when the profile is unknown. */
+  branchAware?: boolean;
 }
 
 function conceptBranchFamilies(branchCode?: string, branchName?: string): string[] {
@@ -143,9 +145,9 @@ function conceptBranchFamilies(branchCode?: string, branchName?: string): string
 export function listLearningConcepts(options: ConceptSearchOptions = {}): LearningConcept[] {
   const query = options.query?.trim().toLocaleLowerCase();
   const subject = options.subject?.trim().toLocaleLowerCase();
-  const branchFamilies = conceptBranchFamilies(options.branchCode, options.branchName);
+  const branchFamilies = options.branchAware ? conceptBranchFamilies(options.branchCode, options.branchName) : ["COMPUTING"];
   const filtered = CONCEPTS.filter((concept) => {
-    if (concept.branchFamilies?.length && !concept.branchFamilies.some((family) => family === "ALL" || branchFamilies.includes(family))) return false;
+    if (options.branchAware && concept.branchFamilies?.length && !concept.branchFamilies.some((family) => family === "ALL" || branchFamilies.includes(family))) return false;
     if (subject && concept.subject.toLocaleLowerCase() !== subject) return false;
     if (!query) return true;
     const searchable = [

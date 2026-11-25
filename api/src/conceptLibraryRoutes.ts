@@ -26,6 +26,7 @@ export function conceptLibraryRouter(db: PrismaClient): Router {
       const branchOptions = {
         branchCode: profile.branchCode ?? undefined,
         branchName: profile.branchName ?? undefined,
+        branchAware: true,
       };
       const concepts = listLearningConcepts({
         query: query.q,

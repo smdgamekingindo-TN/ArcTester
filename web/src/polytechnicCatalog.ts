@@ -53,7 +53,6 @@ export const AP_POLYTECHNIC_COLLEGES: CollegeOption[] = [
   { name: "Government Polytechnic, Madakasira", code: "206", district: "Ananthapuramu" },
   { name: "Government Polytechnic, Rayadurg", code: "165", district: "Ananthapuramu" },
   { name: "Government Polytechnic for Women, Hindupur", code: "058", district: "Ananthapuramu" },
-];
 
   { name: "S.M.V.M. Polytechnic, Tanuku", code: "012" },
   { name: "Government Polytechnic, Proddatur", code: "022" },
@@ -116,6 +115,8 @@ export const AP_POLYTECHNIC_COLLEGES: CollegeOption[] = [
   { name: "Government Polytechnic, Bethamcherla", code: "668" },
   { name: "Government Polytechnic, Guntakal", code: "669" },
   { name: "Government Polytechnic, Mydukur", code: "670" },
+];
+
 
 export const AP_DIPLOMA_BRANCHES: BranchOption[] = [
   { name: "Diploma in Applied Electronics and Instrumentation Engineering", code: "AEI" },

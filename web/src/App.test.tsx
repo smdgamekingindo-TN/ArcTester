@@ -607,7 +607,7 @@ describe("live Vite application", () => {
     expect(screen.getByText("Completed practice tests")).toBeInTheDocument();
     expect(screen.getByText("Practice accuracy")).toBeInTheDocument();
     expect(screen.getByText("Official submissions")).toBeInTheDocument();
-    expect(screen.getByText("80%")).toBeInTheDocument();
+    expect(screen.getAllByText("80%").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByRole("img", { name: "Practice accuracy across recent completed attempts" })).toBeInTheDocument();
   });
 

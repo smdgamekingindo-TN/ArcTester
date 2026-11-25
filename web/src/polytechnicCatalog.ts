@@ -1,4 +1,4 @@
-// Andhra Pradesh SBTET government-polytechnic starter directory (2025-26 affiliation list).
+// AP POLYCET 2026 helpline-center directory plus SBTET affiliation entries (2025-26).
 // College codes are institute codes (preserve leading zeroes). Students can type a college
 // or branch not listed here; this local suggestion catalog never blocks registration.
 export type CollegeOption = { name: string; code: string; district?: string };

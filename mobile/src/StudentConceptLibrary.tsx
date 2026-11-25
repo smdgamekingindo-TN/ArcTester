@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { mobilePalette, radius, spacing, typeScale } from "./design/tokens";
 
@@ -13,6 +13,8 @@ export default function StudentConceptLibrary({ api, darkMode }: { api: Api; dar
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [retry, setRetry] = useState(0);
+  const apiRef = useRef(api);
+  apiRef.current = api;
   const palette = darkMode ? mobilePalette.dark : mobilePalette.light;
 
   useEffect(() => {
@@ -22,12 +24,12 @@ export default function StudentConceptLibrary({ api, darkMode }: { api: Api; dar
     const params = new URLSearchParams();
     if (query.trim()) params.set("q", query.trim());
     if (subject) params.set("subject", subject);
-    api<LibraryResponse>("/concept-library" + (params.size ? "?" + params.toString() : ""))
+    apiRef.current<LibraryResponse>("/concept-library" + (params.size ? "?" + params.toString() : ""))
       .then((value) => { if (active) setResult(value); })
       .catch((cause) => { if (active) setError(cause instanceof Error ? cause.message : "Could not load concepts."); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [api, query, subject, retry]);
+  }, [query, subject, retry]);
 
   const concepts = result?.concepts ?? [];
   return <View style={[styles.container, { backgroundColor: palette.surface, borderColor: palette.border }]}>
@@ -57,7 +59,7 @@ const styles = StyleSheet.create({
   muted: { fontSize: typeScale.size.sm, lineHeight: 20 },
   input: { minHeight: 46, borderWidth: 1, borderRadius: radius.lg, paddingHorizontal: spacing["3"], fontSize: typeScale.size.md },
   subjectRow: { gap: spacing["2"], paddingVertical: 2 },
-  subjectChip: { borderWidth: 1, borderRadius: radius.full, paddingHorizontal: spacing["3"], paddingVertical: spacing["2"] },
+  subjectChip: { borderWidth: 1, borderRadius: 999, paddingHorizontal: spacing["3"], paddingVertical: spacing["2"] },
   conceptCard: { borderWidth: 1, borderRadius: radius.lg, padding: spacing["3"], gap: spacing["2"] },
   topic: { fontSize: 10, fontWeight: "900", textTransform: "uppercase", letterSpacing: .7 },
   conceptTitle: { fontSize: typeScale.size.lg, fontWeight: "900" },

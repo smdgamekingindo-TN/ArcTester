@@ -39,9 +39,9 @@ describe("AuthScreen", () => {
   it("autofills institute and course codes from known catalog matches", () => {
     const props = renderAuth({ register: true });
     fireEvent.change(screen.getByLabelText("College / Polytechnic"), { target: { value: "Andhra Polytechnic, Kakinada" } });
-    fireEvent.change(screen.getByLabelText("Diploma branch"), { target: { value: "Diploma in Computer Engineering" } });
+    fireEvent.change(screen.getByLabelText("Diploma branch"), { target: { value: "Diploma in Computer Engineering (Artificial Intelligence)" } });
     expect(props.onAcademicChange).toHaveBeenCalledWith("collegeCode", "010");
-    expect(props.onAcademicChange).toHaveBeenCalledWith("branchCode", "DCME");
+    expect(props.onAcademicChange).toHaveBeenCalledWith("branchCode", "CAI");
   });
   it("disables submission while busy and exposes API errors", () => {
     renderAuth({ busy: true, error: "The invitation has expired." });

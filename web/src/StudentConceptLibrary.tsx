@@ -5,12 +5,13 @@ type Concept = {
   slug: string; title: string; subject: string; topic: string; definition: string;
   examples: string[]; relatedConcepts: string[]; commonMistakes: string[];
 };
-type LibraryResponse = { branch: { code: string | null; name: string | null }; count: number; concepts: Concept[] };
+type LibraryResponse = { branch: { code: string | null; name: string | null }; subjects: string[]; count: number; concepts: Concept[] };
 type Props = { setActivePage: (page: string) => void };
 
 export default function StudentConceptLibrary({ setActivePage }: Props) {
   const [query, setQuery] = useState("");
   const [subject, setSubject] = useState("");
+  const [retry, setRetry] = useState(0);
   const [result, setResult] = useState<LibraryResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -27,10 +28,10 @@ export default function StudentConceptLibrary({ setActivePage }: Props) {
       .catch((cause) => { if (active) setError(cause instanceof Error ? cause.message : "Could not load concepts."); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [query, subject]);
+  }, [query, subject, retry]);
 
   const concepts = result?.concepts ?? [];
-  const subjects = Array.from(new Set(concepts.map((concept) => concept.subject))).sort();
+  const subjects = result?.subjects ?? [];
 
   return <div className="stack student-concept-library">
     <section className="page-intro">
@@ -46,7 +47,7 @@ export default function StudentConceptLibrary({ setActivePage }: Props) {
         <label>Subject<select aria-label="Filter concept subject" value={subject} onChange={(event) => setSubject(event.target.value)}><option value="">All subjects</option>{subjects.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
       </div>
       {loading && <p className="muted">Loading branch concepts…</p>}
-      {error && <div className="student-load-error" role="alert"><p>{error}</p><button className="button button-secondary" onClick={() => { setQuery((value) => value); setSubject((value) => value); }}>Retry</button></div>}
+      {error && <div className="student-load-error" role="alert"><p>{error}</p><button className="button button-secondary" onClick={() => setRetry((value) => value + 1)}>Retry</button></div>}
       {!loading && !error && concepts.length === 0 && <div className="empty-state"><h3>No concepts match</h3><p className="muted">Try a different search. New branch content will appear here as it is curated.</p></div>}
       <div className="student-concept-grid">{concepts.map((concept) => <article className="student-concept-card" key={concept.slug}>
         <div className="student-concept-card-head"><span className="pill">{concept.subject}</span><small>{concept.topic}</small></div>

@@ -127,6 +127,7 @@ describe("auth", () => {
 
   it("requires academic identity fields for new student registration", async () => {
     const res = await postJsonWithCookie(`${server.baseUrl}/auth/register`, {
+      ...STUDENT_PROFILE,
       email: "missing-profile@example.com",
       password: "secret1234",
     });
@@ -165,6 +166,7 @@ describe("auth", () => {
       ...STUDENT_PROFILE,
     const invitationToken = await issueTestInvitation(server.db, "alice@example.com");
     const res = await postJsonWithCookie(`${server.baseUrl}/auth/register`, {
+      ...STUDENT_PROFILE,
       email: "alice@example.com",
       password: "secret1234",
       invitationToken,
@@ -177,6 +179,7 @@ describe("auth", () => {
   it("rejects weak password", async () => {
     const invitationToken = await issueTestInvitation(server.db, "bob@example.com");
     const res = await postJsonWithCookie(`${server.baseUrl}/auth/register`, {
+      ...STUDENT_PROFILE,
       email: "bob@example.com",
       password: "short",
       invitationToken,
@@ -212,6 +215,7 @@ describe("auth", () => {
   it("throttles failures per account: one account's failures do not lock out another", async () => {
     const bobToken = await issueTestInvitation(server.db, "bob@example.com");
     await postJsonWithCookie(`${server.baseUrl}/auth/register`, {
+      ...STUDENT_PROFILE,
       email: "bob@example.com",
       password: "secret1234",
       invitationToken: bobToken,
@@ -322,6 +326,7 @@ describe("auth — bearer token (native/mobile clients)", () => {
   it("/auth/token returns a JWT without setting a cookie", async () => {
     const invitationToken = await issueTestInvitation(server.db, "mobile@example.com");
     await postJson(`${server.baseUrl}/auth/register`, {
+      ...STUDENT_PROFILE,
       email: "mobile@example.com",
       password: "secret1234",
       invitationToken,

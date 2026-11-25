@@ -79,6 +79,12 @@ model User {
   postalPin           String?
   branchName          String?
   branchCode          String?
+  fullName           String?
+  collegeName         String?
+  collegeCode         String?
+  postalPin           String?
+  branchName          String?
+  branchCode          String?
   createdAt          DateTime     @default(now())
   attempts           Attempt[]
   stats              Stat[]

@@ -121,6 +121,7 @@ describe("auth", () => {
     });
     expect(res.status).toBe(201);
     expect((res.json as { ok: boolean; user: { accessStatus: string } }).ok).toBe(true);
+      ...STUDENT_PROFILE,
     expect((res.json as { user: { accessStatus: string } }).user.accessStatus).toBe("PENDING");
   });
 
@@ -132,7 +133,36 @@ describe("auth", () => {
     expect(res.status).toBe(400);
   });
 
+  it("updates and returns the student's academic profile", async () => {
+    const email = "profile-update@example.com";
+    await postJsonWithCookie(`${server.baseUrl}/auth/register`, {
+      ...STUDENT_PROFILE,
+      email,
+      password: "profile-password-123",
+    });
+    await server.db.user.update({ where: { email }, data: { accessStatus: "APPROVED" } });
+    const login = await postJsonWithCookie(`${server.baseUrl}/auth/login`, { email, password: "profile-password-123" });
+    expect(login.status).toBe(200);
+    const updatedProfile = {
+      fullName: "Updated Test Student",
+      collegeName: "New Polytechnic",
+      collegeCode: "321",
+      postalPin: "522001",
+      branchName: "Diploma in Electrical and Electronics Engineering",
+      branchCode: "DEEE",
+    };
+    const patch = await fetch(`${server.baseUrl}/auth/profile`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json", cookie: `ecet_session=${cookieJar.get("ecet_session")}` },
+      body: JSON.stringify(updatedProfile),
+    });
+    expect(patch.status).toBe(200);
+    const me = await getJsonWithCookie(`${server.baseUrl}/auth/me`);
+    expect((me.json as { user: typeof updatedProfile }).user).toMatchObject(updatedProfile);
+  });
+
   it("rejects duplicate email", async () => {
+      ...STUDENT_PROFILE,
     const invitationToken = await issueTestInvitation(server.db, "alice@example.com");
     const res = await postJsonWithCookie(`${server.baseUrl}/auth/register`, {
       email: "alice@example.com",
@@ -141,6 +171,7 @@ describe("auth", () => {
     });
     expect(res.status).toBe(409);
     expect((res.json as { error: string }).error).toContain("already exists");
+      ...STUDENT_PROFILE,
   });
 
   it("rejects weak password", async () => {
@@ -152,6 +183,7 @@ describe("auth", () => {
     });
     expect(res.status).toBe(400);
     expect((res.json as { error: string }).error).toBe("That request was invalid.");
+      ...STUDENT_PROFILE,
   });
 
   it("blocks pending students until an administrator approves them", async () => {
@@ -185,6 +217,7 @@ describe("auth", () => {
       invitationToken: bobToken,
     });
     await server.db.user.update({ where: { email: "bob@example.com" }, data: { accessStatus: "APPROVED" } });
+      ...STUDENT_PROFILE,
 
     // 8 failed attempts against alice lock alice's account.
     for (let i = 0; i < 8; i += 1) {
@@ -294,6 +327,7 @@ describe("auth — bearer token (native/mobile clients)", () => {
       invitationToken,
     });
     await server.db.user.update({ where: { email: "mobile@example.com" }, data: { accessStatus: "APPROVED" } });
+      ...STUDENT_PROFILE,
     const res = await fetch(`${server.baseUrl}/auth/token`, {
       method: "POST",
       headers: { "content-type": "application/json" },

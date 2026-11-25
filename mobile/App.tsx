@@ -41,7 +41,7 @@ const API_URL = (() => {
   if (!/^https:\/\//.test(url)) throw new Error("EXPO_PUBLIC_API_URL must use https (cleartext http is blocked on Android).");
   return url.replace(/\/+$/, "");
 })();
-type User = { id: number; email: string; role: "ADMIN" | "STUDENT" };
+type User = { id: number; email: string; role: "ADMIN" | "STUDENT"; fullName?: string | null; collegeName?: string | null; collegeCode?: string | null; postalPin?: string | null; branchName?: string | null; branchCode?: string | null };
 type GamificationSnapshot = { totalXp: number; xpBalance: number; currentStreak: number; longestStreak: number; dailyGoalXp: number; streakFreezeInventory: number; level: number; xpIntoLevel: number; xpToNextLevel: number; today: { xpEarned: number; goalReachedAt: string | null } | null; week: { date: string; xpEarned: number; goalReached: boolean; freezeUsed: boolean }[]; dailyChallengeCompleted: boolean };
 type Bank = { total: number; practiceTotal?: number; subjects: { subject: string; count: number; practiceCount?: number; topics?: { topic: string; count: number; practiceCount?: number }[] }[] };
 type Announcement = {
@@ -1129,7 +1129,7 @@ export default function App() {
                   placeholder="Postal PIN code (optional, 6 digits)"
                   placeholderTextColor="#8b95a7"
                   value={academicProfile.postalPin}
-                  onChangeText={(value) => setAcademicProfile((current) => ({ ...current, postalPin: value.replace(/\\D/g, "") }))}
+                  onChangeText={(value) => setAcademicProfile((current) => ({ ...current, postalPin: value.replace(/\D/g, "") }))}
                   style={[styles.input, darkMode && { backgroundColor: "#1e293b", borderColor: "#334155", color: "#f1f5f9" }]}
                 />
                 <TextInput

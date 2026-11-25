@@ -20,6 +20,17 @@ type AuthScreenProps = {
 };
 export default function AuthScreen({ email, password, register, busy, error, academicProfile, onAcademicChange, onEmailChange, onPasswordChange, onRegisterChange, onAuthenticate }: AuthScreenProps) {
   function handleSubmit(event: FormEvent<HTMLFormElement>) { event.preventDefault(); onAuthenticate(); }
+  function changeAcademic(field: AcademicField, value: string) {
+    onAcademicChange(field, value);
+    if (field === "collegeName") {
+      const match = AP_POLYTECHNIC_COLLEGES.find((college) => college.name.toLocaleLowerCase() === value.trim().toLocaleLowerCase());
+      if (match) onAcademicChange("collegeCode", match.code);
+    }
+    if (field === "branchName") {
+      const match = AP_DIPLOMA_BRANCHES.find((branch) => branch.name.toLocaleLowerCase() === value.trim().toLocaleLowerCase());
+      if (match) onAcademicChange("branchCode", match.code);
+    }
+  }
   return (
     <main className="auth-shell"><section className="auth-card">
       <a className="brand" href="#dashboard"><span className="brand-mark">A</span><span>ArcTester</span></a>
@@ -29,12 +40,12 @@ export default function AuthScreen({ email, password, register, busy, error, aca
       <form onSubmit={handleSubmit}>
         {register ? <>
           <label>Full name<input autoComplete="name" required minLength={2} maxLength={100} value={academicProfile.fullName} onChange={(event) => onAcademicChange("fullName", event.target.value)} /></label>
-          <label>College / Polytechnic<input list="ap-polytechnic-options" autoComplete="organization" required minLength={2} maxLength={180} placeholder="Search or type your college name" value={academicProfile.collegeName} onChange={(event) => onAcademicChange("collegeName", event.target.value)} /></label>
+          <label>College / Polytechnic<input list="ap-polytechnic-options" autoComplete="organization" required minLength={2} maxLength={180} placeholder="Search or type your college name" value={academicProfile.collegeName} onChange={(event) => changeAcademic("collegeName", event.target.value)} /></label>
           <datalist id="ap-polytechnic-options">{AP_POLYTECHNIC_COLLEGES.map((college) => <option key={college.code} value={college.name} label={college.code + " · " + college.district} />)}</datalist>
           <p className="auth-field-hint">College not listed? Type its full name. You can register with a custom college.</p>
           <label>College PIN / institute code<input required maxLength={16} inputMode="text" autoComplete="off" placeholder="SBTET institute code, e.g. 010" value={academicProfile.collegeCode} onChange={(event) => onAcademicChange("collegeCode", event.target.value)} /></label>
           <label>Postal PIN code (optional)<input inputMode="numeric" pattern="[0-9]{6}" maxLength={6} autoComplete="postal-code" placeholder="6-digit postal PIN" value={academicProfile.postalPin} onChange={(event) => onAcademicChange("postalPin", event.target.value)} /></label>
-          <label>Diploma branch<input list="ap-diploma-branch-options" required minLength={2} maxLength={120} placeholder="Search or type your branch" value={academicProfile.branchName} onChange={(event) => onAcademicChange("branchName", event.target.value)} /></label>
+          <label>Diploma branch<input list="ap-diploma-branch-options" required minLength={2} maxLength={120} placeholder="Search or type your branch" value={academicProfile.branchName} onChange={(event) => changeAcademic("branchName", event.target.value)} /></label>
           <datalist id="ap-diploma-branch-options">{AP_DIPLOMA_BRANCHES.map((branch) => <option key={branch.code} value={branch.name} label={branch.code} />)}</datalist>
           <p className="auth-field-hint">Branch not listed? Enter the official branch name. The list is a starter catalog and will expand.</p>
           <label>Branch code (optional)<input maxLength={24} placeholder="Auto-filled for listed branches" value={academicProfile.branchCode} onChange={(event) => onAcademicChange("branchCode", event.target.value)} /></label>

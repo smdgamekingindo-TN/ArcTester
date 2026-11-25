@@ -77,11 +77,11 @@ export function lessonGenerationRouter(db: PrismaClient): Router {
   const router = Router();
   router.get("/lessons/:id", requireAuth, async (req: AuthedRequest, res, next) => {
     try {
-      const account = await db.user.findUnique({ where: { id: req.user!.id }, select: { role: true } });
+      const account = await db.user.findUnique({ where: { id: req.user!.id }, select: { role: true, collegeCode: true, collegeName: true, branchCode: true, branchName: true } });
       if (account?.role !== "STUDENT") return res.status(403).json({ error: "Published lessons are available to student accounts." });
       const id = z.string().trim().min(1).max(64).parse(req.params.id);
-      const draft = await db.lessonDraft.findFirst({ where: { id, status: "PUBLISHED" }, select: { id: true, title: true, subject: true, topic: true, scriptJson: true, storyboardJson: true } });
-      if (!draft) return next(notFound("Published lesson was not found."));
+      const draft = await db.lessonDraft.findFirst({ where: { id, status: "PUBLISHED" }, select: { id: true, title: true, subject: true, topic: true, scriptJson: true, storyboardJson: true, audienceScope: true, targetCollegeCode: true, targetCollegeName: true, targetBranchCode: true, targetBranchName: true } });
+      if (!draft || !isContentAudienceVisible(draft as ContentAudience, account)) return next(notFound("Published lesson was not found."));
       const script = LessonScriptSchema.parse(JSON.parse(draft.scriptJson) as unknown);
       const storyboard = LessonStoryboardSchema.parse(JSON.parse(draft.storyboardJson) as unknown);
       return res.json({ ok: true, lesson: { id: draft.id, title: draft.title, subject: draft.subject, topic: draft.topic, script, storyboard } });
@@ -92,18 +92,20 @@ export function lessonGenerationRouter(db: PrismaClient): Router {
   });
   router.get("/lessons", requireAuth, async (req: AuthedRequest, res, next) => {
     try {
-      const account = await db.user.findUnique({ where: { id: req.user!.id }, select: { role: true } });
+      const account = await db.user.findUnique({ where: { id: req.user!.id }, select: { role: true, collegeCode: true, collegeName: true, branchCode: true, branchName: true } });
       if (account?.role !== "STUDENT") return res.status(403).json({ error: "Published lessons are available to student accounts." });
       const published = await db.lessonDraft.findMany({
         where: { status: "PUBLISHED" },
         orderBy: [{ updatedAt: "desc" }, { id: "asc" }],
-        take: 100,
+        take: 300,
         select: {
           id: true, title: true, subject: true, topic: true, updatedAt: true,
+          audienceScope: true, targetCollegeCode: true, targetCollegeName: true, targetBranchCode: true, targetBranchName: true,
           activeVersion: { select: { id: true, version: true, packageSchemaVersion: true, manifestSha256: true } },
         },
       });
-      const lessons = published.map((draft) => ({
+      const visiblePublished = published.filter((draft) => isContentAudienceVisible(draft as ContentAudience, account));
+      const lessons = visiblePublished.map((draft) => ({
         id: draft.id, title: draft.title, subject: draft.subject, topic: draft.topic, updatedAt: draft.updatedAt,
         package: draft.activeVersion ? {
           versionId: draft.activeVersion.id,
@@ -117,12 +119,12 @@ export function lessonGenerationRouter(db: PrismaClient): Router {
   });
   router.get("/lessons/:id/scenes/:sceneIndex/audio", requireAuth, async (req: AuthedRequest, res, next) => {
     try {
-      const account = await db.user.findUnique({ where: { id: req.user!.id }, select: { role: true } });
+      const account = await db.user.findUnique({ where: { id: req.user!.id }, select: { role: true, collegeCode: true, collegeName: true, branchCode: true, branchName: true } });
       if (account?.role !== "STUDENT") return res.status(403).json({ error: "Lesson narration is available to student accounts." });
       const id = z.string().trim().min(1).max(64).parse(req.params.id);
       const sceneIndex = z.coerce.number().int().min(0).max(23).parse(req.params.sceneIndex);
-      const draft = await db.lessonDraft.findFirst({ where: { id, status: "PUBLISHED" }, select: { storyboardJson: true } });
-      if (!draft) return next(notFound("Published lesson was not found."));
+      const draft = await db.lessonDraft.findFirst({ where: { id, status: "PUBLISHED" }, select: { storyboardJson: true, audienceScope: true, targetCollegeCode: true, targetCollegeName: true, targetBranchCode: true, targetBranchName: true } });
+      if (!draft || !isContentAudienceVisible(draft as ContentAudience, account)) return next(notFound("Published lesson was not found."));
       const storyboard = LessonStoryboardSchema.parse(JSON.parse(draft.storyboardJson) as unknown);
       const scene = storyboard.scenes[sceneIndex];
       if (!scene) return next(notFound("Lesson scene was not found."));

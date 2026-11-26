@@ -18,6 +18,19 @@ let cpuPercent = 0;
 let cleanupPersistCount = 0;
 const samples: LatencySample[] = [];
 const MAX_SAMPLES = 512;
+const requestBuckets = Array.from({ length: 60 }, () => ({ second: -1, count: 0 }));
+
+function recordRequest(now: number): void {
+  const second = Math.floor(now / 1000);
+  const bucket = requestBuckets[second % requestBuckets.length]!;
+  if (bucket.second !== second) { bucket.second = second; bucket.count = 0; }
+  bucket.count += 1;
+}
+
+function requestsInLastMinute(now: number): number {
+  const currentSecond = Math.floor(now / 1000);
+  return requestBuckets.reduce((total, bucket) => bucket.second >= currentSecond - 59 && bucket.second <= currentSecond ? total + bucket.count : total, 0);
+}
 
 function percentile(percent: number): number {
   if (!samples.length) return 0;
@@ -40,7 +53,7 @@ function snapshot(dbLatencyMs: number | null) {
     rssBytes: BigInt(memory.rss), heapUsedBytes: BigInt(memory.heapUsed),
     uptimeSeconds: Math.floor(process.uptime()), activeRequests,
     requestsTotal: BigInt(requestsTotal), errorsTotal: BigInt(errorsTotal),
-    requestRate: Math.round(samples.length * 100) / 100,
+    requestRate: requestsInLastMinute(now),
     p50LatencyMs: percentile(0.5), p95LatencyMs: percentile(0.95), dbLatencyMs,
   };
 }
@@ -90,7 +103,9 @@ export function opsMetricsMiddleware(): RequestHandler {
       requestsTotal += 1;
       if (res.statusCode >= 500) errorsTotal += 1;
       const durationMs = Number(process.hrtime.bigint() - started) / 1_000_000;
-      samples.push({ at: Date.now(), durationMs });
+      const finishedAt = Date.now();
+      recordRequest(finishedAt);
+      samples.push({ at: finishedAt, durationMs });
       if (samples.length > MAX_SAMPLES) samples.splice(0, samples.length - MAX_SAMPLES);
     });
     next();

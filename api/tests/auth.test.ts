@@ -649,6 +649,33 @@ describe("auth — bearer token (native/mobile clients)", () => {
     const revokedSession = await fetch(`${server.baseUrl}/auth/me`, { headers: { cookie: `ecet_session=${cookieJar.get("ecet_session")}` } });
     expect(revokedSession.status).toBe(403);
   });
+  it("allows only one concurrent use of a valid TOTP counter", async () => {
+    process.env.TOTP_ENCRYPTION_KEY = "ab".repeat(32);
+    const email = "totp-counter-replay@example.com";
+    await postJsonWithCookie(`${server.baseUrl}/auth/register`, { ...STUDENT_PROFILE, email, password: "totp-counter-replay-password" });
+    await server.db.user.update({ where: { email }, data: { accessStatus: "APPROVED" } });
+    cookieJar.delete("ecet_session");
+    await postJsonWithCookie(`${server.baseUrl}/auth/login`, { email, password: "totp-counter-replay-password" });
+    const setup = await postJsonWithCookie(`${server.baseUrl}/auth/2fa/totp/setup`, {});
+    expect(setup.status).toBe(200);
+    const secret = (setup.json as { secret: string }).secret;
+    const setupCounter = Math.floor(Date.now() / 30_000);
+    expect((await postJsonWithCookie(`${server.baseUrl}/auth/2fa/totp/verify-setup`, { code: totpAt(secret, setupCounter) })).status).toBe(200);
+    cookieJar.delete("ecet_session");
+    const login = await postJsonWithCookie(`${server.baseUrl}/auth/login`, { email, password: "totp-counter-replay-password" });
+    const challengeId = (login.json as { challengeId: string }).challengeId;
+    const counter = Math.floor(Date.now() / 30_000) + 1;
+    const code = totpAt(secret, counter);
+    const attempts = await Promise.all([
+      postJsonWithCookie(`${server.baseUrl}/auth/login/2fa`, { challengeId, code }),
+      postJsonWithCookie(`${server.baseUrl}/auth/login/2fa`, { challengeId, code }),
+    ]);
+    expect(attempts.filter(attempt => attempt.status === 200)).toHaveLength(1);
+    expect(attempts.filter(attempt => attempt.status === 403)).toHaveLength(1);
+    const credential = await server.db.totpCredential.findUnique({ where: { userId: (await server.db.user.findUniqueOrThrow({ where: { email } })).id } });
+    expect(credential?.lastUsedCounter).toBe(counter);
+  });
+
   it("expires TOTP login challenges after five failed verification attempts", async () => {
     const previousKey = process.env.TOTP_ENCRYPTION_KEY;
     process.env.TOTP_ENCRYPTION_KEY = "ab".repeat(32);

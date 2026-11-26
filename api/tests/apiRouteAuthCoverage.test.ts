@@ -16,7 +16,7 @@ const routeFiles = [
 const selfAuthenticatingPublicAuthPaths = new Set([
   "/register", "/login", "/token", "/login/2fa", "/token/2fa",
   "/passkeys/login/options", "/passkeys/login/verify", "/me", "/logout", "/captcha/challenge",
-  "/password-reset/request",
+  "/password-reset/request", "/password-reset/complete",
 ]);
 
 describe("API route authentication coverage", () => {

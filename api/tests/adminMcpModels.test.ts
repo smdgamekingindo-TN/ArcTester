@@ -120,6 +120,45 @@ describe("administrator MCP model control", () => {
     expect(await server.db.modelRegistryAudit.count({ where: { modelId: "readiness_classifier" } })).toBeGreaterThanOrEqual(4);
   });
 
+  it("uses a compatible active Model Lab artifact in student performance reviews", async () => {
+    const student = await server.db.user.create({ data: {
+      email: "student-active-model-review@arctester.test",
+      passwordHash: "test-only",
+      fullName: "Active Model Review Student",
+      role: "STUDENT",
+      accessStatus: "APPROVED",
+    } });
+    const modelArtifact = {
+      format: "arctester-linear-v1",
+      task: "classification",
+      encoders: [
+        { name: "practiceAccuracy", type: "number", mean: 0, scale: 1 },
+        { name: "completedTests", type: "number", mean: 0, scale: 1 },
+      ],
+      weights: [[0, 0, 1], [0, 0, -1]],
+      classes: ["not_ready", "ready"],
+    };
+    await server.db.registeredModel.create({ data: {
+      id: randomBytes(16).toString("hex"),
+      modelId: "student_readiness",
+      version: 1,
+      algorithm: "logistic_regression",
+      task: "classification",
+      dataset: "unit-test-fixture",
+      artifactJson: JSON.stringify({ sha256: digest(stableModelJson(modelArtifact)), modelArtifact }),
+      isActive: true,
+      activatedAt: new Date(),
+    } });
+    const review = await callTool("get_student_performance_for_review", { studentId: student.id });
+    expect(review.modelInference).toMatchObject({
+      status: "PREDICTED",
+      modelId: "student_readiness",
+      version: 1,
+      prediction: { type: "classification", label: "not_ready" },
+    });
+    expect(review.reviewGuidance.modelPredictionIsSupplementaryNotAGrade).toBe(true);
+  });
+
   it("rejects verification data as a training source", async () => {
     const verification = await callTool("create_model_dataset", {
       name: "verification-not-training", task: "classification", targetColumn: "ready", targetType: "string",

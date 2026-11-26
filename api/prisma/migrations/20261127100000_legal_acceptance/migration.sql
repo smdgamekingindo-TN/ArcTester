@@ -4,6 +4,8 @@ CREATE TABLE "LegalAcceptance" (
   "termsVersion" TEXT NOT NULL,
   "privacyNoticeVersion" TEXT NOT NULL,
   "consentNoticeVersion" TEXT NOT NULL,
+  "ageGateVersion" TEXT NOT NULL,
+  "ageAttested" BOOLEAN NOT NULL DEFAULT FALSE,
   "acceptedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "source" TEXT NOT NULL DEFAULT 'web',
   CONSTRAINT "LegalAcceptance_pkey" PRIMARY KEY ("id"),

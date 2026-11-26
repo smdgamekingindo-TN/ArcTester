@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { request } from "./apiClient";
 import ExamLayout from "./components/ExamLayout";
+import ExamQuestionNavigation from "./components/ExamQuestionNavigation";
 
 type DraftQuestion = { subject: string; text: string; options: string[]; correctIndex: number; explanation: string };
 type PracticeQuestion = { subject?: string; topic?: string; text: string; options: string[]; correctIndex: number; explanation?: string };
@@ -128,18 +129,7 @@ export default function StudentSavedPracticeExams() {
       onPrevious={() => setActiveQuestionIndex(index => Math.max(0, index - 1))}
       onNext={() => setActiveQuestionIndex(index => Math.min(active.questions.length - 1, index + 1))}
       onSubmit={() => void finish()}
-      questionNavigation={!run ? <div className="exam-question-navigation">
-        <div className="exam-question-navigation-heading"><strong>Question paper</strong><span className="muted">{answered}/{active.questions.length}</span></div>
-        <div className="exam-question-navigation-grid">
-          {active.questions.map((_question, index) => {
-            const isAnswered = answers[index] !== null && answers[index] !== undefined;
-            const isMarked = Boolean(marked[index]);
-            const isCurrent = activeQuestionIndex === index;
-            return <button key={index} type="button" className={`exam-question-number${isCurrent ? " is-current" : ""}${isAnswered ? " is-answered" : ""}${isMarked ? " is-marked" : ""}`} aria-label={`Question ${index + 1}${isAnswered ? ", answered" : ", unanswered"}${isMarked ? ", marked for review" : ""}`} aria-current={isCurrent ? "step" : undefined} onClick={() => setActiveQuestionIndex(index)}>{index + 1}{isMarked ? " ★" : ""}</button>;
-          })}
-        </div>
-        <p className="muted" style={{ margin: 0, fontSize: 11 }}>Current · Answered · Marked for review</p>
-      </div> : null}
+      questionNavigation={!run ? <ExamQuestionNavigation questionCount={active.questions.length} currentIndex={activeQuestionIndex} answered={active.questions.map((_question, index) => answers[index] !== null && answers[index] !== undefined)} marked={active.questions.map((_question, index) => Boolean(marked[index]))} onSelect={setActiveQuestionIndex} /> : null}}
     >
       {run ? <div className="panel stack"><h2>{run.correctCount} / {run.totalQuestions} correct · {run.percentage}%</h2><p className="muted">Result saved to your practice history.</p>{active.questions.map((question, index) => <article className="panel stack" key={index}><strong>Q{index + 1}. {question.text}</strong><p className="muted">Your answer: {answers[index] == null ? "Unanswered" : question.options[answers[index]!]}</p><p className="muted">Correct answer: {question.options[question.correctIndex]}</p>{question.explanation ? <p className="muted">{question.explanation}</p> : null}</article>)}<button type="button" className="primary" onClick={closeExam}>Back to practice exams</button></div> : currentQuestion ? <article className="panel stack question-card" key={activeQuestionIndex}>
       <p className="eyebrow">QUESTION {activeQuestionIndex + 1} · {currentQuestion.subject ?? "General"}</p>

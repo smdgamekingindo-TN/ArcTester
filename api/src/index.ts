@@ -165,6 +165,7 @@ export function buildApp(database: PrismaClient = db): express.Express {
   // Keep Helmet's default security headers, including CSP and SAMEORIGIN
   // framing protection. This API does not need to serve embeddable HTML.
   app.use(helmet());
+  app.use(localCors);
   app.use(sharedApiRateLimit(database));
   // Keep the bulk import endpoints on their route-specific parsers. Prepared
   // lesson audio is base64 JSON (up to 12 MiB decoded), so parse it here with
@@ -176,7 +177,6 @@ export function buildApp(database: PrismaClient = db): express.Express {
     const isLessonAudioUpload = /^\/admin\/lesson-drafts\/[^/]+\/scenes\/\d+\/audio$/.test(req.path);
     express.json({ limit: isLessonAudioUpload ? "18mb" : "1mb" })(req, res, next);
   });
-  app.use(localCors);
   app.use(cookieCsrfGuard);
   app.use(auditRequestMiddleware(database));
 

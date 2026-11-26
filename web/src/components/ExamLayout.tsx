@@ -17,6 +17,8 @@ type ExamLayoutProps = {
   onPrevious: () => void;
   onNext: () => void;
   onSubmit: () => void;
+  questionNavigation?: ReactNode;
+  fullscreen?: boolean;
   children: ReactNode;
 };
 
@@ -26,12 +28,12 @@ export default function ExamLayout({
   currentIndex, questionCount, answeredCount,
   previousLabel = "Previous", nextLabel = "Next question",
   submitLabel, submitDisabled = false, busy = false,
-  onPrevious, onNext, onSubmit, children,
+  onPrevious, onNext, onSubmit, questionNavigation, fullscreen = false, children,
 }: ExamLayoutProps) {
   const safeCount = Math.max(0, questionCount);
   const safeAnswered = Math.min(safeCount, Math.max(0, answeredCount));
   const safeIndex = safeCount ? Math.min(safeCount - 1, Math.max(0, currentIndex)) : 0;
-  return <section className="exam-layout">
+  return <section className={`exam-layout${fullscreen ? " exam-layout-fullscreen" : ""}`}>
     <header className="exam-layout-header">
       <div className="exam-layout-heading">
         <p className="eyebrow">{eyebrow}</p>
@@ -51,6 +53,7 @@ export default function ExamLayout({
       </div>
     </div>
     <div className="exam-layout-question">{children}</div>
+    {questionNavigation ? <div className="exam-layout-question-navigation">{questionNavigation}</div> : null}
     <footer className="exam-layout-footer">
       <button type="button" className="button button-secondary exam-layout-nav" disabled={safeIndex === 0 || busy} onClick={onPrevious}>{previousLabel}</button>
       <span className="exam-layout-index" aria-live="polite">{safeCount ? safeIndex + 1 : 0} / {safeCount}</span>

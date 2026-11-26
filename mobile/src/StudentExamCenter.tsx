@@ -145,7 +145,7 @@ export default function StudentExamCenter({ api, darkMode, disabled }: Props) {
       <Text style={[styles.question, { color: colors.text }]}>{question.text}</Text>
       {question.options.map((option, optionIndex) => {
         const selected = answers[question.id] === optionIndex;
-        return <TouchableOpacity key={optionIndex} onPress={() => choose(question, optionIndex)} accessibilityRole="radio" accessibilityState={{ selected }} style={[styles.option, { borderColor: selected ? palette.blue : colors.border, backgroundColor: selected ? (dark ? "#1d3b68" : "#eff6ff") : colors.surface }]}><Text style={{ color: selected ? palette.blue : colors.text, fontWeight: selected ? "800" : "500" }}>{String.fromCharCode(65 + optionIndex)}. {option}</Text></TouchableOpacity>;
+        return <TouchableOpacity key={optionIndex} onPress={() => choose(question, optionIndex)} accessibilityRole="radio" accessibilityState={{ selected }} style={[styles.option, { borderColor: selected ? palette.blue : colors.border, borderWidth: selected ? 2.5 : 1.5, backgroundColor: selected ? (dark ? "#1d3b68" : "#eff6ff") : colors.surface }]}><Text style={{ color: selected ? palette.blue : colors.text, fontWeight: selected ? "800" : "500" }}>{String.fromCharCode(65 + optionIndex)}. {option}</Text></TouchableOpacity>;
       })}
       <Text style={[styles.muted, { color: colors.muted, marginTop: 10 }]}>{saving ? "Saving answers…" : `${answered} answered · autosaved to your account`}</Text>
       {error ? <Text style={styles.error}>{error}</Text> : null}

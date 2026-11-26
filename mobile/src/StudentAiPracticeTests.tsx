@@ -31,10 +31,12 @@ export default function StudentAiPracticeTests({ api, darkMode, disabled = false
       const response = await api<{ practiceTests: PracticeSet[] }>("/student/practice-sets");
       setTests(Array.isArray(response.practiceTests) ? response.practiceTests : []);
     } catch (cause) {
-      setError((cause as Error).message || "Could not load your AI practice tests.");
+      setError((cause as Error).message || "Could not load your saved practice exams.");
     } finally { setLoading(false); }
   }, [api]);
   useEffect(() => { void refresh(); }, [refresh]);
+  // MCP-created practice tests are shared with the student library; refresh while the exam center is open.
+  useEffect(() => { const timer = setInterval(() => void refresh(), 20_000); return () => clearInterval(timer); }, [refresh]);
 
   const current = active?.questions[index];
   useEffect(() => { if (deadline === null || run) return; const tick = () => setSecondsRemaining(Math.max(0, Math.ceil((deadline - Date.now()) / 1000))); tick(); const timer = setInterval(tick, 1000); return () => clearInterval(timer); }, [deadline, run]);
@@ -85,7 +87,7 @@ export default function StudentAiPracticeTests({ api, darkMode, disabled = false
         <Text style={[styles.question, { color: colors.text }]}>{current.text}</Text>
         {current.options.map((option, optionIndex) => {
           const selected = answers[index] === optionIndex;
-          return <TouchableOpacity key={optionIndex} accessibilityRole="radio" accessibilityState={{ selected }} onPress={() => setAnswers(previous => ({ ...previous, [index]: optionIndex }))} style={[styles.option, { borderColor: selected ? blue : colors.border, backgroundColor: selected ? (darkMode ? "#1d3b68" : "#eff6ff") : colors.surface }]}><Text style={{ color: selected ? blue : colors.text, fontWeight: selected ? "800" : "500" }}>{String.fromCharCode(65 + optionIndex)}. {option}</Text></TouchableOpacity>;
+          return <TouchableOpacity key={optionIndex} accessibilityRole="radio" accessibilityState={{ selected }} onPress={() => setAnswers(previous => ({ ...previous, [index]: optionIndex }))} style={[styles.option, { borderColor: selected ? blue : colors.border, borderWidth: selected ? 2.5 : 1.5, backgroundColor: selected ? (darkMode ? "#1d3b68" : "#eff6ff") : colors.surface }]}><Text style={{ color: selected ? blue : colors.text, fontWeight: selected ? "800" : "500" }}>{String.fromCharCode(65 + optionIndex)}. {option}</Text></TouchableOpacity>;
         })}
         <View style={styles.actions}><TouchableOpacity disabled={index === 0 || busy} onPress={() => setIndex(i => i - 1)} style={[styles.secondary, { borderColor: colors.border, opacity: index === 0 ? .45 : 1 }]}><Text style={{ color: colors.text, fontWeight: "700" }}>Previous</Text></TouchableOpacity>{index < active.questions.length - 1 ? <TouchableOpacity onPress={() => setIndex(i => i + 1)} style={styles.primary}><Text style={styles.primaryText}>Next question →</Text></TouchableOpacity> : <TouchableOpacity disabled={busy} onPress={() => Alert.alert("Submit practice test?", `You answered ${answered} of ${active.questions.length} questions. Unanswered questions will be marked incorrect.`, [{ text: "Keep writing", style: "cancel" }, { text: "Submit", onPress: () => void finish() }])} style={[styles.primary, busy && { opacity: .5 }]}><Text style={styles.primaryText}>{busy ? "Submitting…" : "Submit test"}</Text></TouchableOpacity>}</View>
       </> : null}
@@ -94,9 +96,9 @@ export default function StudentAiPracticeTests({ api, darkMode, disabled = false
   }
 
   return <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-    <View style={styles.header}><Text style={[styles.title, { color: colors.text, flex: 1 }]}>AI-created practice tests</Text><TouchableOpacity onPress={() => void refresh()}><Text style={{ color: blue, fontWeight: "800" }}>Refresh</Text></TouchableOpacity></View>
-    <Text style={[styles.muted, { color: colors.muted }]}>Tests saved by your connected AI (Claude or another MCP client) stay private to your student account. Start one here; it is not an official assigned exam.</Text>
-    {loading ? <ActivityIndicator style={{ marginTop: 12 }} /> : error ? <Text style={styles.error}>{error}</Text> : tests.length === 0 ? <View style={[styles.empty, { borderColor: colors.border, backgroundColor: colors.surface }]}><Text style={{ color: colors.text, fontWeight: "800" }}>No AI practice tests yet</Text><Text style={[styles.muted, { color: colors.muted, textAlign: "center" }]}>Ask Claude to create and save a practice test using create_my_practice_test, then tap Refresh.</Text></View> : tests.map(test => <View key={test.id} style={[styles.testRow, { borderColor: colors.border, backgroundColor: colors.surface }]}><Text style={[styles.testTitle, { color: colors.text }]}>{test.title}</Text>{test.description ? <Text style={[styles.muted, { color: colors.muted }]}>{test.description}</Text> : null}<Text style={[styles.meta, { color: colors.muted }]}>{test.questions.length} questions · {test.durationMinutes} min</Text><TouchableOpacity disabled={disabled} onPress={() => start(test)} style={[styles.primary, disabled && { opacity: .5 }]}><Text style={styles.primaryText}>Write test</Text></TouchableOpacity></View>)}
+    <View style={styles.header}><Text style={[styles.title, { color: colors.text, flex: 1 }]}>My practice exams</Text><TouchableOpacity onPress={() => void refresh()}><Text style={{ color: blue, fontWeight: "800" }}>Refresh</Text></TouchableOpacity></View>
+    <Text style={[styles.muted, { color: colors.muted }]}>Practice exams you create here or save through your connected MCP are private to your student account and appear in this same library. These are practice exams, not official assigned exams.</Text>
+    {loading ? <ActivityIndicator style={{ marginTop: 12 }} /> : error ? <Text style={styles.error}>{error}</Text> : tests.length === 0 ? <View style={[styles.empty, { borderColor: colors.border, backgroundColor: colors.surface }]}><Text style={{ color: colors.text, fontWeight: "800" }}>No practice exams yet</Text><Text style={[styles.muted, { color: colors.muted, textAlign: "center" }]}>Create a practice exam above, or use your MCP to call create_my_practice_test. New MCP exams appear here automatically.</Text></View> : tests.map(test => <View key={test.id} style={[styles.testRow, { borderColor: colors.border, backgroundColor: colors.surface }]}><Text style={[styles.testTitle, { color: colors.text }]}>{test.title}</Text>{test.description ? <Text style={[styles.muted, { color: colors.muted }]}>{test.description}</Text> : null}<Text style={[styles.meta, { color: colors.muted }]}>{test.questions.length} questions · {test.durationMinutes} min</Text><TouchableOpacity disabled={disabled} onPress={() => start(test)} style={[styles.primary, disabled && { opacity: .5 }]}><Text style={styles.primaryText}>Write test</Text></TouchableOpacity></View>)}
     {error && tests.length > 0 ? <Text style={styles.error}>{error}</Text> : null}
   </View>;
 }

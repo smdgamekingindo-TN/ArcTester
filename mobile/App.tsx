@@ -23,6 +23,7 @@ import { deleteLocalValue, getLocalValue, setLocalValue } from "./src/localSetti
 import StudentPracticeBuilder, { type PracticePaperConfig } from "./src/StudentPracticeBuilder";
 import StudentExamCenter from "./src/StudentExamCenter";
 import StudentAiPracticeTests from "./src/StudentAiPracticeTests";
+import StudentPracticeSetCreator from "./src/StudentPracticeSetCreator";
 import StudentSecurityCenter from "./src/StudentSecurityCenter";
 import StudentConceptLibrary from "./src/StudentConceptLibrary";
 import { clearOfflineLearningPackage, getOfflineLearningPackage, saveOfflineLearningPackage, type OfflineLearningPackage } from "./src/learningStore";
@@ -165,6 +166,7 @@ export default function App() {
   const [hasSavedPracticeAttempt, setHasSavedPracticeAttempt] = useState(false);
   const [checkingPracticeRecovery, setCheckingPracticeRecovery] = useState(false);
   const [activeTab, setActiveTab] = useState<"home" | "practice" | "exams" | "learn" | "profile" | "settings" | "security">("home");
+  const [savedPracticeRefresh, setSavedPracticeRefresh] = useState(0);
   const [practicePresetSubject, setPracticePresetSubject] = useState<string | undefined>(undefined);
   const [lessonSession, setLessonSession] = useState(false);
   const [speedRoundSession, setSpeedRoundSession] = useState(false);
@@ -1490,7 +1492,8 @@ export default function App() {
 ) : activeTab === "exams" ? (
             <>
               <StudentExamCenter api={api} darkMode={darkMode} disabled={busy || checkingPracticeRecovery || hasSavedPracticeAttempt} />
-              <StudentAiPracticeTests api={api} darkMode={darkMode} disabled={busy || checkingPracticeRecovery || hasSavedPracticeAttempt} />
+              <StudentPracticeSetCreator api={api} darkMode={darkMode} disabled={busy || checkingPracticeRecovery || hasSavedPracticeAttempt} onCreated={() => setSavedPracticeRefresh(value => value + 1)} />
+              <StudentAiPracticeTests key={savedPracticeRefresh} api={api} darkMode={darkMode} disabled={busy || checkingPracticeRecovery || hasSavedPracticeAttempt} />
             </>
  ) : activeTab === "learn" ? (
           <Animated.View style={animatedEntrance(entrance)}><StudentConceptLibrary api={api} darkMode={darkMode} /></Animated.View>

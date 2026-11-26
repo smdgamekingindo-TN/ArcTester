@@ -26,6 +26,7 @@ import StudentPracticeResumePreview from "./StudentPracticeResumePreview";
 import StudentAnalytics from "./StudentAnalytics";
 import StudentMcpAssistant from "./StudentMcpAssistant";
 import StudentPracticeHistory from "./StudentPracticeHistory";
+import StudentSavedPracticeExams from "./StudentSavedPracticeExams";
 import StudentMaterials from "./StudentMaterials";
 import StudentAccountSettings from "./StudentAccountSettings";
 import StudentAbout from "./StudentAbout";
@@ -785,6 +786,7 @@ export default function App() {
                 />
               </div>
             </section>
+            {activePage === "practice" ? <StudentSavedPracticeExams /> : null}
             <StudentQuestionBankBrowser
               subjects={bank?.subjects ?? []}
               visible={activePage === "question-bank"}

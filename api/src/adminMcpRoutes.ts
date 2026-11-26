@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import express, { Router, type Request, type Response, type NextFunction } from "express";
 import { z } from "zod";
 import type { PrismaClient } from "@prisma/client";
@@ -9,7 +9,7 @@ import { QuestionInputSchema, hashQuestion, encodeOptions } from "./questions.js
 import { evaluateModelArtifacts } from "./modelInference.js";
 
 const PREFIX = "arc_admin_";
-const SCOPES = ["questions:read", "questions:create", "questions:review", "papers:create", "papers:read", "papers:publish", "exams:assign", "announcements:write", "activity:read", "models:read", "models:monitoring:read", "models:dataset:create", "models:verification:read", "models:train", "models:register", "models:evaluate", "models:activate"] as const;
+const SCOPES = ["questions:read", "questions:create", "questions:review", "papers:create", "papers:read", "papers:publish", "exams:assign", "announcements:write", "activity:read", "models:read", "models:monitoring:read", "models:dataset:create", "models:verification:read", "models:train", "models:register", "models:evaluate", "models:activate", "students:read", "students:manage"] as const;
 const sha = (v: string) => createHash("sha256").update(v).digest("hex");
 type KeyContext = { id: string; userId: number; scopes: string[] };
 function scope(key: KeyContext, required: string) { return key.scopes.includes(required); }
@@ -83,6 +83,10 @@ export function adminMcpRouter(db: PrismaClient): Router {
     const key = req.adminMcpKey!;
     if (body.method === "tools/list") {
       return res.json({ jsonrpc: "2.0", id, result: { tools: [
+        { name: "list_students", description: "Search and page through student accounts for administration. Returns student profile identifiers and access status; requires students:read.", inputSchema: { type: "object", properties: { search: { type: "string", maxLength: 120 }, accessStatus: { type: "string", enum: ["PENDING","APPROVED","REJECTED"] }, page: { type: "integer", minimum: 1, maximum: 100000 }, limit: { type: "integer", minimum: 1, maximum: 100 } } } },
+        { name: "set_student_access_status", description: "Approve, reject, or return a student account to pending. Requires confirm=true; status changes invalidate existing sessions.", inputSchema: { type: "object", required: ["studentId","accessStatus","confirm"], properties: { studentId: { type: "integer", minimum: 1 }, accessStatus: { type: "string", enum: ["PENDING","APPROVED","REJECTED"] }, confirm: { type: "boolean" } } } },
+        { name: "update_student_profile", description: "Update validated student profile fields. Requires confirm=true and students:manage scope.", inputSchema: { type: "object", required: ["studentId","patch","confirm"], properties: { studentId: { type: "integer", minimum: 1 }, patch: { type: "object", properties: { fullName: { type: "string", minLength: 2, maxLength: 100 }, email: { type: "string", format: "email", maxLength: 254 }, collegeName: { type: "string", maxLength: 180 }, collegeCode: { type: "string", maxLength: 20 }, postalPin: { type: "string", maxLength: 20 }, branchName: { type: "string", maxLength: 120 }, branchCode: { type: "string", maxLength: 20 }, registrationNumber: { type: ["string","null"], maxLength: 12 } } }, confirm: { type: "boolean" } } } },
+        { name: "remove_student_account", description: "Anonymize and revoke a student account while retaining linked academic records. Destructive; requires confirm=true and students:manage.", inputSchema: { type: "object", required: ["studentId","confirm"], properties: { studentId: { type: "integer", minimum: 1 }, confirm: { type: "boolean" } } } },
         { name: "search_question_bank", description: "Search official ArcTester question bank by subject/topic/review status.", inputSchema: { type: "object", properties: { search: { type: "string" }, subject: { type: "string" }, topic: { type: "string" }, reviewStatus: { type: "string", enum: ["DRAFT","APPROVED","REJECTED"] }, limit: { type: "integer", minimum: 1, maximum: 100 } } } },
         { name: "create_questions", description: "Import new official question drafts. These are not automatically approved.", inputSchema: { type: "object", required: ["questions"], properties: { questions: { type: "array", minItems: 1, maxItems: 100, items: { type: "object" } } } } },
         { name: "approve_questions", description: "Approve selected draft questions only after explicit confirm=true. Requires source information.", inputSchema: { type: "object", required: ["ids","confirm"], properties: { ids: { type: "array", minItems: 1, maxItems: 200 }, confirm: { type: "boolean" } } } },
@@ -115,6 +119,56 @@ export function adminMcpRouter(db: PrismaClient): Router {
     try {
       let output: unknown;
       switch (params.name) {
+        case "list_students": {
+          if (!scope(key, "students:read")) return res.json(rpcError(id, -32003, "Missing students:read scope."));
+          const input = z.object({ search: z.string().trim().max(120).optional(), accessStatus: z.enum(["PENDING","APPROVED","REJECTED"]).optional(), page: z.number().int().min(1).max(100000).default(1), limit: z.number().int().min(1).max(100).default(25) }).parse(args);
+          const q = input.search?.trim();
+          const baseWhere = { role: "STUDENT", NOT: { email: { endsWith: ".deleted.invalid" } }, ...(q ? { OR: [
+            { fullName: { contains: q, mode: "insensitive" as const } }, { email: { contains: q, mode: "insensitive" as const } },
+            { registrationNumber: { contains: q, mode: "insensitive" as const } }, { collegeName: { contains: q, mode: "insensitive" as const } },
+            { collegeCode: { contains: q, mode: "insensitive" as const } }, { branchName: { contains: q, mode: "insensitive" as const } },
+          ] } : {}) };
+          const where = { ...baseWhere, ...(input.accessStatus ? { accessStatus: input.accessStatus } : {}) };
+          const [students,total] = await Promise.all([
+            db.user.findMany({ where, select: { id:true,fullName:true,email:true,registrationNumber:true,collegeName:true,branchName:true,accessStatus:true,createdAt:true }, orderBy: [{ createdAt:"desc" },{ id:"desc" }], skip:(input.page-1)*input.limit, take:input.limit }),
+            db.user.count({ where }),
+          ]);
+          output = { students, page:input.page, limit:input.limit, total, totalPages:Math.ceil(total/input.limit) }; summary = "listed "+students.length+" students"; break;
+        }
+        case "set_student_access_status": {
+          if (!scope(key, "students:manage")) return res.json(rpcError(id, -32003, "Missing students:manage scope."));
+          const input = z.object({ studentId:z.number().int().positive(), accessStatus:z.enum(["PENDING","APPROVED","REJECTED"]), confirm:z.literal(true) }).parse(args);
+          const existing = await db.user.findFirst({ where:{ id:input.studentId,role:"STUDENT",NOT:{email:{endsWith:".deleted.invalid"}} }, select:{id:true,accessStatus:true} });
+          if (!existing) return res.json(rpcError(id,-32004,"Student not found."));
+          const student = await db.user.update({ where:{id:input.studentId}, data:{accessStatus:input.accessStatus,sessionVersion:{increment:1}}, select:{id:true,accessStatus:true} });
+          output = { student }; summary = "changed student "+student.id+" access to "+student.accessStatus; break;
+        }
+        case "update_student_profile": {
+          if (!scope(key, "students:manage")) return res.json(rpcError(id, -32003, "Missing students:manage scope."));
+          const input = z.object({ studentId:z.number().int().positive(), confirm:z.literal(true), patch:z.object({
+            fullName:z.string().trim().min(2).max(100).optional(), email:z.string().email().trim().toLowerCase().max(254).optional(),
+            collegeName:z.string().trim().max(180).nullable().optional(), collegeCode:z.string().trim().max(20).nullable().optional(),
+            postalPin:z.string().trim().max(20).nullable().optional(), branchName:z.string().trim().max(120).nullable().optional(),
+            branchCode:z.string().trim().max(20).nullable().optional(),
+            registrationNumber:z.preprocess(value=>value===""?null:value,z.string().trim().regex(/^\\d{5}-[A-Z]{1,3}-\\d{3}$/i,"Enter a valid diploma registration number.").nullable().optional()),
+          }).strict().refine(value=>Object.keys(value).length>0,"Provide at least one profile field.") }).parse(args);
+          const existing = await db.user.findFirst({ where:{id:input.studentId,role:"STUDENT",NOT:{email:{endsWith:".deleted.invalid"}}},select:{id:true,email:true} });
+          if (!existing) return res.json(rpcError(id,-32004,"Student not found."));
+          const student = await db.user.update({ where:{id:input.studentId}, data:{...input.patch,...(input.patch.email && input.patch.email!==existing.email?{sessionVersion:{increment:1}}:{})}, select:{id:true,fullName:true,email:true,collegeName:true,collegeCode:true,postalPin:true,branchName:true,branchCode:true,registrationNumber:true,accessStatus:true} });
+          output = { student }; summary = "updated student "+student.id+" profile"; break;
+        }
+        case "remove_student_account": {
+          if (!scope(key, "students:manage")) return res.json(rpcError(id, -32003, "Missing students:manage scope."));
+          const input = z.object({studentId:z.number().int().positive(),confirm:z.literal(true)}).parse(args);
+          const existing = await db.user.findFirst({where:{id:input.studentId,role:"STUDENT",NOT:{email:{endsWith:".deleted.invalid"}}},select:{id:true}});
+          if (!existing) return res.json(rpcError(id,-32004,"Student not found."));
+          await db.user.update({where:{id:input.studentId},data:{
+            email:`deleted-${input.studentId}-${randomUUID()}@account.deleted.invalid`,passwordHash:`deleted:${randomUUID()}`,fullName:"Deleted student",
+            collegeName:null,collegeCode:null,postalPin:null,branchName:null,branchCode:null,registrationNumber:null,
+            accessStatus:"REJECTED",sessionVersion:{increment:1},
+          }});
+          output = { removed:true, studentId:input.studentId, message:"Account anonymized and sessions invalidated. Linked academic records are retained." }; summary = "anonymized student "+input.studentId; break;
+        }
         case "search_question_bank": {
           if (!scope(key,"questions:read")) return res.json(rpcError(id,-32003,"Missing questions:read scope."));
           const input=z.object({search:z.string().max(200).optional(),subject:z.string().max(100).optional(),topic:z.string().max(100).optional(),reviewStatus:z.enum(["DRAFT","APPROVED","REJECTED"]).optional(),limit:z.number().int().min(1).max(100).default(50)}).parse(args);

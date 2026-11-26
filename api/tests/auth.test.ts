@@ -478,6 +478,7 @@ describe("auth — bearer token (native/mobile clients)", () => {
       body: JSON.stringify({ email: "mobile@example.com", password: "nope-nope-nope" }),
     });
     expect(res.status).toBe(400);
+    expect(await server.db.loginEvent.findFirst({ where: { email: "mobile@example.com", method: "password", result: "failed" } })).toBeTruthy();
   });
 
   it("authorizes protected routes with a bearer token and no cookie", async () => {

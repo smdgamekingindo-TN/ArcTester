@@ -1572,3 +1572,9 @@ html[data-admin-density="compact"] .bank-question{padding:12px 16px}
 .auth-password-checks li span{font-weight:900}
 .auth-password-strength .auth-field-hint{margin:0}
 @media(max-width:520px){.auth-password-checks{grid-template-columns:1fr}}
+
+
+/* Active web exam integrity notice */
+.exam-guard-notice{border-color:var(--warning,#b7791f);background:color-mix(in srgb,var(--warning,#b7791f) 9%,var(--surface));padding:12px 16px;margin-bottom:12px}
+.exam-guard-notice strong{display:block;color:var(--warning,#b7791f);font-size:13px}
+.exam-guard-notice p{margin:5px 0 0;font-size:13px;color:var(--text)}

@@ -119,5 +119,6 @@ calling the production security review complete.
 - [ ] Review child-data restrictions, profiling/behavioral monitoring, advertising, AI/model use and analytics for applicable DPDP requirements.
 - [ ] Reconcile DPDP breach-notification duties with applicable CERT-In incident reporting/log requirements; appoint a contact and rehearse response.
 - [ ] Re-check official Gazette commencement notifications and amendments at release; record counsel/security reviewer and evidence.
+- [ ] Remove the client-controlled `x-arctester-client: mobile` CAPTCHA bypass; require a server-verifiable mobile registration challenge and shared abuse limits.
 
 Reference implementation plan: `docs/security/DPDP_PRIVACY_SECURITY_READINESS.md`.

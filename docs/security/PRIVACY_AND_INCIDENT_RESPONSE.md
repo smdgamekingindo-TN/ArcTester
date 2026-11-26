@@ -46,4 +46,13 @@ Treat suspected credential compromise, unauthorized student-record access, expos
 
 ## Legal applicability review (India)
 
-Review the Digital Personal Data Protection Act, 2023, applicable rules/notifications and commencement provisions, and CERT-In Directions issued under section 70B of the IT Act, 2000, with qualified counsel/security personnel. Determine the actual entity's obligations, applicability, deadlines, log requirements, breach reporting, notices, and retention from current official publications. This checklist does not assert that ArcTester is compliant or that every provision is currently applicable to the project.
+As of this checklist update, MeitY has published the Digital Personal Data Protection Rules, 2025 (G.S.R. 846(E), 14 November 2025) and a phased commencement notification for the DPDP Act (G.S.R. 843(E), 13 November 2025). The substantive provisions have staged commencement; map each obligation to its actual effective date rather than assuming all provisions are already operative. Review later corrigenda/notifications before launch.
+
+CERT-In Directions dated 28 April 2022 state that covered entities must report listed cyber incidents within six hours of noticing or being informed, securely maintain ICT logs for a rolling 180 days within Indian jurisdiction, synchronize system clocks to trusted time sources, and designate a point of contact. Confirm applicability, cloud architecture requirements, and incident categories for ArcTester and its hosting providers. The 365-day student audit retention is separate from operational/security-log requirements.
+
+Official references:
+- MeitY DPDP Rules 2025 and commencement timeline: https://www.meity.gov.in/documents/act-and-policies/digital-personal-data-protection-rules-2025-gDOxUjMtQWa
+- CERT-In Directions 70B: https://www.cert-in.org.in/PDF/CERT-In_Directions_70B_28.04.2022.pdf
+- CERT-In directions index and FAQs: https://www.cert-in.org.in/Directions70B.jsp
+
+Have qualified counsel/security personnel determine the actual entity's obligations, applicability, deadlines, log requirements, breach reporting, notices, and retention from current official publications. This checklist does not assert that ArcTester is compliant or that every provision is currently applicable to the project.

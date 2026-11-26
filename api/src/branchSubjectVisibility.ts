@@ -26,6 +26,30 @@ function isKnownCmeCoreSubject(name: string): boolean {
   return CME_CORE_SUBJECTS.has(normalized);
 }
 
+const MEC_CORE_SUBJECTS = new Set([
+  "engineeringmechanics", "basicmanufacturingprocesses", "engineeringdrawing",
+  "basicworkshoppractices", "engineeringmaterials", "strengthofmaterials",
+  "thermalengineering", "thermalengineeringi", "thermalengineeringii",
+  "productiontechnology", "productiontechnologyi", "productiontechnologyii",
+  "machinedrawing", "hydraulicsfluidpowersystems", "heatpowerengineering",
+  "heatpowerengineeringi", "heatpowerengineeringii", "designofmachinemembers",
+  "theoryofmachines", "refrigerationandairconditioning",
+  "industrialengineeringandestimationcosting", "computer aidedmanufacturingsystems",
+  "energysourcesandpowerplantengineering", "appliedelectricalelectronics",
+  "manufacturingtechnology", "engineeringthermodynamics",
+]);
+
+function isMecBranch(profile: AcademicAudienceProfile): boolean {
+  const code = (profile.branchCode ?? "").normalize("NFKC").trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+  const name = (profile.branchName ?? "").normalize("NFKC").trim().toLowerCase();
+  return ["M", "MEC", "ME", "DME"].includes(code) || /mechanical engineering/.test(name);
+}
+
+function isKnownMecCoreSubject(name: string): boolean {
+  const normalized = name.normalize("NFKC").toLowerCase().replace(/[^a-z0-9]/g, "");
+  return MEC_CORE_SUBJECTS.has(normalized);
+}
+
 /**
  * If a subject contains branch-targeted rows, consider the subject branch-owned.
  * This also hides legacy ALL-scoped rows in that same subject from other branches.
@@ -51,6 +75,7 @@ export function filterBranchSubjectQuestions<T extends BranchTaggedQuestion>(
     // those known subjects limited to Computer Engineering even before their
     // older question rows are backfilled with BRANCH audience tags.
     if (!commonMpc && isKnownCmeCoreSubject(subjectName) && !isCmeBranch(profile)) return false;
+    if (!commonMpc && isKnownMecCoreSubject(subjectName) && !isMecBranch(profile)) return false;
     if (!commonMpc && branchScopedSubjectIds.has(question.subjectId) && !branchVisibleSubjectIds.has(question.subjectId)) return false;
     // Branch tags do not split the common MPC subjects. College/student scope
     // restrictions still apply when a branch-scoped row also has a college target.

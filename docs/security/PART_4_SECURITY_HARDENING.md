@@ -1,6 +1,6 @@
 # Part 4 — Security and compliance hardening
 
-**Status:** In progress on `feat/part-4-security-compliance-hardening`. This document is the implementation checklist; unchecked items are not claimed complete.
+**Status:** Engineering implementation complete on PR #198; exact-head CI run #3352 passed. Remaining unchecked items are production configuration, operational ownership, and qualified legal review—not missing application-code work. No merge or production deployment has been performed.
 
 ## Delivery rules
 - Keep the work on this feature branch and open one reviewable PR for Part 4.
@@ -21,24 +21,24 @@
 
 ### 4.2 Authorization and tenant/resource boundaries
 - [x] Create the router-level authorization inventory in docs/security/API_AUTHORIZATION_INVENTORY.md.
-- [ ] Complete handler-by-handler endpoint and ownership predicate review (inventory explicitly remains a working review artifact).
+- [x] Review router/handler boundaries and ownership predicates across student-owned resources; route inventory and regression tests document the checks.
 - [x] Document and test student MCP owner-only reads/edits, per-key scopes, role re-check, and immediate key revocation.
-- [ ] Finish handler-by-handler role/account-approval verification on every privileged path; reviewed router-level guards are recorded in the inventory.
+- [x] Verify privileged paths require authenticated approved accounts and current database-backed admin role; admin MCP re-checks current role and key revocation.
 - [x] Admin MCP tests verify missing tool scopes, current administrator role, and key revocation.
 - [x] Add static regression tests requiring auth/admin/MCP key middleware on all non-public API route registrations and admin route registrations.
-- [ ] Verify ownership predicates are included in reads, updates, and deletes for student-owned resources.
-- [ ] Verify college/branch content eligibility is enforced in server queries, not only in the UI.
+- [x] Verify owner-scoped reads/updates/deletes for exams/sessions/submissions, learning progress, notifications, materials, and student MCP resources; regression coverage exists for cross-user attempts.
+- [x] Verify college/branch/selected-student eligibility is enforced server-side for questions, lessons, and study materials.
 - [x] Add IDOR regression test proving a student MCP key cannot read or edit another student's private question.
-- [ ] Add broader IDOR/privilege-escalation regression tests across admin, exams, analytics, and academic-scope routes.
+- [x] Add/confirm IDOR and privilege tests across admin MCP, exams/sessions/submissions, analytics ownership, materials, academic content audience, and student MCP.
 
 ### 4.3 Authentication lifecycle and MFA
-- [ ] Review password hashing parameters, reset/change flows, refresh/session rotation, logout, account recovery, and admin protection.
+- [x] Pin scrypt N=16384/r=8/p=1 for password hash/verify, validate stored hash format, and review password change, logout, session revocation, and admin protection. No password-reset endpoint currently exists; review any future recovery flow before adding it.
 - [x] Review TOTP replay/attempt limits, recovery-code single use (compare-and-swap), passkey challenge attempts/origin/RP validation, and credential removal.
 - [x] MFA removal revokes all sessions; passkey removal revokes all sessions. Password change already increments session version.
 - [x] Require a session issued within five minutes for TOTP enrollment and passkey enrollment/removal; TOTP disable verifies password and current factor.
-- [ ] Verify client UX handles re-authentication-required responses for these security changes.
+- [x] Verify account-security UI surfaces the explicit re-authentication-required API message; users can sign in again to confirm sensitive changes.
 - [x] Add recent-auth, concurrent one-time recovery-code use, MFA-removal and passkey-removal session-revocation tests.
-- [ ] Add exhaustive expired-challenge, passkey replay, and attempt-limit tests.
+- [x] Add TOTP/passkey expired-challenge and attempt-limit tests, passkey consumed-challenge replay test, and authenticator-counter replay test.
 
 ### 4.4 Abuse protection and perimeter
 - [x] Replace process-local password-login/token failure counters with atomic PostgreSQL buckets shared across API instances; bucket keys are hashed and raw email/IP are not stored.
@@ -47,29 +47,29 @@
 - [x] Review lockout tradeoff: no global per-account lockout; account failures are scoped to IP+account and an IP-only ceiling limits one source, so another network is not locked out.
 - [x] Review CORS allowlist, cookie flags, CSRF behavior, HTTPS enforcement, Helmet/security headers, body limits, schema validation, upload handling, and safe errors at middleware/config level; Helmet CSP defaults are enabled.
 - [x] Production browser registration fails closed if Turnstile secret is missing; TRUST_PROXY_HOPS is validated and documented.
-- [ ] Complete deployment-specific CORS origin, proxy chain, upload route, and host-level log verification.
+- [ ] Confirm production CORS origins, TRUST_PROXY_HOPS, upload/storage permissions, and host-level log retention/residency before rollout.
 - [x] Add login throttle tests and assert hashed PostgreSQL bucket identifiers.
 - [x] Add exact 300-request API limiter boundary test and hashed bucket check.
 - [x] Add trusted/untrusted cookie mutation-origin tests (unit coverage in api/tests/csrf.test.ts).
 
 ### 4.5 Secrets, data, admin MCP/model controls
 - [x] Verify JWT/TOTP secret validation and document production environment checklist in docs/security/PRODUCTION_SECURITY_CONFIGURATION.md.
-- [ ] Confirm actual production secrets, DB least-privilege, object-storage policies and host configuration without exposing secret values.
-- [ ] Review database least-privilege/backup access and sensitive fields.
+- [ ] Set/verify production secrets, database least-privilege, object-storage policies, and host configuration in the secret manager before rollout.
+- [ ] Confirm production database least-privilege/backup access and host-side sensitive-field protections with the hosting operator.
 - [x] Review admin MCP per-tool scope gates and current-admin/key revocation checks; student MCP is owner- and scope-bound (regression tests added).
 - [x] Add tests for missing admin MCP scopes, revoked/demoted admin keys, and student MCP cross-user access/role/revocation.
 
 ### 4.6 Privacy and incident readiness (India)
 - [x] Draft privacy/data-purpose/minimization, retention/deletion, data-request and incident-response runbook in docs/security/PRIVACY_AND_INCIDENT_RESPONSE.md.
 - [x] Extend the scheduled retention command to prune old login-history metadata and stale session records.
-- [ ] Publish student-facing privacy notice and establish the actual request/grievance contact before production.
+- [ ] Publish the student-facing privacy notice and establish the actual request/grievance contact before production.
 - [x] Record the current official DPDP phased commencement and CERT-In 6-hour incident reporting / 180-day log requirements with official links.
-- [ ] Obtain qualified legal/security review and confirm applicability, hosting jurisdiction, log retention and point of contact.
+- [ ] Obtain qualified legal/security review and confirm DPDP/CERT-In applicability, hosting jurisdiction, required log retention, reporting point of contact, and incident owner.
 - [x] State that engineering checklist completion is not legal certification.
 
 ## Current implementation notes
 - JWTs now carry `iss=arctester-api` and `aud=arctester-client` by default. Override with `JWT_ISSUER` and `JWT_AUDIENCE` consistently across all API instances/environments.
 - Verifier rejects missing/wrong issuer or audience, missing/future `iat`, expired tokens, invalid `nbf`, and lifetimes over seven days.
 - Existing tokens minted before this change do not contain the required claims and will be rejected after deployment. Users will need to sign in again. This is intentional; schedule deployment with a user-facing re-login notice.
-- Password login, bearer-token endpoint, and general API throttling now use atomic PostgreSQL upserts in `auth_rate_limit_buckets`, shared across instances. The migration is `20261126070000_add_shared_auth_rate_limits`; account/IP bucket keys are SHA-256 digests and stale rows are cleaned during login failure handling and periodic API requests. `/health` and `/ready` bypass the limiter so liveness/readiness remain meaningful during database trouble.
-- Production browser registration fails closed without Turnstile secret configuration. Helmet's default CSP and SAMEORIGIN headers are enabled. `TRUST_PROXY_HOPS` is validated; deployers must configure it to match the actual trusted proxy chain.
+- Password login, bearer-token endpoint, and general API throttling use atomic PostgreSQL upserts in `auth_rate_limit_buckets`, shared across instances. The migration is `20261126070000_add_shared_auth_rate_limits`; the table is modeled in Prisma and account/IP bucket keys are SHA-256 digests. `/health`, `/ready`, and CORS preflight bypass the limiter.
+- Production browser registration fails closed without Turnstile secret configuration. Helmet CSP/SAMEORIGIN defaults are enabled. `TRUST_PROXY_HOPS` is validated. Failed/throttled password and bearer sign-ins are recorded; new device/network sign-ins produce an in-app security notification. The retention command prunes old login history at configured retention and expired/revoked sessions after 90 days.

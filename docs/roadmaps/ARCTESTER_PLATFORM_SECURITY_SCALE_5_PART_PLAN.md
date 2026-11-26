@@ -1,6 +1,6 @@
 # ArcTester Platform Consolidation, Security and Scale Plan
 
-**Status:** Parts 1–3 merged and verified (Part 3 PR #197 merged after exact-head CI passed). Part 4 is in progress on `feat/part-4-security-compliance-hardening`; implementation checklist: `docs/security/PART_4_SECURITY_HARDENING.md`.  
+**Status:** Parts 1–3 merged and verified. Part 4 engineering implementation is complete in draft PR #198; exact-head CI run #3352 passed. Production configuration, privacy notice, hosting retention/scheduler, and qualified legal/security review remain rollout gates; no merge or production deployment has been performed.  
 **Implementation rule:** Deliver one part at a time on a feature branch/PR. Keep CI green before merge; do not deploy unmerged changes to production.
 
 This roadmap consolidates the requested admin UX, academic content targeting, account security, auditability, infrastructure monitoring, and Android parity.
@@ -69,7 +69,7 @@ This roadmap consolidates the requested admin UX, academic content targeting, ac
 - Sensitive authentication material never appears in logs.
 - Admin-only CSV/JSON exports are filtered, capped, formula-safe, and themselves audited.
 
-## Part 4 — Complete security and compliance hardening
+## Part 4 — Complete security and compliance hardening\n\n**Implementation status:** Code and regression tests are implemented in PR #198. CI run #3352 passed on the exact head. Operational/legal acceptance checks below remain owned by the deployment operator and qualified reviewer.
 
 - Verify JWT/session credentials on every protected request: signature, algorithm allowlist, expiry, issuer, audience, session version/revocation, and role.
 - Enforce role, ownership, and academic-scope checks at every API route; test IDOR and privilege escalation.

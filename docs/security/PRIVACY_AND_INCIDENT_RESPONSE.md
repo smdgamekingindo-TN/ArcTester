@@ -10,7 +10,7 @@
 | Student name and academic profile (college code, branch, registration number) | Institution/branch context, eligibility and student administration | Use only for academic identity and scoped access; do not send identifiers to model datasets |
 | Exam/practice answers and results | Scoring, learning progress and analytics | Restrict to the student and authorized staff with a documented academic need |
 | Session tokens, MFA secrets, recovery codes, passkey credentials | Authentication and account security | Tokens/codes never logged; TOTP secrets encrypted; recovery codes hashed and single-use |
-| Audit events | Accountability, security investigation and authorized student activity timeline | Server-generated, sanitized metadata; access restricted; default retention 365 days, configurable within documented limits |
+| Audit events | Accountability, security investigation and authorized student activity timeline | Server-generated, sanitized metadata; access restricted; default retention 365 days, configurable within documented limits |\n| Login history and session metadata | Account security, suspicious sign-in review and session management | Failed/throttled sign-ins and new device/network alerts are recorded; login history is pruned by configured retention; expired/revoked sessions older than 90 days are pruned |
 | Request/security logs | Reliability, abuse prevention and incident investigation | Avoid query strings, bodies, cookies, bearer tokens, OTPs, raw IP/email in rate-limit bucket records; set an approved retention period |
 | Model datasets and metrics | Offline training and evaluation | Synthetic or de-identified data only; verify provenance and avoid direct identifiers/free text |
 
@@ -22,7 +22,7 @@
 4. Provide a documented route for access/correction/erasure/grievance requests. Verify the requester, record the request and decision, identify legal/academic retention constraints, complete or explain refusal, and keep only a minimal request audit record.
 5. Account deletion/anonymization must remove or de-identify direct identifiers from operational records where legally and technically appropriate. Audit history is designed to survive account deletion with actor references nulled; ensure retained event context does not re-identify the person.
 6. Backups must have access controls, encryption at rest where supported, a defined expiry/rotation schedule, and a restore test. Deletion from live systems does not instantly remove immutable backup copies; disclose the backup expiry window.
-7. Do not export student data to third-party AI services or model datasets unless there is an approved purpose, contractual/privacy review, and minimization/de-identification.
+7. Do not export student data to third-party AI services or model datasets unless there is an approved purpose, contractual/privacy review, and minimization/de-identification.\n8. New device/network sign-ins generate an in-app security notification using a masked network hint; failed and throttled sign-ins appear in restricted login history. Notifications are best-effort and are not email/push delivery.
 
 ## Incident response
 

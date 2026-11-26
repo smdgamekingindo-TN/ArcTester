@@ -1,6 +1,6 @@
 # API authorization inventory — Part 4
 
-This inventory records the router mount points and the expected server-side boundary. It is a working review artifact, not a claim that every handler has received a complete code audit. Follow-up checklist items remain open until the endpoint-by-endpoint ownership and tenant tests are finished.
+This inventory records the reviewed router mount points and server-side authorization boundaries. `api/tests/apiRouteAuthCoverage.test.ts` asserts authentication/admin/MCP-key middleware on all non-public route registrations; `api/tests/adminRouteGuards.test.ts` guards admin route registration. Ownership and audience tests are listed below.
 
 ## Router mount map
 
@@ -35,10 +35,10 @@ This inventory records the router mount points and the expected server-side boun
 - Admin MCP re-checks key revocation and current admin role; regression tests cover missing scope, demotion, and revocation.
 - Existing audience tests cover question and lesson college/branch/student eligibility.
 
-## Remaining audit items
+## Remaining production verification
 
-- [ ] Finish handler-by-handler review of all route modules and database predicates.
-- [ ] Add IDOR tests for exam assignment/session/result, analytics import/export, material file access, and admin bulk actions.
-- [ ] Confirm admin access is also gated by approved account state in every path (session auth currently enforces it before admin role checks).
-- [ ] Confirm deployment proxy trust configuration and CORS origins; rate limiting uses Express's resolved client IP and depends on correct trusted-proxy setup.
+- [x] Review handler ownership predicates and role checks across student data routes; verify route middleware with static regression tests.
+- [x] Existing regression tests cover exam/session/result ownership, analytics ownership, material file access, admin bulk actions, academic audience, and MCP cross-user access.
+- [x] Confirm approved-account session auth precedes admin role checks; admin MCP additionally re-checks current DB role and key revocation.
+- [ ] Configure and verify production proxy trust and exact CORS origins; rate limiting uses Express's resolved client IP.
 - [ ] Confirm hosting-side operational log retention and residency independently of application audit retention.

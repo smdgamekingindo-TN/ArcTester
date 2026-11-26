@@ -224,7 +224,9 @@ async function verifyRegistrationCaptcha(token: string | undefined, ip: string, 
   if (nativeClient) return;
   const secret = process.env.TURNSTILE_SECRET_KEY?.trim();
   if (!secret) {
-    if (token?.trim()) throw badRequest("CAPTCHA verification is not configured. Try again later.");
+    if (process.env.NODE_ENV === "production" || token?.trim()) {
+      throw badRequest("Registration security check is not configured. Try again later.");
+    }
     return;
   }
   if (!token?.trim()) throw badRequest("Complete the CAPTCHA security check.");

@@ -107,20 +107,24 @@ describe("passkey assertion replay protection", () => {
         signature: signature.toString("base64url"),
       };
     };
-    const verify = async (assertion: ReturnType<typeof makeAssertion>) => fetch(server.baseUrl + "/auth/passkeys/login/verify", {
-      method: "POST",
-      headers: { "content-type": "application/json", origin: "https://study.example.com" },
-      body: JSON.stringify(assertion),
-    });
+    const verify = async (assertion: ReturnType<typeof makeAssertion>) => {
+      const response = await fetch(server.baseUrl + "/auth/passkeys/login/verify", {
+        method: "POST",
+        headers: { "content-type": "application/json", origin: "https://study.example.com" },
+        body: JSON.stringify(assertion),
+      });
+      await response.arrayBuffer();
+      return response.status;
+    };
 
     const firstOptions = await getOptions();
     const firstAssertion = makeAssertion(firstOptions.challengeId, 1);
-    expect((await verify(firstAssertion)).status).toBe(200);
+    expect(await verify(firstAssertion)).toBe(200);
     expect((await verify(firstAssertion)).status).toBe(403); // consumed challenge cannot be replayed
 
     const secondOptions = await getOptions();
     const repeatedCounterAssertion = makeAssertion(secondOptions.challengeId, 1);
-    expect((await verify(repeatedCounterAssertion)).status).toBe(403); // authenticator counter must advance
+    expect(await verify(repeatedCounterAssertion)).toBe(403); // authenticator counter must advance
     const stored = await server.db.passkeyCredential.findUnique({ where: { credentialId } });
     expect(stored?.signCount).toBe(1);
   });

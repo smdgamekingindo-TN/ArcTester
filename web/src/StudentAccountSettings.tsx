@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { request } from "./apiClient";
+import TotpQrCode from "./TotpQrCode";
 
 type ToggleRowProps = {
   title: string;
@@ -199,6 +200,14 @@ export default function StudentAccountSettings(props: Props) {
     try{const result=await request<{secret:string;otpauthUri:string}>("/auth/2fa/totp/setup",{method:"POST",body:"{}"});setTotpSecret(result.secret);setTotpUri(result.otpauthUri);setTotpCode("");}
     catch(error){setSecurityError(error instanceof Error?error.message:"Could not start authenticator setup.");}finally{setSecurityBusy(false);}
   }
+  async function copyTotpSetupKey(){
+    try{await navigator.clipboard.writeText(totpSecret);setSecurityMessage("Authenticator setup key copied.");setSecurityError("");}
+    catch{setSecurityError("Could not copy the setup key. Select and copy it manually.");}
+  }
+  async function copyTotpSetupUri(){
+    try{await navigator.clipboard.writeText(totpUri);setSecurityMessage("Authenticator setup URI copied.");setSecurityError("");}
+    catch{setSecurityError("Could not copy the setup URI. Select and copy it manually.");}
+  }
   async function verifyTotpSetup(event:FormEvent<HTMLFormElement>){
     event.preventDefault();setSecurityBusy(true);setSecurityError("");setSecurityMessage("");
     try{const result=await request<{recoveryCodes:string[];message:string}>("/auth/2fa/totp/verify-setup",{method:"POST",body:JSON.stringify({code:totpCode})});setRecoveryCodes(result.recoveryCodes);setTotpSecret("");setTotpUri("");setTotpCode("");setSecurityMessage(result.message);await reloadSecurity();}
@@ -307,7 +316,7 @@ export default function StudentAccountSettings(props: Props) {
             <div className="security-card-heading"><span className="security-card-icon">✧</span><div><strong>Two-factor authentication</strong><small>Use an authenticator app and a passkey to protect sign-in.</small></div></div>
             <div className="security-feature-row"><div className="security-feature-copy"><strong>Authenticator app (TOTP)</strong><p>{securityStatus.authenticatorEnabled?"Authenticator is enabled. Login requires a current code.":"Add an authenticator such as Google Authenticator, Microsoft Authenticator, or 1Password."}</p></div><span className="security-status-pill">{securityStatus.authenticatorEnabled?"Enabled":"Not enabled"}</span></div>
             {!securityStatus.authenticatorEnabled&&!totpSecret?<button type="button" className="button button-primary" disabled={securityBusy} onClick={()=>void beginTotpSetup()}>Set up authenticator</button>:null}
-            {totpSecret?<div className="security-enrollment-panel"><strong>1. Add this key to your authenticator</strong><p>Enter the key manually in your authenticator app. Account: {email}</p><code className="security-secret-key">{totpSecret}</code><p className="muted">You can also use this setup URI:</p><textarea readOnly rows={3} value={totpUri}/><strong>2. Enter the current 6-digit code</strong><form onSubmit={verifyTotpSetup} className="security-inline-form"><input aria-label="Authenticator setup code" autoComplete="one-time-code" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} value={totpCode} onChange={e=>setTotpCode(e.target.value)} required/><button type="submit" className="button button-primary" disabled={securityBusy||totpCode.length!==6}>Verify and enable</button></form></div>:null}
+            {totpSecret?<div className="security-enrollment-panel"><strong>1. Scan this QR code</strong><p>Open your authenticator app and scan the code for {email}. You can also enter the setup key manually.</p><TotpQrCode value={totpUri}/><div className="security-secret-copy-row"><code className="security-secret-key">{totpSecret}</code><button type="button" className="ghost security-copy-secret-button" onClick={()=>void copyTotpSetupKey()} disabled={securityBusy}>Copy setup key</button></div><label className="security-setup-uri-label">Setup URI<textarea aria-label="Authenticator setup URI" readOnly rows={3} value={totpUri}/></label><button type="button" className="ghost" onClick={()=>void copyTotpSetupUri()} disabled={securityBusy}>Copy setup URI</button><strong>2. Enter the current 6-digit code</strong><form onSubmit={verifyTotpSetup} className="security-inline-form"><input aria-label="Authenticator setup code" autoComplete="one-time-code" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} value={totpCode} onChange={e=>setTotpCode(e.target.value)} required/><button type="submit" className="button button-primary" disabled={securityBusy||totpCode.length!==6}>Verify and enable</button></form></div>:null}
             {securityStatus.authenticatorEnabled?<><p className="muted">Recovery codes remaining: <strong>{securityStatus.recoveryCodesRemaining}</strong></p><form className="security-password-form" onSubmit={disableTotp}><label>Account password<input type="password" autoComplete="current-password" value={disablePassword} onChange={e=>setDisablePassword(e.target.value)} required/></label><label>Authenticator or recovery code<input value={disableCode} onChange={e=>setDisableCode(e.target.value)} required minLength={6} maxLength={32}/></label><button type="submit" className="ghost" disabled={securityBusy}>Disable two-factor authentication</button></form></>:null}
             {recoveryCodes.length?<div className="security-recovery-panel"><strong>Save your recovery codes now</strong><p>Each code works once. Keep them somewhere private and safe.</p><div className="security-recovery-codes">{recoveryCodes.map(code=><code key={code}>{code}</code>)}</div><button type="button" className="ghost" onClick={()=>void navigator.clipboard?.writeText(recoveryCodes.join("\n"))}>Copy recovery codes</button><button type="button" className="ghost" onClick={()=>setRecoveryCodes([])}>I saved them</button></div>:null}
             <div className="security-feature-row"><div className="security-feature-copy"><strong>Passkeys</strong><p>Sign in using your device's screen lock, fingerprint, face recognition, or a security key.</p></div><span className="security-status-pill">{passkeys.length} added</span></div>

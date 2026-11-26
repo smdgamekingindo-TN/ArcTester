@@ -10,14 +10,14 @@ describe("shared API rate limiter", () => {
 
   it("allows exactly 300 requests in the window, then returns 429 with retry headers", async () => {
     for (let request = 0; request < 300; request += 1) {
-      const response = await fetch(server.baseUrl + "/health");
-      expect(response.status).toBe(200);
+      const response = await fetch(server.baseUrl + "/auth/me");
+      expect(response.status).toBe(403);
       if (request === 299) {
         expect(response.headers.get("ratelimit-limit")).toBe("300");
         expect(response.headers.get("ratelimit-remaining")).toBe("0");
       }
     }
-    const blocked = await fetch(server.baseUrl + "/health");
+    const blocked = await fetch(server.baseUrl + "/auth/me");
     expect(blocked.status).toBe(429);
     expect(Number(blocked.headers.get("retry-after"))).toBeGreaterThan(0);
 

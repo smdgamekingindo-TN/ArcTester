@@ -36,6 +36,11 @@ describe("StudentAssignedExams", () => {
     expect(await screen.findByRole("heading", { name: "ECET Mock 01" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Write exam" }));
     expect(await screen.findByRole("heading", { name: "FIFO structure?" })).toBeInTheDocument();
+    fireEvent.copy(document);
+    await waitFor(() => expect(mockedRequest).toHaveBeenCalledWith(
+      "/exams/assignments/assignment-1/session/integrity",
+      expect.objectContaining({ method: "POST", body: expect.stringContaining("COPY_ATTEMPT") }),
+    ));
     expect(screen.queryByRole("heading", { name: "LIFO structure?" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Go to question 2, unanswered" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Next question" }));

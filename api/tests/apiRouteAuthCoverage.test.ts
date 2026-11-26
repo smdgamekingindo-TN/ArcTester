@@ -24,7 +24,7 @@ describe("API route authentication coverage", () => {
     for (const file of routeFiles) {
       const source = readFileSync(resolve(sourceDirectory, file), "utf8");
       const adminRouterGuard = /router\.use\(\s*["']\/admin["']\s*,\s*requireAuth\s*,\s*requireAdmin\s*\(/.test(source);
-      const starts = [...source.matchAll(/router\.(?:get|post|put|patch|delete)\s*\(/g);
+      const starts = [...source.matchAll(/router\.(?:get|post|put|patch|delete)\s*\(/g)];
       for (const match of starts) {
         const index = match.index ?? 0;
         const snippet = source.slice(index, index + 1200);

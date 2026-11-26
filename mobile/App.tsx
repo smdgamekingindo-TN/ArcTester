@@ -3,6 +3,7 @@ import {
   AccessibilityInfo,
   ActivityIndicator,
   Alert,
+  Linking,
   Animated,
   Easing,
   Platform,
@@ -35,7 +36,9 @@ import { filterResultReview } from "./src/resultReview";
 import { clearPendingPracticeProgress, getPendingPracticeProgress, markPracticeProgressSynced, queuePracticeProgress } from "./src/offlineProgressQueue";
 import { toggleMultiSelectAnswer } from "./src/multiSelectAnswer";
 import { getBranchCode, getCollegeCode, searchBranches, searchColleges, validateAcademicRegistration, type AcademicRegistration } from "./src/academicRegistration";
+import { AGE_GATE_VERSION, CONSENT_NOTICE_VERSION, PRIVACY_NOTICE_VERSION, TERMS_VERSION } from "./src/legalVersions";
 
+const WEB_URL = (process.env.EXPO_PUBLIC_WEB_URL || "https://arctester.vercel.app").replace(/\\/+$/, "");
 const API_URL = (() => {
   const url = process.env.EXPO_PUBLIC_API_URL;
   const isDev = typeof __DEV__ !== "undefined" ? __DEV__ : true;
@@ -142,6 +145,9 @@ export default function App() {
   const [profileBusy, setProfileBusy] = useState(false);
   const [profileSuccessVisible, setProfileSuccessVisible] = useState(false);
   const [register, setRegister] = useState(false);
+  const [adultAttestation, setAdultAttestation] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [privacyConsent, setPrivacyConsent] = useState(false);
   const [twoFactorChallenge, setTwoFactorChallenge] = useState("");
   const [twoFactorCode, setTwoFactorCode] = useState("");
   const [token, setToken] = useState<string | null>(null);
@@ -705,6 +711,7 @@ export default function App() {
 
   async function authenticate() {
     if (register) {
+      if (!adultAttestation || !termsAccepted || !privacyConsent) { setError("Confirm you are 18 or older, accept the Terms & Conditions and consent to the Privacy Notice."); return; }
       const validationError = validateAcademicRegistration(academicProfile);
       if (validationError) { setError(validationError); return; }
     }
@@ -719,6 +726,13 @@ export default function App() {
             email: email.trim(),
             password,
             ...academicProfile,
+            adultAttestation: true,
+            termsAccepted: true,
+            privacyConsent: true,
+            termsVersion: TERMS_VERSION,
+            privacyNoticeVersion: PRIVACY_NOTICE_VERSION,
+            consentNoticeVersion: CONSENT_NOTICE_VERSION,
+            ageGateVersion: AGE_GATE_VERSION,
           }),
         });
         setRegister(false);
@@ -1246,12 +1260,33 @@ export default function App() {
                 <TextInput secureTextEntry placeholder="Password" placeholderTextColor="#8b95a7" value={password} onChangeText={setPassword} style={[styles.input, darkMode && { backgroundColor: "#1e293b", borderColor: "#334155", color: "#f1f5f9" }]} />
               </>
             )}
+            {register ? (
+              <View style={{ marginTop: 8, marginBottom: 12, padding: 12, borderWidth: 1, borderColor: darkMode ? "#334155" : "#d5dce8", borderRadius: 12, gap: 10 }}>
+                <TouchableOpacity accessibilityRole="checkbox" accessibilityState={{ checked: adultAttestation }} onPress={() => setAdultAttestation(value => !value)} style={{ flexDirection: "row", alignItems: "flex-start", gap: 10 }}>
+                  <View style={{ width: 20, height: 20, borderRadius: 5, borderWidth: 1.5, borderColor: adultAttestation ? "#2563eb" : (darkMode ? "#64748b" : "#94a3b8"), backgroundColor: adultAttestation ? "#2563eb" : "transparent", alignItems: "center", justifyContent: "center" }}><Text style={{ color: "#fff", fontSize: 14, fontWeight: "900" }}>{adultAttestation ? "✓" : ""}</Text></View>
+                  <Text style={[styles.muted, { flex: 1, fontSize: 12 }, darkMode && { color: "#cbd5e1" }]}>I confirm I am 18 or older. Students under 18 cannot register until a verified parent/guardian consent process is available.</Text>
+                </TouchableOpacity>
+                <TouchableOpacity accessibilityRole="checkbox" accessibilityState={{ checked: termsAccepted }} onPress={() => setTermsAccepted(value => !value)} style={{ flexDirection: "row", alignItems: "flex-start", gap: 10 }}>
+                  <View style={{ width: 20, height: 20, borderRadius: 5, borderWidth: 1.5, borderColor: termsAccepted ? "#2563eb" : (darkMode ? "#64748b" : "#94a3b8"), backgroundColor: termsAccepted ? "#2563eb" : "transparent", alignItems: "center", justifyContent: "center" }}><Text style={{ color: "#fff", fontSize: 14, fontWeight: "900" }}>{termsAccepted ? "✓" : ""}</Text></View>
+                  <Text style={[styles.muted, { flex: 1, fontSize: 12 }, darkMode && { color: "#cbd5e1" }]}>I agree to the Terms & Conditions.</Text>
+                </TouchableOpacity>
+                <TouchableOpacity accessibilityRole="checkbox" accessibilityState={{ checked: privacyConsent }} onPress={() => setPrivacyConsent(value => !value)} style={{ flexDirection: "row", alignItems: "flex-start", gap: 10 }}>
+                  <View style={{ width: 20, height: 20, borderRadius: 5, borderWidth: 1.5, borderColor: privacyConsent ? "#2563eb" : (darkMode ? "#64748b" : "#94a3b8"), backgroundColor: privacyConsent ? "#2563eb" : "transparent", alignItems: "center", justifyContent: "center" }}><Text style={{ color: "#fff", fontSize: 14, fontWeight: "900" }}>{privacyConsent ? "✓" : ""}</Text></View>
+                  <Text style={[styles.muted, { flex: 1, fontSize: 12 }, darkMode && { color: "#cbd5e1" }]}>I consent to personal-data processing for account creation, academic identity, learning, exams and security as described in the Privacy Notice.</Text>
+                </TouchableOpacity>
+                <View style={{ flexDirection: "row", gap: 16, flexWrap: "wrap" }}>
+                  <TouchableOpacity onPress={() => void Linking.openURL(`${WEB_URL}/terms-and-conditions.html`).catch(() => setError("Could not open Terms & Conditions. Check your internet connection."))}><Text style={{ color: "#3b82f6", textDecorationLine: "underline", fontWeight: "700" }}>Read Terms & Conditions</Text></TouchableOpacity>
+                  <TouchableOpacity onPress={() => void Linking.openURL(`${WEB_URL}/privacy-policy.html`).catch(() => setError("Could not open Privacy Notice. Check your internet connection."))}><Text style={{ color: "#3b82f6", textDecorationLine: "underline", fontWeight: "700" }}>Read Privacy Notice</Text></TouchableOpacity>
+                </View>
+                <Text style={[styles.muted, { fontSize: 10 }, darkMode && { color: "#94a3b8" }]}>Acceptance is recorded with document versions and time. Privacy consent is separate from agreement to the Terms.</Text>
+              </View>
+            ) : null}
             <TouchableOpacity disabled={busy} onPress={authenticate} style={styles.primary}>
               <Text style={styles.primaryText}>
                 {busy ? "Please wait…" : twoFactorChallenge ? "Verify code" : register ? "Create account" : "Sign in"}
               </Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => { setRegister(!register); setTwoFactorChallenge(""); setTwoFactorCode(""); }} style={styles.secondary}>
+            <TouchableOpacity onPress={() => { setRegister(!register); setAdultAttestation(false); setTermsAccepted(false); setPrivacyConsent(false); setTwoFactorChallenge(""); setTwoFactorCode(""); }} style={styles.secondary}>
               <Text style={[styles.secondaryText, darkMode && { color: "#cbd5e1" }]}>
                 {register
                   ? "Already have an account? Sign in"

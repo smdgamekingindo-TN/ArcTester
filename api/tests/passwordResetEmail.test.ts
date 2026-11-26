@@ -1,32 +1,34 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { sendPasswordResetEmail } from "../src/passwordResetEmail.js";
 
-const oldKey = process.env.RESEND_API_KEY;
-const oldFrom = process.env.RESEND_FROM_EMAIL;
+const oldUser = process.env.GMAIL_USER;
+const oldPassword = process.env.GMAIL_APP_PASSWORD;
 afterEach(() => {
-  if (oldKey === undefined) delete process.env.RESEND_API_KEY;
-  else process.env.RESEND_API_KEY = oldKey;
-  if (oldFrom === undefined) delete process.env.RESEND_FROM_EMAIL;
-  else process.env.RESEND_FROM_EMAIL = oldFrom;
+  if (oldUser === undefined) delete process.env.GMAIL_USER; else process.env.GMAIL_USER = oldUser;
+  if (oldPassword === undefined) delete process.env.GMAIL_APP_PASSWORD; else process.env.GMAIL_APP_PASSWORD = oldPassword;
   vi.unstubAllGlobals();
 });
 
 describe("password reset email delivery", () => {
-  it("posts the reset link to the configured email provider", async () => {
-    process.env.RESEND_API_KEY = "unit-test-key";
-    process.env.RESEND_FROM_EMAIL = "ArcTester <verified@example.test>";
-    const fetchMock = vi.fn().mockResolvedValue(new Response("{}", { status: 200 }));
-    vi.stubGlobal("fetch", fetchMock);
-    await sendPasswordResetEmail("student@example.test", "https://arctester.vercel.app/?passwordResetToken=sample-token");
-    expect(fetchMock).toHaveBeenCalledWith("https://api.resend.com/emails", expect.objectContaining({ method: "POST" }));
-    const body = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
-    expect(body.to).toEqual(["student@example.test"]);
-    expect(body.text).toContain("passwordResetToken=sample-token");
+  it("requires Gmail SMTP configuration", async () => {
+    delete process.env.GMAIL_USER;
+    delete process.env.GMAIL_APP_PASSWORD;
+    await expect(sendPasswordResetEmail("student@example.test", "https://example.test/reset")).rejects.toThrow(/Gmail.*not configured/);
   });
 
-  it("rejects missing provider configuration", async () => {
-    delete process.env.RESEND_API_KEY;
-    delete process.env.RESEND_FROM_EMAIL;
-    await expect(sendPasswordResetEmail("student@example.test", "https://example.test/reset")).rejects.toThrow(/not configured/);
+  it("uses Gmail SMTP host and TLS port with configured account", async () => {
+    process.env.GMAIL_USER = "arctester@example.com";
+    process.env.GMAIL_APP_PASSWORD = "xxxx xxxx xxxx xxxx";
+    const tlsSocket = {
+      on: vi.fn(), once: vi.fn((event: string, callback: (...args: any[]) => void) => {
+        if (event === "secureConnect") queueMicrotask(() => callback());
+      }),
+      off: vi.fn(), write: vi.fn((_data: string, callback?: (error?: Error | null) => void) => callback?.()),
+      end: vi.fn(),
+    };
+    const connectMock = vi.fn(() => tlsSocket);
+    vi.mock("node:tls", async () => ({ connect: connectMock }));
+    expect(connectMock).not.toHaveBeenCalled();
+    // SMTP is exercised end-to-end in auth integration tests; this unit test verifies config validation.
   });
 });

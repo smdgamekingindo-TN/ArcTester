@@ -94,7 +94,7 @@ describe("JWT secret configuration", () => {
   });
 
 
-  it("requires the supported HS256 header and a valid expiry claim", () => {
+  it("requires HS256 plus issuer, audience and bounded time claims", () => {
     const encode = (value: unknown) => Buffer.from(JSON.stringify(value)).toString("base64url");
     const signed = (header: unknown, payload: unknown) => {
       const message = encode(header) + "." + encode(payload);
@@ -102,10 +102,16 @@ describe("JWT secret configuration", () => {
       return message + "." + signature;
     };
     const now = Math.floor(Date.now() / 1000);
+    const claims = { sub: "1", iat: now, exp: now + 60, iss: "arctester-api", aud: "arctester-client" };
     expect(() => verifyJwt(signJwt({ sub: "1" }, -1))).toThrow(/expired token/i);
-    expect(() => verifyJwt(signed({ alg: "none", typ: "JWT" }, { sub: "1", exp: now + 60 }))).toThrow(/unsupported jwt header/i);
+    expect(() => verifyJwt(signed({ alg: "none", typ: "JWT" }, { ...claims }))).toThrow(/unsupported jwt header/i);
     expect(() => verifyJwt(signed({ alg: "HS256", typ: "JWT" }, { sub: "1" }))).toThrow(/missing or invalid token expiry/i);
-    expect(() => verifyJwt(signed({ alg: "HS256", typ: "JWT" }, { sub: "1", exp: now + 60 }))).not.toThrow();
+    expect(() => verifyJwt(signed({ alg: "HS256", typ: "JWT" }, { ...claims, iss: "another-api" }))).toThrow(/invalid token issuer/i);
+    expect(() => verifyJwt(signed({ alg: "HS256", typ: "JWT" }, { ...claims, aud: "another-client" }))).toThrow(/invalid token audience/i);
+    expect(() => verifyJwt(signed({ alg: "HS256", typ: "JWT" }, { ...claims, iat: now + 120 }))).toThrow(/future/i);
+    expect(() => verifyJwt(signed({ alg: "HS256", typ: "JWT" }, { ...claims, exp: now + 8 * 24 * 60 * 60 }))).toThrow(/lifetime/i);
+    expect(() => verifyJwt(signed({ alg: "HS256", typ: "JWT" }, claims))).not.toThrow();
+    expect(verifyJwt(signJwt({ sub: "1" })).iss).toBe("arctester-api");
   });
 
   it("does not require production-strength secrets in development or tests", () => {

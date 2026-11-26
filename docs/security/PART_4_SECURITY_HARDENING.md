@@ -1,6 +1,6 @@
 # Part 4 — Security and compliance hardening
 
-**Status:** Engineering implementation complete on PR #198; exact-head CI run #3352 passed. Remaining unchecked items are production configuration, operational ownership, and qualified legal review—not missing application-code work. No merge or production deployment has been performed.
+**Status:** Part 4 implementation is being hardened on draft PR #198. CI must pass on the final head before merge. Production rollout remains blocked until the automated preflight passes in the target environment and the remaining hosting/privacy/legal sign-offs are completed. No merge or production deployment has been performed.
 
 ## Delivery rules
 - Keep the work on this feature branch and open one reviewable PR for Part 4.
@@ -38,7 +38,7 @@
 - [x] Require a session issued within five minutes for TOTP enrollment and passkey enrollment/removal; TOTP disable verifies password and current factor.
 - [x] Verify account-security UI surfaces the explicit re-authentication-required API message; users can sign in again to confirm sensitive changes.
 - [x] Add recent-auth, concurrent one-time recovery-code use, MFA-removal and passkey-removal session-revocation tests.
-- [x] Add TOTP/passkey expired-challenge and attempt-limit tests, passkey consumed-challenge replay test, and authenticator-counter replay test.
+- [x] Add TOTP/passkey expired-challenge and attempt-limit tests, passkey consumed-challenge replay and concurrent counterless assertion tests, authenticator-counter replay, and concurrent TOTP counter tests.
 
 ### 4.4 Abuse protection and perimeter
 - [x] Replace process-local password-login/token failure counters with atomic PostgreSQL buckets shared across API instances; bucket keys are hashed and raw email/IP are not stored.

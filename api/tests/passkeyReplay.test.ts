@@ -120,7 +120,7 @@ describe("passkey assertion replay protection", () => {
     const firstOptions = await getOptions();
     const firstAssertion = makeAssertion(firstOptions.challengeId, 1);
     expect(await verify(firstAssertion)).toBe(200);
-    expect((await verify(firstAssertion)).status).toBe(403); // consumed challenge cannot be replayed
+    expect(await verify(firstAssertion)).toBe(403); // consumed challenge cannot be replayed
 
     const secondOptions = await getOptions();
     const repeatedCounterAssertion = makeAssertion(secondOptions.challengeId, 1);

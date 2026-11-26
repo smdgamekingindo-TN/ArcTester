@@ -25,6 +25,7 @@ export default function StudentSavedPracticeExams() {
   const [duration, setDuration] = useState("20");
   const [draftQuestions, setDraftQuestions] = useState<DraftQuestion[]>([emptyQuestion()]);
   const [active, setActive] = useState<PracticeSet | null>(null);
+  const [activeQuestionIndex, setActiveQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, number | null>>({});
   const [run, setRun] = useState<PracticeRun | null>(null);
   const [deadline, setDeadline] = useState<number | null>(null);
@@ -71,7 +72,7 @@ export default function StudentSavedPracticeExams() {
 
   function start(test: PracticeSet) {
     if (!validSet(test)) { setError("This saved exam has invalid question data. Edit or regenerate it through MCP."); return; }
-    setActive(test); setAnswers({}); setRun(null); setError("");
+    setActive(test); setActiveQuestionIndex(0); setAnswers({}); setRun(null); setError("");
     const end = Date.now() + Math.max(1, test.durationMinutes) * 60_000;
     setDeadline(end); setSeconds(Math.max(1, test.durationMinutes) * 60);
   }
@@ -92,6 +93,7 @@ export default function StudentSavedPracticeExams() {
   }, [active, run, deadline, seconds, busy, finish]);
 
   const answered = Object.values(answers).filter(value => value !== null && value !== undefined).length;
+  const currentQuestion = active ? active.questions[activeQuestionIndex] : null;
   return <section className="stack saved-practice-exams" aria-label="My practice exams">
     <header className="section-head"><div><p className="eyebrow">YOUR PRIVATE EXAM LIBRARY</p><h2>My practice exams</h2><p className="muted">Exams you create here and exams saved by your connected MCP appear in this same list.</p></div><button type="button" className="button button-secondary" onClick={() => void refresh()} disabled={loading}>Refresh</button></header>
     {error ? <p className="error" role="alert">{error}</p> : null}
@@ -99,7 +101,16 @@ export default function StudentSavedPracticeExams() {
       <div className="row"><div style={{ flex: 1 }}><h3>{active.title}</h3><p className="muted">{active.questions.length} questions · {active.durationMinutes} min · {deadline !== null && !run ? `${Math.floor(seconds / 60).toString().padStart(2, "0")}:${(seconds % 60).toString().padStart(2, "0")} remaining` : "Practice review"}</p></div><button type="button" className="button button-secondary" onClick={() => { setActive(null); setRun(null); setDeadline(null); }}>Close</button></div>
       {run ? <><h3>{run.correctCount} / {run.totalQuestions} correct · {run.percentage}%</h3><p className="muted">Result saved to your practice history.</p>{active.questions.map((q, i) => <div className="panel" key={i}><strong>Q{i + 1}. {q.text}</strong><p className="muted">Your answer: {answers[i] == null ? "Unanswered" : q.options[answers[i]!]}</p><p className="muted">Correct answer: {q.options[q.correctIndex]}</p>{q.explanation ? <p className="muted">{q.explanation}</p> : null}</div>)}</> : <>
       <p className="muted">{answered} of {active.questions.length} answered</p>
-      {active.questions.map((q, i) => <div className="panel stack" key={i}><p className="eyebrow">QUESTION {i + 1} · {q.subject ?? "General"}</p><h3>{q.text}</h3>{q.options.map((option, j) => <label className="row" key={j} style={{ gap: 10, border: answers[i] === j ? "2px solid #2563eb" : "1px solid var(--border, #e4e8ef)", borderRadius: 12, padding: 12, backgroundColor: answers[i] === j ? "rgba(37, 99, 235, 0.08)" : "transparent", cursor: "pointer" }}><input type="radio" name={`saved-exam-${i}`} checked={answers[i] === j} onChange={() => setAnswers(current => ({ ...current, [i]: j }))} /><span>{String.fromCharCode(65 + j)}. {option}</span></label>)}</div>)}
+      {currentQuestion ? <div className="panel stack" key={activeQuestionIndex}>
+        <p className="eyebrow">QUESTION {activeQuestionIndex + 1} · {currentQuestion.subject ?? "General"}</p>
+        <h3>{currentQuestion.text}</h3>
+        {currentQuestion.options.map((option, j) => <label className="row" key={j} style={{ gap: 10, border: answers[activeQuestionIndex] === j ? "2px solid #2563eb" : "1px solid var(--border, #e4e8ef)", borderRadius: 12, padding: 12, backgroundColor: answers[activeQuestionIndex] === j ? "rgba(37, 99, 235, 0.08)" : "transparent", cursor: "pointer" }}><input type="radio" name={`saved-exam-${activeQuestionIndex}`} checked={answers[activeQuestionIndex] === j} onChange={() => setAnswers(current => ({ ...current, [activeQuestionIndex]: j }))} /><span>{String.fromCharCode(65 + j)}. {option}</span></label>)}
+        <div className="row saved-practice-question-navigation">
+          <button type="button" className="button button-secondary" disabled={activeQuestionIndex === 0} onClick={() => setActiveQuestionIndex(index => Math.max(0, index - 1))}>Previous question</button>
+          <span className="muted" aria-live="polite">Question {activeQuestionIndex + 1} of {active.questions.length}</span>
+          <button type="button" className="button button-secondary" disabled={activeQuestionIndex >= active.questions.length - 1} onClick={() => setActiveQuestionIndex(index => Math.min(active.questions.length - 1, index + 1))}>Next question</button>
+        </div>
+      </div> : null}
       <button type="button" className="primary" disabled={busy} onClick={() => void finish()}>{busy ? "Submitting…" : "Submit practice exam"}</button>
       </>}
     </article> : <>

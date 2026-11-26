@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Skeleton from "./components/Skeleton";
 
-const API = (import.meta.env.VITE_API_URL || "https://arctester.onrender.com").replace(/\/+$/, "");
+const configuredApi = import.meta.env.VITE_API_URL;
+// Route production analytics through Vercel to keep the auth cookie first-party.
+const API = (import.meta.env.PROD ? "/api" : configuredApi || "/api").replace(/\/+$/, "");
 
 type TopicPerformance = {
   subject: string;

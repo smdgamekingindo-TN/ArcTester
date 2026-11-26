@@ -185,7 +185,7 @@ export function buildApp(database: PrismaClient = db): express.Express {
   });
   app.use(cookieCsrfGuard);
   app.use(auditRequestMiddleware(database));
-  app.use(opsMetricsMiddleware(database));
+  app.use(opsMetricsMiddleware());
   app.use(opsMetricsRouter(database));
 
   app.get("/health", (_req, res) => {

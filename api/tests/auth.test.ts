@@ -1,4 +1,4 @@
-import { createHmac } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { buildApp } from "../src/index.js";
 import {
@@ -8,7 +8,7 @@ import {
   requireRecentAuth,
 } from "../src/auth.js";
 import { importFromJson } from "../src/importService.js";
-import { totpAt } from "../src/totp.js";
+import { encryptTotpSecret, generateTotpSecret, totpAt } from "../src/totp.js";
 import {
   issueTestInvitation,
   postJson,
@@ -649,6 +649,37 @@ describe("auth — bearer token (native/mobile clients)", () => {
     const revokedSession = await fetch(`${server.baseUrl}/auth/me`, { headers: { cookie: `ecet_session=${cookieJar.get("ecet_session")}` } });
     expect(revokedSession.status).toBe(403);
   });
+  it("expires TOTP login challenges after five failed verification attempts", async () => {
+    const previousKey = process.env.TOTP_ENCRYPTION_KEY;
+    process.env.TOTP_ENCRYPTION_KEY = "ab".repeat(32);
+    const email = "totp-attempt-limit@example.com";
+    try {
+      await postJsonWithCookie(`${server.baseUrl}/auth/register`, { ...STUDENT_PROFILE, email, password: "totp-attempt-password" });
+      const user = await server.db.user.update({ where: { email }, data: { accessStatus: "APPROVED" } });
+      const secret = generateTotpSecret();
+      await server.db.totpCredential.create({
+        data: { userId: user.id, secretEncrypted: encryptTotpSecret(secret), enabledAt: new Date(), recoveryCodesJson: "[]", lastUsedCounter: -1 },
+      });
+      cookieJar.delete("ecet_session");
+      const login = await postJsonWithCookie(`${server.baseUrl}/auth/login`, { email, password: "totp-attempt-password" });
+      expect(login.status).toBe(200);
+      const challengeId = (login.json as { challengeId: string }).challengeId;
+      const current = Math.floor(Date.now() / 30_000);
+      let invalidCode = "000000";
+      if ([current - 1, current, current + 1].some(counter => totpAt(secret, counter) === invalidCode)) invalidCode = "000001";
+      for (let attempt = 0; attempt < 5; attempt += 1) {
+        const response = await postJsonWithCookie(`${server.baseUrl}/auth/login/2fa`, { challengeId, code: invalidCode });
+        expect(response.status).toBe(403);
+      }
+      const replay = await postJsonWithCookie(`${server.baseUrl}/auth/login/2fa`, { challengeId, code: invalidCode });
+      expect(replay.status).toBe(403);
+      expect(await server.db.authChallenge.findUnique({ where: { challenge: createHash("sha256").update(challengeId).digest("hex") } })).toBeNull();
+    } finally {
+      if (previousKey === undefined) delete process.env.TOTP_ENCRYPTION_KEY;
+      else process.env.TOTP_ENCRYPTION_KEY = previousKey;
+    }
+  });
+
   it("requires a recent session and revokes all sessions when removing a passkey", async () => {
     const email = "passkey-removal@example.com";
     await postJsonWithCookie(`${server.baseUrl}/auth/register`, { ...STUDENT_PROFILE, email, password: "passkey-removal-password" });

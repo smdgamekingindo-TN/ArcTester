@@ -32,7 +32,7 @@ export function createApiClient(apiBase: string, fetcher?: typeof fetch) {
   };
 }
 
-/** Default cookie-authenticated JSON request using the same Render API as App.tsx. */
+/** Default cookie-authenticated JSON request using the same-origin API proxy in production. */
 const configuredApi = import.meta.env.VITE_API_URL;
 // Production requests stay on the Vercel origin so browsers do not have to send
 // a Render-domain session cookie as a third-party cookie.

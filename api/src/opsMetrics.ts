@@ -15,6 +15,7 @@ let activeRequests = 0;
 let cpuBaseline = process.cpuUsage();
 let cpuWallBaseline = process.hrtime.bigint();
 let cpuPercent = 0;
+let cleanupPersistCount = 0;
 const samples: LatencySample[] = [];
 const MAX_SAMPLES = 512;
 
@@ -67,6 +68,10 @@ async function persistSnapshot(db: PrismaClient, dbLatencyMs: number | null = nu
       p50_latency_ms = EXCLUDED.p50_latency_ms, p95_latency_ms = EXCLUDED.p95_latency_ms,
       db_latency_ms = COALESCE(EXCLUDED.db_latency_ms, server_instance_metrics.db_latency_ms)
   `;
+  cleanupPersistCount += 1;
+  if (cleanupPersistCount % 240 === 0) {
+    await db.$executeRaw`DELETE FROM server_instance_metrics WHERE last_seen_at < NOW() - INTERVAL '30 days'`;
+  }
 }
 
 export function startOpsMetricsHeartbeat(db: PrismaClient): () => void {

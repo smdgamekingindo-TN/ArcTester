@@ -599,14 +599,14 @@ export function authRouter(db: PrismaClient): Router {
       const ip = req.ip ?? "unknown";
       const emailKey = loginBucketKey(ip, input.email);
       const ipKey = loginBucketKey(ip);
-      const retryAfter = Math.max(loginRetryAfter(db, emailKey), loginRetryAfter(db, ipKey));
+      const retryAfter = Math.max(await loginRetryAfter(db, emailKey), await loginRetryAfter(db, ipKey));
       if (retryAfter > 0) { await recordLoginEvent(db, req, input.email, null, "throttled", "password"); return rejectThrottledLogin(res, retryAfter); }
       const user = await db.user.findUnique({ where: { email: input.email } });
       if (!user || !await verifyPasswordAsync(input.password, user.passwordHash)) {
         await recordLoginEvent(db, req, input.email, user?.id ?? null, "failed", "password");
         await recordLoginFailure(db, emailKey);
         await recordLoginFailure(db, ipKey);
-        const blockedFor = Math.max(loginRetryAfter(db, emailKey), loginRetryAfter(db, ipKey));
+        const blockedFor = Math.max(await loginRetryAfter(db, emailKey), await loginRetryAfter(db, ipKey));
         if (blockedFor > 0) return rejectThrottledLogin(res, blockedFor);
         return next(badRequest("Invalid email or password."));
       }
@@ -696,12 +696,17 @@ export function authRouter(db: PrismaClient): Router {
     if (!token) return next(forbidden("Not signed in."));
     try {
       const payload = verifyJwt(token);
+      const id = Number(payload.sub);
+      const tokenEmail = String(payload.email ?? "");
+      const sessionVersion = payload.sv === undefined ? 0 : Number(payload.sv);
+      if (!Number.isSafeInteger(id) || id <= 0 || !tokenEmail || !Number.isSafeInteger(sessionVersion) || sessionVersion < 0) {
+        return next(forbidden("Invalid or expired session. Sign in again."));
+      }
       const user = await db.user.findUnique({
-        where: { id: Number(payload.sub) },
+        where: { id },
         select: { id: true, email: true, role: true, sessionVersion: true, accessStatus: true, fullName: true, collegeName: true, collegeCode: true, postalPin: true, branchName: true, branchCode: true, registrationNumber: true },
       });
-      const sessionVersion = payload.sv === undefined ? 0 : Number(payload.sv);
-      if (!user || !Number.isSafeInteger(sessionVersion) || user.sessionVersion !== sessionVersion) {
+      if (!user || user.email !== tokenEmail || user.sessionVersion !== sessionVersion) {
         return next(forbidden("This session has been revoked. Sign in again."));
       }
       const sessionId = typeof payload.sid === "string" ? payload.sid : "";

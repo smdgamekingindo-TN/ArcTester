@@ -20,9 +20,9 @@
 - [x] Document production issuer/audience configuration and forced re-login impact.
 
 ### 4.2 Authorization and tenant/resource boundaries
-- [ ] Complete route-by-route inventory of all API endpoints and classify public, authenticated-student, owner-only, academic-scope, and administrator endpoints.
+- [x] Create the router-level authorization inventory in docs/security/API_AUTHORIZATION_INVENTORY.md.\n- [ ] Complete handler-by-handler endpoint and ownership predicate review (inventory explicitly remains a working review artifact).
 - [x] Document and test student MCP owner-only reads/edits, per-key scopes, role re-check, and immediate key revocation.
-- [ ] Finish route-by-route role/account-approval verification on every privileged path.
+- [ ] Finish handler-by-handler role/account-approval verification on every privileged path; reviewed router-level guards are recorded in the inventory.
 - [x] Admin MCP tests verify missing tool scopes, current administrator role, and key revocation.
 - [ ] Verify ownership predicates are included in reads, updates, and deletes for student-owned resources.
 - [ ] Verify college/branch content eligibility is enforced in server queries, not only in the UI.

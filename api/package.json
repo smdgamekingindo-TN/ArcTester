@@ -17,7 +17,8 @@
     "import:questions": "tsx prisma/seed.ts",
     "admin:bootstrap": "tsx prisma/bootstrapAdmin.ts",
     "prebuild": "node scripts/recoverStudyMaterialUrlMigration.mjs",
-    "audit:prune": "tsx scripts/pruneAuditEvents.ts"
+    "audit:prune": "tsx scripts/pruneAuditEvents.ts",
+    "security:preflight": "tsx scripts/securityPreflight.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.17.0",

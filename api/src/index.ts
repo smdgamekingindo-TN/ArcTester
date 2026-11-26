@@ -49,7 +49,7 @@ function sharedApiRateLimit(database: PrismaClient): express.RequestHandler {
           window_started_at = CASE WHEN auth_rate_limit_buckets.window_started_at <= NOW() - INTERVAL '15 minutes' THEN NOW() ELSE auth_rate_limit_buckets.window_started_at END,
           blocked_until = CASE
             WHEN auth_rate_limit_buckets.window_started_at <= NOW() - INTERVAL '15 minutes' THEN NULL
-            WHEN auth_rate_limit_buckets.failure_count + 1 >= ${API_LIMIT} THEN COALESCE(auth_rate_limit_buckets.blocked_until, NOW() + INTERVAL '15 minutes')
+            WHEN auth_rate_limit_buckets.failure_count + 1 > ${API_LIMIT} THEN COALESCE(auth_rate_limit_buckets.blocked_until, NOW() + INTERVAL '15 minutes')
             ELSE auth_rate_limit_buckets.blocked_until
           END,
           updated_at = NOW()

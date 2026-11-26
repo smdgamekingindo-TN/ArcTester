@@ -252,10 +252,14 @@ function createSvgCaptcha(): { svg: string; token: string } {
 
 function verifySvgCaptcha(token: string | undefined): void {
   if (!token?.trim()) throw badRequest("Enter the characters shown in the security image.");
-  const separator = token.lastIndexOf(".");
+  const answerSeparator = token.lastIndexOf(":");
+  if (answerSeparator <= 0) throw badRequest("Enter the characters shown in the security image.");
+  const signedToken = token.slice(0, answerSeparator);
+  const answer = token.slice(answerSeparator + 1).trim().toUpperCase();
+  const separator = signedToken.lastIndexOf(".");
   if (separator <= 0) throw badRequest("Security image expired. Refresh it and try again.");
-  const encoded = token.slice(0, separator);
-  const suppliedSignature = token.slice(separator + 1);
+  const encoded = signedToken.slice(0, separator);
+  const suppliedSignature = signedToken.slice(separator + 1);
   const expectedSignature = signSvgCaptchaPayload(encoded);
   const supplied = Buffer.from(suppliedSignature);
   const expected = Buffer.from(expectedSignature);
@@ -265,18 +269,15 @@ function verifySvgCaptcha(token: string | undefined): void {
   let payload: SvgCaptchaPayload;
   try { payload = JSON.parse(Buffer.from(encoded, "base64url").toString("utf8")) as SvgCaptchaPayload; }
   catch { throw badRequest("Security image is invalid. Refresh it and try again."); }
-  const dot = token.indexOf(":", separator + 1);
-  const answer = dot >= 0 ? token.slice(dot + 1) : "";
   if (!payload || typeof payload.answer !== "string" || typeof payload.nonce !== "string" || !Number.isFinite(payload.expiresAt)) {
     throw badRequest("Security image is invalid. Refresh it and try again.");
   }
   if (payload.expiresAt < Date.now()) throw badRequest("Security image expired. Refresh it and try again.");
-  if (answer.toUpperCase() !== payload.answer) throw badRequest("The security image characters don't match. Try again.");
+  if (answer !== payload.answer) throw badRequest("The security image characters don't match. Try again.");
   if (usedSvgCaptchaNonces.has(payload.nonce)) throw badRequest("Security image was already used. Refresh it and try again.");
   usedSvgCaptchaNonces.set(payload.nonce, payload.expiresAt);
   for (const [nonce, expiry] of usedSvgCaptchaNonces) if (expiry < Date.now()) usedSvgCaptchaNonces.delete(nonce);
 }
-
 async function verifyRegistrationCaptcha(token: string | undefined, _ip: string, nativeClient = false): Promise<void> {
   if (nativeClient) return;
   verifySvgCaptcha(token);

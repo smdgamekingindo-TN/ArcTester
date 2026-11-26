@@ -108,6 +108,7 @@ export default function AdminStudents({ onError, onNotice }: Props) {
     } catch (error) { onError(error instanceof Error ? error.message : "Could not remove student."); }
     finally { setBusy(false); }
   }
+  if (auditStudent) return <AdminStudentAudit student={auditStudent} onClose={() => setAuditStudent(null)} onError={onError} />;
   const visibleStudents = data?.students ?? [];
   const counts = data?.statusCounts ?? { PENDING: 0, APPROVED: 0, REJECTED: 0 };
   return <section className="admin-students">
@@ -149,7 +150,6 @@ export default function AdminStudents({ onError, onNotice }: Props) {
           <button className="danger" type="button" disabled={busy} onClick={() => void remove(student)}>Remove</button>
         </div>
       </article>)}</div>
-      {auditStudent && <AdminStudentAudit student={auditStudent} onClose={() => setAuditStudent(null)} onError={onError} />}
       {!busy && visibleStudents.length === 0 && <div className="empty-state"><h3>No students found</h3><p>Try another search or status filter.</p></div>}
       {data && (data.totalPages ?? 1) > 1 && <div className="pagination"><button className="ghost" disabled={page <= 1 || busy} onClick={() => setPage((value) => value - 1)}>Previous</button><span>Page {page} of {data.totalPages}</span><button className="ghost" disabled={page >= data.totalPages || busy} onClick={() => setPage((value) => value + 1)}>Next</button></div>}
     </div>

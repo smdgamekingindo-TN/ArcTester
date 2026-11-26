@@ -45,6 +45,29 @@ describe("combined student approval and management", () => {
     });
   });
 
+  it("opens student activity as a full-page searchable workspace", async () => {
+    const student = { ...approvedStudent };
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const url = new URL(String(input));
+      if (url.pathname === "/admin/students") return Promise.resolve(response({ students: [student], page: 1, limit: 25, total: 1, totalPages: 1, statusCounts: { PENDING: 0, APPROVED: 1, REJECTED: 0 } }));
+      if (url.pathname.endsWith("/audit")) return Promise.resolve(response({ events: [], page: 1, limit: 25, total: 0, totalPages: 0 }));
+      return Promise.resolve(response({ ok: true }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const onError = vi.fn();
+    render(<AdminStudents onError={onError} onNotice={vi.fn()} />);
+    expect(await screen.findByText("approved@student.test")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "View activity" }));
+    expect(await screen.findByRole("heading", { name: /Audit timeline · Approved Student/ })).toBeInTheDocument();
+    expect(screen.getByRole("searchbox", { name: "Search events" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "← Back to students" })).toBeInTheDocument();
+    fireEvent.change(screen.getByRole("searchbox", { name: "Search events" }), { target: { value: "LOGIN" } });
+    await waitFor(() => {
+      const auditUrls = fetchMock.mock.calls.map(([input]) => new URL(String(input))).filter(url => url.pathname.endsWith("/audit"));
+      expect(auditUrls.some(url => url.searchParams.get("q") === "LOGIN")).toBe(true);
+    });
+  });
+
   it("approves selected pending accounts in bulk", async () => {
     const second = { ...pendingStudent, id: 43, email: "pending-two@student.test", registrationNumber: "24010-CM-043" };
     const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {

@@ -6,7 +6,7 @@ import { forbidden, badRequest, notFound } from "./errors.js";
 import { requireAuth, requireAdmin, type AuthedRequest } from "./auth.js";
 import { importFromJson } from "./importService.js";
 import { QuestionInputSchema, hashQuestion, encodeOptions } from "./questions.js";
-import { evaluateModelArtifacts } from "./modelInference.js";
+import { evaluateModelArtifacts, predictActiveModel } from "./modelInference.js";
 import { getPerformanceOverview } from "./analytics.js";
 
 const PREFIX = "arc_admin_";
@@ -85,7 +85,7 @@ export function adminMcpRouter(db: PrismaClient): Router {
     if (body.method === "tools/list") {
       return res.json({ jsonrpc: "2.0", id, result: { tools: [
         { name: "list_students", description: "Search and page through student accounts for administration. Returns student profile identifiers and access status; requires students:read.", inputSchema: { type: "object", properties: { search: { type: "string", maxLength: 120 }, accessStatus: { type: "string", enum: ["PENDING","APPROVED","REJECTED"] }, page: { type: "integer", minimum: 1, maximum: 100000 }, limit: { type: "integer", minimum: 1, maximum: 100 } } } },
-        { name: "get_student_performance_for_review", description: "Retrieve privacy-conscious practice and graded exam aggregates for an approved student so the assistant can compose an evidence-based performance review. Requires students:review.", inputSchema: { type: "object", required: ["studentId"], properties: { studentId: { type: "integer", minimum: 1 } } } },
+        { name: "get_student_performance_for_review", description: "Retrieve privacy-conscious practice and graded exam aggregates for an approved student so the assistant can compose an evidence-based performance review. Requires students:review.", inputSchema: { type: "object", required: ["studentId"], properties: { studentId: { type: "integer", minimum: 1 }, modelId: { type: "string", pattern: "^[a-z][a-z0-9_-]{1,63}$", description: "Optional active Model Lab model ID; defaults to student_readiness." } } } },
         { name: "send_student_performance_review", description: "Send the assistant-written performance review to the student as an in-app notification. Requires confirm=true and students:review.", inputSchema: { type: "object", required: ["studentId","title","message","confirm"], properties: { studentId: { type: "integer", minimum: 1 }, title: { type: "string", minLength: 3, maxLength: 120 }, message: { type: "string", minLength: 20, maxLength: 3000 }, confirm: { type: "boolean" } } } },
         { name: "set_student_access_status", description: "Approve, reject, or return a student account to pending. Requires confirm=true; status changes invalidate existing sessions.", inputSchema: { type: "object", required: ["studentId","accessStatus","confirm"], properties: { studentId: { type: "integer", minimum: 1 }, accessStatus: { type: "string", enum: ["PENDING","APPROVED","REJECTED"] }, confirm: { type: "boolean" } } } },
         { name: "update_student_profile", description: "Update validated student profile fields. Requires confirm=true and students:manage scope.", inputSchema: { type: "object", required: ["studentId","patch","confirm"], properties: { studentId: { type: "integer", minimum: 1 }, patch: { type: "object", properties: { fullName: { type: "string", minLength: 2, maxLength: 100 }, email: { type: "string", format: "email", maxLength: 254 }, collegeName: { type: "string", maxLength: 180 }, collegeCode: { type: "string", maxLength: 20 }, postalPin: { type: "string", maxLength: 20 }, branchName: { type: "string", maxLength: 120 }, branchCode: { type: "string", maxLength: 20 }, registrationNumber: { type: ["string","null"], maxLength: 12 } } }, confirm: { type: "boolean" } } } },
@@ -140,11 +140,63 @@ export function adminMcpRouter(db: PrismaClient): Router {
         }
         case "get_student_performance_for_review": {
           if (!scope(key, "students:review")) return res.json(rpcError(id, -32003, "Missing students:review scope."));
-          const input = z.object({ studentId: z.number().int().positive() }).parse(args);
+          const input = z.object({ studentId: z.number().int().positive(), modelId: z.string().regex(/^[a-z][a-z0-9_-]{1,63}$/).default("student_readiness") }).parse(args);
           const student = await db.user.findFirst({ where: { id: input.studentId, role: "STUDENT", accessStatus: "APPROVED", NOT: { email: { endsWith: ".deleted.invalid" } } }, select: { id: true, fullName: true, collegeName: true, branchName: true } });
           if (!student) return res.json(rpcError(id, -32004, "Approved student not found."));
           const performance = await getPerformanceOverview(db, student.id);
-          output = { student, performance, reviewGuidance: { baseReviewOnObservedCountsAndAccuracy: true, doNotTreatUnansweredAsIncorrect: true, separatePracticeFromFormalExams: true, mentionInsufficientEvidenceWhereApplicable: true, thisIsRuleBasedAnalyticsNotAnMLModel: true } };
+          const activeModel = await db.registeredModel.findFirst({ where: { modelId: input.modelId, isActive: true }, select: { modelId: true, version: true, artifactJson: true } });
+          let modelInference: { status: "NOT_CONFIGURED" | "FEATURE_SCHEMA_UNSUPPORTED" | "PREDICTED"; modelId?: string; version?: number; prediction?: unknown };
+          if (!activeModel) {
+            modelInference = { status: "NOT_CONFIGURED", modelId: input.modelId };
+          } else {
+            const metadata = JSON.parse(activeModel.artifactJson) as { modelArtifact?: { encoders?: { name?: string; type?: string }[] } };
+            const encoders = metadata.modelArtifact?.encoders;
+            const featureValues: Record<string, number> = {
+              practice_completed_attempts: performance.practice.completedAttempts,
+              practice_accuracy: performance.practice.accuracy ?? 0,
+              practice_questions_answered: performance.practice.correct + performance.practice.incorrect,
+              practice_correct: performance.practice.correct,
+              practice_incorrect: performance.practice.incorrect,
+              practice_unanswered: performance.practice.unanswered,
+              formal_exam_submissions: performance.formalExams.submissions,
+              formal_exam_graded: performance.formalExams.graded,
+              formal_exam_review_required: performance.formalExams.reviewRequired,
+              formal_exam_score_percentage: performance.formalExams.scorePercentage ?? 0,
+              formal_exam_score: performance.formalExams.score,
+              formal_exam_maximum_score: performance.formalExams.maximumScore,
+            };
+            const aliases: Record<string, string> = {
+              completedattempts: "practice_completed_attempts", practicecompletedattempts: "practice_completed_attempts",
+              practiceaccuracy: "practice_accuracy", accuracy: "practice_accuracy",
+              questionsanswered: "practice_questions_answered", practicequestionsanswered: "practice_questions_answered",
+              correct: "practice_correct", practicecorrect: "practice_correct",
+              incorrect: "practice_incorrect", practiceincorrect: "practice_incorrect",
+              unanswered: "practice_unanswered", practiceunanswered: "practice_unanswered",
+              formalsubmissions: "formal_exam_submissions", formalexamsubmissions: "formal_exam_submissions",
+              gradedexams: "formal_exam_graded", formalexamgraded: "formal_exam_graded",
+              reviewrequired: "formal_exam_review_required", formalexamreviewrequired: "formal_exam_review_required",
+              formalscorepercentage: "formal_exam_score_percentage", formalexamscorepercentage: "formal_exam_score_percentage",
+              formalscore: "formal_exam_score", formalexamscore: "formal_exam_score",
+              formalmaximumscore: "formal_exam_maximum_score", formalexammaximumscore: "formal_exam_maximum_score",
+            };
+            const features: Record<string, unknown> = {};
+            let supported = Array.isArray(encoders) && encoders.length > 0;
+            for (const encoder of encoders ?? []) {
+              const normalized = (encoder.name ?? "").replace(/[^a-z0-9]/gi, "").toLowerCase();
+              const source = aliases[normalized];
+              if (!source || encoder.type !== "number") { supported = false; break; }
+              features[encoder.name!] = featureValues[source];
+            }
+            if (!supported) {
+              modelInference = { status: "FEATURE_SCHEMA_UNSUPPORTED", modelId: activeModel.modelId, version: activeModel.version };
+            } else {
+              const prediction = await predictActiveModel(db, input.modelId, features);
+              modelInference = prediction
+                ? { status: "PREDICTED", modelId: prediction.modelId, version: prediction.version, prediction: prediction.prediction }
+                : { status: "NOT_CONFIGURED", modelId: input.modelId };
+            }
+          }
+          output = { student, performance, modelInference, reviewGuidance: { baseReviewOnObservedCountsAndAccuracy: true, doNotTreatUnansweredAsIncorrect: true, separatePracticeFromFormalExams: true, mentionInsufficientEvidenceWhereApplicable: true, modelPredictionIsSupplementaryNotAGrade: true } };
           summary = "retrieved performance evidence for student " + student.id; break;
         }
         case "send_student_performance_review": {

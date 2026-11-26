@@ -43,7 +43,7 @@
 - [x] Replace process-local password-login/token failure counters with atomic PostgreSQL buckets shared across API instances; bucket keys are hashed and raw email/IP are not stored.
 - [x] Replace the global API request limiter with a shared PostgreSQL atomic counter; liveness/readiness probes bypass the limiter database dependency.
 - [x] Preserve per-IP+account and per-IP failure ceilings; success clears the corresponding hashed buckets.
-- [ ] Review shared IP lockout behavior against denial-of-service tradeoffs.
+- [x] Review lockout tradeoff: no global per-account lockout; account failures are scoped to IP+account and an IP-only ceiling limits one source, so another network is not locked out.
 - [x] Review CORS allowlist, cookie flags, CSRF behavior, HTTPS enforcement, Helmet/security headers, body limits, schema validation, upload handling, and safe errors at middleware/config level; Helmet CSP defaults are enabled.
 - [x] Production browser registration fails closed if Turnstile secret is missing; TRUST_PROXY_HOPS is validated and documented.
 - [ ] Complete deployment-specific CORS origin, proxy chain, upload route, and host-level log verification.

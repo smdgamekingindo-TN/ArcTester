@@ -68,6 +68,13 @@ async function setupStudent(page: Page) {
   const register = await apiRequest(page, "/auth/register", "POST", {
     email: studentEmail,
     password: E2E_STUDENT_PASSWORD,
+    adultAttestation: true,
+    termsAccepted: true,
+    privacyConsent: true,
+    termsVersion: "2026-11-27-v1",
+    privacyNoticeVersion: "2026-11-27-v1",
+    consentNoticeVersion: "2026-11-27-v1",
+    ageGateVersion: "2026-11-27-v1",
     fullName: "E2E Student",
     collegeName: "Andhra Polytechnic, Kakinada",
     collegeCode: "010",

@@ -20,6 +20,16 @@ const STUDENT_PROFILE = {
   branchCode: "CM",
 };
 
+const LEGAL_ACCEPTANCE = {
+  adultAttestation: true,
+  termsAccepted: true,
+  privacyConsent: true,
+  termsVersion: "2026-11-27-v1",
+  privacyNoticeVersion: "2026-11-27-v1",
+  consentNoticeVersion: "2026-11-27-v1",
+  ageGateVersion: "2026-11-27-v1",
+};
+
 async function request(
   path: string,
   method: string,
@@ -66,6 +76,7 @@ describe("identity foundation", () => {
   it("allows self-registration without an invitation and leaves the account pending", async () => {
     const response = await request("/auth/register", "POST", {
       ...STUDENT_PROFILE,
+      ...LEGAL_ACCEPTANCE,
       email: "self-signup@arctester.test",
       registrationNumber: "24999-CM-051",
       password: "student-password-123",
@@ -142,6 +153,7 @@ describe("identity foundation", () => {
   it("self-registers a student, requires approval, and prevents duplicate registration", async () => {
     const registered = await request("/auth/register", "POST", {
       ...STUDENT_PROFILE,
+      ...LEGAL_ACCEPTANCE,
       email: "student@arctester.test",
       registrationNumber: "24999-CM-052",
       password: "student-password-123",
@@ -162,6 +174,7 @@ describe("identity foundation", () => {
 
     const reused = await request("/auth/register", "POST", {
       ...STUDENT_PROFILE,
+      ...LEGAL_ACCEPTANCE,
       email: "student@arctester.test",
       password: "another-password-123",
     });

@@ -106,3 +106,19 @@ Do not commit audit output if it contains private registry or environment detail
 
 Record evidence, date, reviewer and remediation PR for each checked item before
 calling the production security review complete.
+
+## Privacy and DPDP readiness (P0)
+
+- [ ] Confirm legal Data Fiduciary/operator identity, postal address, privacy contact and grievance contact; publish verified details in the Privacy Notice and Terms.
+- [ ] Review the source-controlled Privacy Notice and Terms with qualified Indian counsel; remove every publication placeholder before release.
+- [ ] Verify web and mobile registration require separate Terms acceptance and specific personal-data consent; verify API rejects missing/false/stale versions.
+- [ ] Verify legal acceptance is recorded atomically with account creation, with server timestamp, document versions, source and age-gate attestation; do not record acceptance for existing users retroactively.
+- [ ] Confirm adult-attestation gate is clearly described and not treated as proof of age. Do not accept under-18 accounts until a verifiable parent/guardian consent workflow and child safeguards are implemented and reviewed.
+- [ ] Complete data inventory, purpose mapping, processor/subprocessor and transfer review, production/backup region verification, and category-specific retention schedule.
+- [ ] Implement and test access/correction/erasure/withdrawal/grievance workflows, identity verification, response tracking and lawful retention exceptions.
+- [ ] Review child-data restrictions, profiling/behavioral monitoring, advertising, AI/model use and analytics for applicable DPDP requirements.
+- [ ] Reconcile DPDP breach-notification duties with applicable CERT-In incident reporting/log requirements; appoint a contact and rehearse response.
+- [ ] Re-check official Gazette commencement notifications and amendments at release; record counsel/security reviewer and evidence.
+- [ ] Remove the client-controlled `x-arctester-client: mobile` CAPTCHA bypass; require a server-verifiable mobile registration challenge and shared abuse limits.
+
+Reference implementation plan: `docs/security/DPDP_PRIVACY_SECURITY_READINESS.md`.

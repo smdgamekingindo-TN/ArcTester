@@ -16,6 +16,10 @@ const JWT_SECRET = process.env.JWT_SECRET ?? (process.env.NODE_ENV === "producti
 const COOKIE_NAME = "ecet_session";
 const COOKIE_MAX_AGE = 7 * 24 * 60 * 60;
 const JWT_TTL_SECONDS = 7 * 24 * 60 * 60;
+// Keep issuer/audience stable across API instances. Overrides are useful for
+// staging environments; changing either intentionally invalidates existing sessions.
+const JWT_ISSUER = process.env.JWT_ISSUER?.trim() || "arctester-api";
+const JWT_AUDIENCE = process.env.JWT_AUDIENCE?.trim() || "arctester-client";
 const INVITATION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 export function validateJwtSecret(secret: string, production = process.env.NODE_ENV === "production"): void {
@@ -58,6 +62,8 @@ export function signJwt(
     Buffer.from(
       JSON.stringify({
         ...payload,
+        iss: JWT_ISSUER,
+        aud: JWT_AUDIENCE,
         iat: nowSeconds(),
         exp: nowSeconds() + ttlSeconds,
       })
@@ -115,8 +121,22 @@ export function verifyJwt(token: string): Record<string, unknown> {
     throw new Error("malformed token payload");
   }
   const payload = parsedPayload as Record<string, unknown>;
+  const now = nowSeconds();
   if (!Number.isSafeInteger(payload.exp)) throw new Error("missing or invalid token expiry");
-  if ((payload.exp as number) <= nowSeconds()) throw new Error("expired token");
+  if (!Number.isSafeInteger(payload.iat)) throw new Error("missing or invalid token issued-at");
+  if (typeof payload.iss !== "string" || payload.iss !== JWT_ISSUER) throw new Error("invalid token issuer");
+  const audience = payload.aud;
+  if (!(audience === JWT_AUDIENCE || (Array.isArray(audience) && audience.includes(JWT_AUDIENCE)))) {
+    throw new Error("invalid token audience");
+  }
+  const issuedAt = payload.iat as number;
+  const expiresAt = payload.exp as number;
+  if (issuedAt > now + 60) throw new Error("token issued in the future");
+  if (expiresAt <= now) throw new Error("expired token");
+  if (expiresAt <= issuedAt || expiresAt - issuedAt > JWT_TTL_SECONDS) throw new Error("invalid token lifetime");
+  if (payload.nbf !== undefined && (!Number.isSafeInteger(payload.nbf) || (payload.nbf as number) > now + 60)) {
+    throw new Error("token not yet valid");
+  }
   return payload;
 }
 

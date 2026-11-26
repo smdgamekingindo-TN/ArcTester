@@ -197,6 +197,13 @@ export async function signUp(
     body: JSON.stringify({
       email,
       password,
+      adultAttestation: true,
+      termsAccepted: true,
+      privacyConsent: true,
+      termsVersion: "2026-11-27-v1",
+      privacyNoticeVersion: "2026-11-27-v1",
+      consentNoticeVersion: "2026-11-27-v1",
+      ageGateVersion: "2026-11-27-v1",
       fullName: "Test Student",
       collegeName: "Test Polytechnic",
       collegeCode: "999",

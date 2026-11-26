@@ -578,6 +578,17 @@ describe("auth — bearer token (native/mobile clients)", () => {
     const verified = await postJsonWithCookie(`${server.baseUrl}/auth/login/2fa`, { challengeId: challenge.challengeId, code: recovery });
     expect(verified.status).toBe(200);
     expect((verified.json as { user: { email: string } }).user.email).toBe(email);
+
+    // Removing an MFA factor revokes every session, including the current one.
+    const disableCounter = Math.floor(Date.now() / 30_000) + 1;
+    const disabled = await fetch(`${server.baseUrl}/auth/2fa/totp/disable`, {
+      method: "POST",
+      headers: { "content-type": "application/json", cookie: `ecet_session=${cookieJar.get("ecet_session")}` },
+      body: JSON.stringify({ password: "totp-test-password", code: totpAt(secret, disableCounter) }),
+    });
+    expect(disabled.status).toBe(200);
+    const revokedSession = await fetch(`${server.baseUrl}/auth/me`, { headers: { cookie: `ecet_session=${cookieJar.get("ecet_session")}` } });
+    expect(revokedSession.status).toBe(403);
   });
   it("lists and revokes a legacy session issued before session tracking", async () => {
     const user = await server.db.user.findUnique({ where: { email: "mobile@example.com" }, select: { id: true, email: true, sessionVersion: true } });

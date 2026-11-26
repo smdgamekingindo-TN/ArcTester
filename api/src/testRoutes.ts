@@ -143,13 +143,14 @@ export function testRouter(db: PrismaClient): Router {
         where: { reviewStatus: "APPROVED", id: { notIn: publishedExamQuestionIds } },
         orderBy: [{ subject: { name: "asc" } }, { topic: { name: "asc" } }, { id: "asc" }],
         select: {
-          id: true, text: true, options: true, difficulty: true,
+          id: true, subjectId: true, text: true, options: true, difficulty: true,
           audienceScope: true, targetCollegeCode: true, targetCollegeName: true,
           targetBranchCode: true, targetBranchName: true, targetStudentIdsJson: true,
           subject: { select: { name: true } }, topic: { select: { name: true } },
         },
       });
-      const questions = rows.filter((row) => isContentAudienceVisible(row as ContentAudience, account)).map((row) => ({
+      const subjectNames = new Map(rows.map((row) => [row.subjectId, row.subject.name]));
+      const questions = filterBranchSubjectQuestions(rows, subjectNames, account).map((row) => ({
         id: row.id,
         subject: row.subject.name,
         topic: row.topic?.name ?? null,

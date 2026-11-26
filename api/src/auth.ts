@@ -451,8 +451,36 @@ async function recordLoginEvent(db: PrismaClient, req: Request, email: string, u
 }
 async function createAuthSession(db: PrismaClient, req: Request, user: { id: number; email: string; sessionVersion: number }, method = "password"): Promise<{ token: string; sessionId: string }> {
   const device = requestDevice(req);
+  const recentDevice = await db.authSession.findFirst({
+    where: {
+      userId: user.id,
+      deviceName: device.deviceName,
+      platform: device.platform,
+      userAgent: device.userAgent,
+      createdAt: { gte: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000) },
+    },
+    select: { id: true },
+  });
   const expiresAt = new Date(Date.now() + JWT_TTL_SECONDS * 1000);
   const session = await db.authSession.create({ data: { userId: user.id, ...device, loginMethod: method, expiresAt } });
+  if (!recentDevice) {
+    try {
+      const locationHint = device.ipAddress ? " from " + device.ipAddress : "";
+      await db.studentNotification.create({
+        data: {
+          userId: user.id,
+          kind: "SECURITY_NEW_DEVICE",
+          title: "New sign-in detected",
+          message: `New sign-in on ${device.deviceName}${locationHint}. If this wasn't you, review your sessions and change your password.`,
+          href: "/profile",
+          dedupeKey: "security-new-device:" + session.id,
+          expiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
+        },
+      });
+    } catch {
+      // Security alerts are best-effort; a notification failure must not block login.
+    }
+  }
   const token = signJwt({ sub: String(user.id), email: user.email, sv: user.sessionVersion, sid: session.id });
   return { token, sessionId: session.id };
 }

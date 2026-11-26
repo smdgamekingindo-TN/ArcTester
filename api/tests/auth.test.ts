@@ -204,7 +204,7 @@ describe("auth", () => {
       const challenge = challengeResponse.json as { svg: string; token: string };
       expect(challenge.svg).toContain("<svg");
       expect(challenge.token).toContain(".");
-      const answer = Array.from(challenge.svg.matchAll(/<text[^>]*>([^<]+)<\\/text>/g), match => match[1]).join("");
+      const answer = Array.from(challenge.svg.matchAll(/<text[^>]*>([^<]+)<\/text>/g), match => match[1]).join("");
       const response = await postJson(`${server.baseUrl}/auth/register`, {
         ...STUDENT_PROFILE,
         email: "svg-captcha-valid@example.com",

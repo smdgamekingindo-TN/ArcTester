@@ -484,7 +484,7 @@ export function sessionRouter(db: PrismaClient): Router {
           where: { id: session.id },
           data: { violationCount: { increment: addedWeight } },
         });
-        const newCount = updatedSession.violationCount + addedWeight;
+        const newCount = updatedSession.violationCount;
         const max = examVersion.maxViolations;
         const flagged = newCount >= max;
         const warn = newCount >= Math.ceil(max / 2);
@@ -507,7 +507,7 @@ export function sessionRouter(db: PrismaClient): Router {
         }
         return { newCount, max, warn, flagged, terminated };
       });
-      res.json({ ok: true, violationCount: result.newCount, max: result.max, warn: result.warn, flagged: result.flagged });
+      res.json({ ok: true, violationCount: result.newCount, max: result.max, warn: result.warn, flagged: result.flagged, terminated: result.terminated });
     } catch (error) { next(error); }
   });
 

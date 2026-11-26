@@ -633,7 +633,7 @@ export default function App() {
         onEmailChange={setEmail}
         onPasswordChange={setPassword}
         onRegisterChange={(value) => { setRegister(value); setTwoFactorChallenge(""); }}
-        onAuthenticate={(captchaToken) => void authenticate(captchaToken)}
+        onAuthenticate={(captchaToken, legalAcceptance) => void authenticate(captchaToken, legalAcceptance)}
         onCaptchaLoad={loadRegistrationCaptcha}
         twoFactorChallenge={twoFactorChallenge}
         onCompleteTwoFactor={(challengeId, code) => void completeTwoFactor(challengeId, code)}

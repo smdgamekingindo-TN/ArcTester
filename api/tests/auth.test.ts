@@ -701,18 +701,22 @@ describe("auth — bearer token (native/mobile clients)", () => {
       const options = await requestOptions();
       expect(options.status).toBe(200);
       const challengeId = options.body.challengeId;
-      const verify = async (id: string) => fetch(`${server.baseUrl}/auth/passkeys/login/verify`, {
-        method: "POST",
-        headers: { "content-type": "application/json", origin: "https://study.example.com" },
-        body: JSON.stringify({
-          challengeId: id,
-          credentialId: "missing-passkey-credential-0001",
-          clientDataJSON: "x".repeat(40),
-          authenticatorData: "y".repeat(40),
-          signature: "z".repeat(40),
-        }),
-      });
-      for (let attempt = 0; attempt < 5; attempt += 1) expect((await verify(challengeId)).status).toBe(403);
+      const verify = async (id: string) => {
+        const response = await fetch(`${server.baseUrl}/auth/passkeys/login/verify`, {
+          method: "POST",
+          headers: { "content-type": "application/json", origin: "https://study.example.com" },
+          body: JSON.stringify({
+            challengeId: id,
+            credentialId: "missing-passkey-credential-0001",
+            clientDataJSON: "x".repeat(40),
+            authenticatorData: "y".repeat(40),
+            signature: "z".repeat(40),
+          }),
+        });
+        await response.arrayBuffer();
+        return response.status;
+      };
+      for (let attempt = 0; attempt < 5; attempt += 1) expect(await verify(challengeId)).toBe(403);
       expect((await verify(challengeId)).status).toBe(403);
       const stored = await server.db.authChallenge.findUnique({ where: { challenge: createHash("sha256").update(challengeId).digest("hex") } });
       expect(stored?.attempts).toBe(5);
@@ -721,7 +725,7 @@ describe("auth — bearer token (native/mobile clients)", () => {
       expect(expired.status).toBe(200);
       const expiredHash = createHash("sha256").update(expired.body.challengeId).digest("hex");
       await server.db.authChallenge.update({ where: { challenge: expiredHash }, data: { expiresAt: new Date(Date.now() - 1000) } });
-      expect((await verify(expired.body.challengeId)).status).toBe(403);
+      expect(await verify(expired.body.challengeId)).toBe(403);
     } finally {
       if (previousOrigins === undefined) delete process.env.CORS_ORIGINS;
       else process.env.CORS_ORIGINS = previousOrigins;

@@ -8,7 +8,7 @@ Complete this checklist for each production/staging environment. Do not paste se
 - [ ] Set `TOTP_ENCRYPTION_KEY` to a 32-byte hex key (`openssl rand -hex 32`) before enabling authenticator MFA.
 - [ ] Set `CORS_ORIGINS` to exact HTTPS frontend origins, comma-separated; do not use wildcard origins with credentialed cookies.
 - [ ] Set the Cloudflare Turnstile site key in the frontend and `TURNSTILE_SECRET_KEY` in the API. Browser registration fails closed in production if the secret is missing.
-- [ ] Use `COOKIE_SAME_SITE=none` only for cross-site frontend/API deployments and ensure HTTPS. Use `lax` only when the deployment is same-site.
+- [ ] Production currently defaults the session cookie to `SameSite=None; Secure` for cross-site frontend/API hosting. Confirm this is required; set `COOKIE_SAME_SITE=lax` only for same-site deployments. Always use HTTPS.
 - [ ] Keep database credentials, object-storage credentials and model artifact credentials in the host's secret manager/environment, not source control.
 
 ## Proxy, database and network

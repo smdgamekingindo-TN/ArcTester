@@ -18,22 +18,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
-      ARCTESTER_WEB_URL: ${{ vars.ARCTESTER_WEB_URL }}
-      ARCTESTER_API_URL: ${{ vars.ARCTESTER_API_URL }}
+      ARCTESTER_WEB_URL: ${{ vars.ARCTESTER_WEB_URL || 'https://arctester.vercel.app' }}
+      ARCTESTER_API_URL: ${{ vars.ARCTESTER_API_URL || 'https://arctester.onrender.com' }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Check hosted smoke configuration
-        id: smoke_config
+      - name: Validate deployment URLs
         run: |
-          if [[ -z "$ARCTESTER_WEB_URL" || -z "$ARCTESTER_API_URL" ]]; then
-            echo "skip_smoke=true" >> "$GITHUB_OUTPUT"
-            echo "::notice::Hosted smoke checks skipped: configure repository variables ARCTESTER_WEB_URL and ARCTESTER_API_URL to enable live deployment checks."
-          else
-            echo "skip_smoke=false" >> "$GITHUB_OUTPUT"
-          fi
+          test -n "$ARCTESTER_WEB_URL"
+          test -n "$ARCTESTER_API_URL"
 
       - name: Run HTTPS hosted smoke checks
-        if: steps.smoke_config.outputs.skip_smoke == 'false'
         run: bash scripts/hosted-smoke.sh

@@ -613,6 +613,10 @@ describe("PUT /tests/:id/answers", () => {
 describe("student branch subject catalog", () => {
   afterEach(async () => { await server.db.user.update({ where: { id: userId }, data: { branchCode: null, branchName: null } }); });
   it("hides another branch's subject, keeps MPC common, and shows the subject to its own branch", async () => {
+    const { isCommonMpcSubject } = await import("../src/branchSubjectVisibility.js");
+    expect(isCommonMpcSubject("Engineering Mathematics-I")).toBe(true);
+    expect(isCommonMpcSubject("Engineering Physics")).toBe(true);
+    expect(isCommonMpcSubject("Engineering Chemistry & Environmental Studies")).toBe(true);
     const imported = await importFromJson(server.db, [
       ["CME Core Test", "CME branch-scoped catalog fixture question", ["a", "b", "c", "d"], 0, "branch-catalog"],
       ["CME Core Test", "CME legacy global catalog fixture question", ["a", "b", "c", "d"], 1, "global-catalog"],

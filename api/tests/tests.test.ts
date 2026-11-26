@@ -617,26 +617,29 @@ describe("student branch subject catalog", () => {
       ["CME Core Test", "CME branch-scoped catalog fixture question", ["a", "b", "c", "d"], 0, "branch-catalog"],
       ["CME Core Test", "CME legacy global catalog fixture question", ["a", "b", "c", "d"], 1, "global-catalog"],
       ["Physics", "Physics common branch-tagged fixture question", ["a", "b", "c", "d"], 2, "mpc-common"],
+      ["Data Structures", "CME legacy all-scoped subject fixture question", ["a", "b", "c", "d"], 3, "cme-core"],
     ]);
-    expect(imported.added).toBe(3);
+    expect(imported.added).toBe(4);
     const subject = await server.db.subject.findUniqueOrThrow({ where: { name: "CME Core Test" } });
     await server.db.question.updateMany({ where: { subjectId: subject.id }, data: { reviewStatus: "APPROVED" } });
     await server.db.question.update({
       where: { questionHash: (await import("../src/questions.js")).hashQuestion("CME branch-scoped catalog fixture question") },
-      data: { audienceScope: "BRANCH", targetBranchCode: "CME", targetBranchName: "Computer Engineering" },
+      data: { audienceScope: "BRANCH", targetBranchCode: "CM", targetBranchName: "Computer Engineering (CME)" },
     });
 
-    await server.db.user.update({ where: { id: userId }, data: { branchCode: "MEC", branchName: "Mechanical Engineering" } });
+    await server.db.user.update({ where: { id: userId }, data: { branchCode: "M", branchName: "Mechanical Engineering" } });
     const mecBank = await api.get("/bank");
     const mecSubjects = (mecBank.json as { subjects: { subject: string; count: number }[] }).subjects;
     expect(mecSubjects.some(item => item.subject === "CME Core Test")).toBe(false);
+    expect(mecSubjects.some(item => item.subject === "Data Structures")).toBe(false);
     expect(mecSubjects.some(item => item.subject === "Physics" && item.count >= 2)).toBe(true);
     expect(mecSubjects.some(item => item.subject === "Maths")).toBe(true);
 
-    await server.db.user.update({ where: { id: userId }, data: { branchCode: "CME", branchName: "Computer Engineering" } });
+    await server.db.user.update({ where: { id: userId }, data: { branchCode: "CM", branchName: "Computer Engineering (CME)" } });
     const cmeBank = await api.get("/bank");
     const cmeSubjects = (cmeBank.json as { subjects: { subject: string; count: number }[] }).subjects;
     expect(cmeSubjects.find(item => item.subject === "CME Core Test")?.count).toBe(2);
+    expect(cmeSubjects.find(item => item.subject === "Data Structures")?.count).toBe(1);
 
     await server.db.user.update({ where: { id: userId }, data: { branchCode: null, branchName: null } });
   });

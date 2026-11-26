@@ -634,14 +634,14 @@ export function authRouter(db: PrismaClient): Router {
       const ip = req.ip ?? "unknown";
       const emailKey = loginBucketKey(ip, input.email);
       const ipKey = loginBucketKey(ip);
-      const retryAfter = Math.max(loginRetryAfter(db, emailKey), loginRetryAfter(db, ipKey));
-      if (retryAfter > 0) return rejectThrottledLogin(res, retryAfter);
+      const retryAfter = Math.max(await loginRetryAfter(db, emailKey), await loginRetryAfter(db, ipKey));
+      if (retryAfter > 0) { await recordLoginEvent(db, req, input.email, null, "throttled", "password"); return rejectThrottledLogin(res, retryAfter); }
       const user = await db.user.findUnique({ where: { email: input.email } });
       if (!user || !await verifyPasswordAsync(input.password, user.passwordHash)) {
         await recordLoginEvent(db, req, input.email, user?.id ?? null, "failed", "password");
         await recordLoginFailure(db, emailKey);
         await recordLoginFailure(db, ipKey);
-        const blockedFor = Math.max(loginRetryAfter(db, emailKey), loginRetryAfter(db, ipKey));
+        const blockedFor = Math.max(await loginRetryAfter(db, emailKey), await loginRetryAfter(db, ipKey));
         if (blockedFor > 0) return rejectThrottledLogin(res, blockedFor);
         return next(badRequest("Invalid email or password."));
       }

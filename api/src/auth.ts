@@ -356,6 +356,28 @@ export async function requireAuth(req: AuthedRequest, _res: Response, next: Next
   }
 }
 
+/**
+ * Security-sensitive account changes require a recently issued session token.
+ * The JWT iat is set by the server at successful authentication and cannot be
+ * changed without invalidating its signature.
+ */
+export function requireRecentAuth(maxAgeSeconds = 5 * 60) {
+  return (req: AuthedRequest, _res: Response, next: NextFunction): void => {
+    const token = readSessionToken(req);
+    if (!token) return next(forbidden("Sign in again to confirm this security change."));
+    try {
+      const payload = verifyJwt(token);
+      const issuedAt = payload.iat;
+      if (!Number.isSafeInteger(issuedAt)) return next(forbidden("Sign in again to confirm this security change."));
+      const ageSeconds = nowSeconds() - (issuedAt as number);
+      if (ageSeconds < -60 || ageSeconds > maxAgeSeconds) return next(forbidden("Sign in again to confirm this security change."));
+      next();
+    } catch {
+      next(forbidden("Sign in again to confirm this security change."));
+    }
+  };
+}
+
 export function requireAdmin(db: PrismaClient) {
   return async (req: AuthedRequest, _res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -831,7 +853,7 @@ export function authRouter(db: PrismaClient): Router {
 
 
 
-  router.post("/2fa/totp/setup", requireAuth, async (req: AuthedRequest, res, next) => {
+  router.post("/2fa/totp/setup", requireAuth, requireRecentAuth(), async (req: AuthedRequest, res, next) => {
     try {
       const existing = await db.totpCredential.findUnique({ where: { userId: req.user!.id } });
       if (existing?.enabledAt) return next(conflict("Authenticator is already enabled. Disable it before re-enrolling."));
@@ -849,7 +871,7 @@ export function authRouter(db: PrismaClient): Router {
     } catch (error) { next(error); }
   });
 
-  router.post("/2fa/totp/verify-setup", requireAuth, async (req: AuthedRequest, res, next) => {
+  router.post("/2fa/totp/verify-setup", requireAuth, requireRecentAuth(), async (req: AuthedRequest, res, next) => {
     try {
       const input = z.object({ code: z.string().regex(/^\d{6}$/) }).parse(req.body);
       const credential = await db.totpCredential.findUnique({ where: { userId: req.user!.id } });
@@ -950,7 +972,7 @@ export function authRouter(db: PrismaClient): Router {
     return { origin, rpId: parsed.hostname };
   }
 
-  router.post("/passkeys/register/options", requireAuth, async (req: AuthedRequest, res, next) => {
+  router.post("/passkeys/register/options", requireAuth, requireRecentAuth(), async (req: AuthedRequest, res, next) => {
     try {
       const { rpId } = passkeyOrigin(req);
       const user = await db.user.findUnique({ where: { id: req.user!.id }, select: { id: true, email: true, fullName: true } });
@@ -962,7 +984,7 @@ export function authRouter(db: PrismaClient): Router {
     } catch (error) { next(error); }
   });
 
-  router.post("/passkeys/register/verify", requireAuth, async (req: AuthedRequest, res, next) => {
+  router.post("/passkeys/register/verify", requireAuth, requireRecentAuth(), async (req: AuthedRequest, res, next) => {
     try {
       const input = z.object({ challenge: z.string().min(20), credentialId: z.string().min(8), clientDataJSON: z.string().min(20), attestationObject: z.string().min(20), name: z.string().trim().min(1).max(80).optional(), transports: z.array(z.string().max(32)).max(8).optional() }).parse(req.body);
       const { origin, rpId } = passkeyOrigin(req);
@@ -1029,7 +1051,7 @@ export function authRouter(db: PrismaClient): Router {
     } catch (error) { next(error); }
   });
 
-  router.delete("/passkeys/:id", requireAuth, async (req: AuthedRequest, res, next) => {
+  router.delete("/passkeys/:id", requireAuth, requireRecentAuth(), async (req: AuthedRequest, res, next) => {
     try {
       const result = await db.passkeyCredential.deleteMany({ where: { id: req.params.id, userId: req.user!.id } });
       if (!result.count) return next(notFound("Passkey not found."));

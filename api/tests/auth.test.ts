@@ -1,10 +1,11 @@
 import { createHmac } from "node:crypto";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { buildApp } from "../src/index.js";
 import {
   signJwt,
   validateJwtSecret,
   verifyJwt,
+  requireRecentAuth,
 } from "../src/auth.js";
 import { importFromJson } from "../src/importService.js";
 import { totpAt } from "../src/totp.js";
@@ -112,6 +113,27 @@ describe("JWT secret configuration", () => {
     expect(() => verifyJwt(signed({ alg: "HS256", typ: "JWT" }, { ...claims, exp: now + 8 * 24 * 60 * 60 }))).toThrow(/lifetime/i);
     expect(() => verifyJwt(signed({ alg: "HS256", typ: "JWT" }, claims))).not.toThrow();
     expect(verifyJwt(signJwt({ sub: "1" })).iss).toBe("arctester-api");
+  });
+
+  it("requires recent authentication for MFA/passkey security changes", () => {
+    vi.useFakeTimers();
+    const initialTime = new Date("2026-01-01T00:00:00.000Z");
+    try {
+      vi.setSystemTime(initialTime);
+      const staleToken = signJwt({ sub: "1", email: "recent@example.com", sv: 0 }, 24 * 60 * 60);
+      vi.setSystemTime(new Date(initialTime.getTime() + 60 * 60 * 1000));
+      const guard = requireRecentAuth();
+      let staleError: unknown;
+      guard({ headers: { authorization: `Bearer ${staleToken}` } } as never, {} as never, (error?: unknown) => { staleError = error; });
+      expect(staleError).toBeTruthy();
+
+      const freshToken = signJwt({ sub: "1", email: "recent@example.com", sv: 0 });
+      let freshError: unknown;
+      guard({ headers: { authorization: `Bearer ${freshToken}` } } as never, {} as never, (error?: unknown) => { freshError = error; });
+      expect(freshError).toBeUndefined();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("does not require production-strength secrets in development or tests", () => {

@@ -5,7 +5,7 @@ import { stableModelJson, trainModel } from "../src/modelTraining.js";
 import { startTestServer, type TestServer } from "./server.js";
 
 let server: TestServer;
-let bearer = "";
+let bearer = "";\nlet adminId = 0;\nlet adminKeyId = "";
 
 function digest(value: string) { return createHash("sha256").update(value).digest("hex"); }
 async function callTool(name: string, args: Record<string, unknown>) {
@@ -43,14 +43,15 @@ const verificationSamplesTwo = [
 describe("administrator MCP model control", () => {
   beforeAll(async () => {
     server = await startTestServer(buildApp);
-    const admin = await server.db.user.create({ data: { email: "admin-model-mcp@arctester.test", passwordHash: "test-only", role: "ADMIN" } });
+    const admin = await server.db.user.create({ data: { email: "admin-model-mcp@arctester.test", passwordHash: "test-only", role: "ADMIN" } });\n    adminId = admin.id;
     bearer = "arc_admin_" + randomBytes(32).toString("base64url");
-    await server.db.adminMcpKey.create({ data: {
+    const key = await server.db.adminMcpKey.create({ data: {
       userId: admin.id,
       name: "model-control-test",
       keyHash: digest(bearer),
       scopes: ["models:read", "models:dataset:create", "models:verification:read", "models:train", "models:register", "models:evaluate", "models:activate"],
     } });
+    adminKeyId = key.id;
   });
 
   afterAll(async () => { await server.close(); });
@@ -175,5 +176,17 @@ describe("administrator MCP model control", () => {
     expect(result.metrics.accuracy).toBeLessThanOrEqual(1);
     expect(result.metrics.baselineAccuracy).toBeGreaterThanOrEqual(0);
     expect(result.metrics.baselineAccuracy).toBeLessThanOrEqual(1);
+  });
+
+  it("enforces missing tool scopes", async () => {
+    await expect(callTool("create_questions", { questions: [] })).rejects.toThrow(/Missing questions:create scope/i);
+  });
+
+  it("re-checks administrator role and key revocation on every MCP request", async () => {
+    await server.db.user.update({ where: { id: adminId }, data: { role: "STUDENT" } });
+    await expect(callTool("list_registered_models", { limit: 5 })).rejects.toThrow(/Administrator access is required/i);
+    await server.db.user.update({ where: { id: adminId }, data: { role: "ADMIN" } });
+    await server.db.adminMcpKey.update({ where: { id: adminKeyId }, data: { revokedAt: new Date() } });
+    await expect(callTool("list_registered_models", { limit: 5 })).rejects.toThrow(/invalid or revoked/i);
   });
 });

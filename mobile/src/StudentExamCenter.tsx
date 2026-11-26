@@ -25,6 +25,7 @@ export default function StudentExamCenter({ api, darkMode, disabled }: Props) {
   const [paper, setPaper] = useState<ExamPackage | null>(null);
   const [answers, setAnswers] = useState<SavedAnswers>({});
   const [index, setIndex] = useState(0);
+  const [showQuestionGrid, setShowQuestionGrid] = useState(false);
   const [deadline, setDeadline] = useState<number | null>(null);
   const [startedAt, setStartedAt] = useState<string | null>(null);
   const [seconds, setSeconds] = useState(0);
@@ -65,7 +66,7 @@ export default function StudentExamCenter({ api, darkMode, disabled }: Props) {
       const restored: SavedAnswers = {};
       for (const question of packageResponse.package.questions) restored[question.id] = null;
       for (const answer of saved.answers) if (answer.examQuestionId in restored) restored[answer.examQuestionId] = answer.selectedIndex;
-      setPaper(packageResponse.package); setAnswers(restored); setIndex(0);
+      setPaper(packageResponse.package); setAnswers(restored); setIndex(0); setShowQuestionGrid(false);
       const startedDeadline = new Date(started.session.deadline).getTime();
       setStartedAt(started.session.startedAt); setDeadline(startedDeadline); setSeconds(Math.max(0, Math.ceil((startedDeadline - Date.now()) / 1000)));
       revisionRef.current = saved.revision; attemptUuid.current = uuid(); autoSubmitTriggered.current = false;
@@ -113,7 +114,7 @@ export default function StudentExamCenter({ api, darkMode, disabled }: Props) {
         }),
       });
       Alert.alert(automatic ? "Time is up — exam submitted" : "Exam submitted", result.submission.status === "REVIEW_REQUIRED" ? "Your attempt was received and is waiting for review." : automatic ? "Your answers were submitted automatically when the timer ended." : "Your exam was submitted successfully.");
-      setPaper(null); setDeadline(null); setStartedAt(null); setAnswers({}); setIndex(0);
+      setPaper(null); setDeadline(null); setStartedAt(null); setAnswers({}); setIndex(0); setShowQuestionGrid(false);
       await refresh();
     } catch (cause) { setError((cause as Error).message || "Submission failed. Your answers remain saved."); }
     finally { setBusy(false); }
@@ -131,14 +132,20 @@ export default function StudentExamCenter({ api, darkMode, disabled }: Props) {
     return <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
       <View style={styles.top}><View style={{ flex: 1 }}><Text style={[styles.title, { color: colors.text }]}>{paper.title}</Text><Text style={[styles.muted, { color: colors.muted }]}>Question {index + 1} / {paper.questions.length}</Text></View><View style={[styles.timer, seconds < 60 && { backgroundColor: "#fee2e2" }]}><MaterialCommunityIcons name="timer-outline" size={17} color={seconds < 60 ? palette.red : palette.blue}/><Text style={{ color: seconds < 60 ? palette.red : palette.blue, fontWeight: "900" }}>{formatTime(seconds)}</Text></View></View>
       <View style={[styles.progress, { backgroundColor: colors.border }]}><View style={[styles.progressFill, { width: `${100 * answered / paper.questions.length}%` }]} /></View>
-      <View style={styles.questionGrid} accessibilityLabel="Question navigator">
-        {paper.questions.map((item, questionIndex) => {
-          const selected = index === questionIndex;
-          const completed = answers[item.id] !== null && answers[item.id] !== undefined;
-          return <TouchableOpacity key={item.id} accessibilityRole="button" accessibilityLabel={`Question ${questionIndex + 1}`} accessibilityState={{ selected }} onPress={() => setIndex(questionIndex)} style={[styles.questionGridItem, { borderColor: selected ? palette.blue : completed ? palette.green : colors.border, backgroundColor: selected ? (dark ? "#1d3b68" : "#eff6ff") : completed ? (dark ? "#17352a" : "#f0fdf4") : colors.surface, borderWidth: selected ? 2.5 : 1.5 }]}>
-            <Text style={{ color: selected ? palette.blue : completed ? palette.green : colors.text, fontWeight: "900", fontSize: 12 }}>{questionIndex + 1}</Text>
-          </TouchableOpacity>;
-        })}
+      <View style={[styles.questionNavigator, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+        <TouchableOpacity accessibilityRole="button" accessibilityState={{ expanded: showQuestionGrid }} onPress={() => setShowQuestionGrid(value => !value)} style={styles.questionGridToggle}>
+          <Text style={{ color: colors.text, fontWeight: "800", flex: 1 }}>Question paper · {answered}/{paper.questions.length} answered</Text>
+          <MaterialCommunityIcons name={showQuestionGrid ? "chevron-up" : "chevron-down"} size={20} color={colors.muted}/>
+        </TouchableOpacity>
+        {showQuestionGrid ? <View style={styles.questionGrid} accessibilityLabel="Question navigator">
+          {paper.questions.map((item, questionIndex) => {
+            const selected = index === questionIndex;
+            const completed = answers[item.id] !== null && answers[item.id] !== undefined;
+            return <TouchableOpacity key={item.id} hitSlop={4} accessibilityRole="button" accessibilityLabel={`Question ${questionIndex + 1}`} accessibilityState={{ selected }} onPress={() => setIndex(questionIndex)} style={[styles.questionGridItem, { borderColor: selected ? palette.blue : completed ? palette.green : colors.border, backgroundColor: selected ? (dark ? "#1d3b68" : "#eff6ff") : completed ? (dark ? "#17352a" : "#f0fdf4") : colors.surface, borderWidth: selected ? 2.5 : 1.5 }]}>
+              <Text style={{ color: selected ? palette.blue : completed ? palette.green : colors.text, fontWeight: "900", fontSize: 12 }}>{questionIndex + 1}</Text>
+            </TouchableOpacity>;
+          })}
+        </View> : null}
       </View>
       {paper.instructions ? <Text style={[styles.muted, { color: colors.muted, marginTop: 12 }]}>{paper.instructions}</Text> : null}
       <Text style={[styles.meta, { color: colors.muted }]}>{question.subject}{question.topic ? " · " + question.topic : ""} · {question.marks} mark(s)</Text>
@@ -184,16 +191,18 @@ const styles = StyleSheet.create({
   timer: { flexDirection: "row", alignItems: "center", gap: 5, borderRadius: 20, backgroundColor: "#eff6ff", paddingHorizontal: 10, paddingVertical: 8 },
   progress: { height: 6, borderRadius: 8, overflow: "hidden", marginTop: 4 },
   progressFill: { height: "100%", backgroundColor: palette.blue, borderRadius: 8 },
-  questionGrid: { flexDirection: "row", flexWrap: "wrap", gap: 4, marginTop: 4 },
-  questionGridItem: { width: 26, height: 26, borderRadius: 7, alignItems: "center", justifyContent: "center" },
+  questionNavigator: { borderWidth: 1, borderRadius: 12, marginTop: 6, overflow: "hidden" },
+  questionGridToggle: { minHeight: 44, flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 12, paddingVertical: 8 },
+  questionGrid: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 0, paddingHorizontal: 10, paddingBottom: 10 },
+  questionGridItem: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   meta: { fontSize: 11, fontWeight: "700", marginTop: 8 },
   question: { fontSize: 17, lineHeight: 25, fontWeight: "800", marginTop: 10, marginBottom: 4 },
-  option: { borderWidth: 1.5, borderRadius: 12, padding: 14, marginTop: 8 },
-  actions: { flexDirection: "row", gap: 7, marginTop: 6 },
-  primary: { flex: 1, backgroundColor: palette.blue, borderRadius: 9, minHeight: 36, alignItems: "center", justifyContent: "center", paddingHorizontal: 9, marginTop: 0 },
+  option: { borderWidth: 1.5, borderRadius: 12, padding: 14, minHeight: 48, marginTop: 10 },
+  actions: { flexDirection: "row", gap: 10, marginTop: 10 },
+  primary: { flex: 1, backgroundColor: palette.blue, borderRadius: 10, minHeight: 44, alignItems: "center", justifyContent: "center", paddingHorizontal: 9, marginTop: 0 },
   primaryText: { color: "#fff", fontWeight: "800" },
-  secondary: { borderWidth: 1, borderRadius: 9, minHeight: 36, alignItems: "center", justifyContent: "center", paddingHorizontal: 10, marginTop: 0 },
-  leave: { alignItems: "center", padding: 6, marginTop: 0 },
+  secondary: { borderWidth: 1, borderRadius: 10, minHeight: 44, alignItems: "center", justifyContent: "center", paddingHorizontal: 10, marginTop: 0 },
+  leave: { alignItems: "center", justifyContent: "center", minHeight: 44, paddingHorizontal: 12, marginTop: 4 },
   empty: { borderWidth: 1, borderRadius: 12, alignItems: "center", padding: 18, marginTop: 12 },
   assignment: { borderWidth: 1, borderRadius: 13, padding: 13, marginTop: 12 },
   assignmentTitle: { fontSize: 16, fontWeight: "900" },

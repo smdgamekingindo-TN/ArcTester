@@ -19,11 +19,11 @@
 - [x] Document production issuer/audience configuration and forced re-login impact.
 
 ### 4.2 Authorization and tenant/resource boundaries
-- [ ] Inventory all API route registrations and classify public, authenticated-student, owner-only, academic-scope, and administrator endpoints.
-- [ ] Verify role and account approval on every privileged path, including admin MCP/model operations.
+- [ ] Complete route-by-route inventory of all API endpoints and classify public, authenticated-student, owner-only, academic-scope, and administrator endpoints.\n- [x] Document and test student MCP owner-only reads/edits, per-key scopes, role re-check, and immediate key revocation.
+- [ ] Finish route-by-route role/account-approval verification on every privileged path.\n- [x] Admin MCP tests verify missing tool scopes, current administrator role, and key revocation.
 - [ ] Verify ownership predicates are included in reads, updates, and deletes for student-owned resources.
 - [ ] Verify college/branch content eligibility is enforced in server queries, not only in the UI.
-- [ ] Add IDOR and privilege-escalation regression tests for representative high-risk route families.
+- [x] Add IDOR regression test proving a student MCP key cannot read or edit another student's private question.\n- [ ] Add broader IDOR/privilege-escalation regression tests across admin, exams, analytics, and academic-scope routes.
 
 ### 4.3 Authentication lifecycle and MFA
 - [ ] Review password hashing parameters, reset/change flows, refresh/session rotation, logout, account recovery, and admin protection.
@@ -32,10 +32,10 @@
 - [x] Add concurrent one-time recovery-code use and MFA-removal session-revocation tests.\n- [ ] Add exhaustive expired-challenge, passkey replay, and attempt-limit tests.
 
 ### 4.4 Abuse protection and perimeter
-- [x] Replace process-local password-login/token failure counters with atomic PostgreSQL buckets shared across API instances; bucket keys are hashed and raw email/IP are not stored.\n- [ ] Replace the general API request limiter's process-local store with a shared store.
+- [x] Replace process-local password-login/token failure counters with atomic PostgreSQL buckets shared across API instances; bucket keys are hashed and raw email/IP are not stored.\n- [x] Replace the global API request limiter with a shared PostgreSQL atomic counter; liveness/readiness probes bypass the limiter database dependency.
 - [x] Preserve per-IP+account and per-IP failure ceilings; success clears the corresponding hashed buckets.\n- [ ] Review shared IP lockout behavior against denial-of-service tradeoffs.
 - [ ] Review CORS allowlist, cookie flags, CSRF behavior, HTTPS enforcement, Helmet/security headers, body limits, schema validation, upload handling, and safe errors.
-- [x] Add login throttle tests and assert hashed PostgreSQL bucket identifiers.\n- [ ] Add rate-limit boundary and trusted/untrusted cookie mutation-origin tests.
+- [x] Add login throttle tests and assert hashed PostgreSQL bucket identifiers.\n- [x] Add exact 300-request API limiter boundary test and hashed bucket check.\n- [ ] Add trusted/untrusted cookie mutation-origin tests.
 
 ### 4.5 Secrets, data, admin MCP/model controls
 - [ ] Verify production secret validation and deployment configuration; ensure no secret values are committed.
@@ -44,12 +44,12 @@
 - [ ] Add tests for missing MCP scopes, revoked keys, demoted admins, and cross-user resource attempts.
 
 ### 4.6 Privacy and incident readiness (India)
-- [ ] Draft privacy notice/data-purpose and minimization requirements, retention/deletion process, data-subject request workflow, and incident response runbook.
-- [ ] Assess DPDP Act 2023 / DPDP Rules 2025 and CERT-In Directions 2022 applicability with a qualified reviewer.
-- [ ] Clearly state that engineering checklist completion is not legal certification.
+- [x] Draft privacy/data-purpose/minimization, retention/deletion, data-request and incident-response runbook in docs/security/PRIVACY_AND_INCIDENT_RESPONSE.md.\n- [ ] Publish student-facing privacy notice and establish the actual request/grievance contact before production.
+- [x] Record the current official DPDP phased commencement and CERT-In 6-hour incident reporting / 180-day log requirements with official links.\n- [ ] Obtain qualified legal/security review and confirm applicability, hosting jurisdiction, log retention and point of contact.
+- [x] State that engineering checklist completion is not legal certification.
 
 ## Current implementation notes
 - JWTs now carry `iss=arctester-api` and `aud=arctester-client` by default. Override with `JWT_ISSUER` and `JWT_AUDIENCE` consistently across all API instances/environments.
 - Verifier rejects missing/wrong issuer or audience, missing/future `iat`, expired tokens, invalid `nbf`, and lifetimes over seven days.
 - Existing tokens minted before this change do not contain the required claims and will be rejected after deployment. Users will need to sign in again. This is intentional; schedule deployment with a user-facing re-login notice.
-- Password login and bearer-token endpoint throttling now use atomic PostgreSQL upserts in `auth_rate_limit_buckets`, shared across instances. The migration is `20261126070000_add_shared_auth_rate_limits`; bucket keys are SHA-256 digests and stale rows are cleaned during failed-login processing. The global API limiter remains process-local.
+- Password login and bearer-token endpoint throttling now use atomic PostgreSQL upserts in `auth_rate_limit_buckets`, shared across instances. The migration is `20261126070000_add_shared_auth_rate_limits`; bucket keys are SHA-256 digests and stale rows are cleaned during failed-login processing. The global API request limiter now also uses the shared PostgreSQL table. Both login failure and general API request buckets store hashed identifiers; `/health` and `/ready` bypass the limiter so liveness/readiness remain meaningful during database trouble.

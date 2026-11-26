@@ -5,7 +5,10 @@ type BranchTaggedQuestion = ContentAudience & { subjectId: number };
 /** MPC subjects are shared across diploma branches; their question audience still applies. */
 export function isCommonMpcSubject(name: string): boolean {
   const normalized = name.normalize("NFKC").toLowerCase().replace(/[^a-z0-9]/g, "");
-  return /^(mpc|maths?|mathematics|physics|chemistry)(?:[ivx]+|[123])?$/.test(normalized);
+  const mathematics = /^(?:engineering)?maths?(?:ematics)?(?:i|ii|iii|[123])?$/.test(normalized);
+  const physics = /^(?:engineering)?physics(?:lab)?$/.test(normalized);
+  const chemistry = /^(?:engineering)?chemistry(?:lab|andenvironmentalstudies)?$/.test(normalized);
+  return normalized === "mpc" || mathematics || physics || chemistry;
 }
 
 const CME_CORE_SUBJECTS = new Set([

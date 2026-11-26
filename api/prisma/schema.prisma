@@ -153,6 +153,8 @@ model LegalAcceptance {
   termsVersion           String
   privacyNoticeVersion   String
   consentNoticeVersion  String
+  ageGateVersion         String
+  ageAttested            Boolean  @default(false)
   acceptedAt             DateTime @default(now())
   source                 String   @default("web")
 

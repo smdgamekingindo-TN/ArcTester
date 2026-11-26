@@ -332,7 +332,10 @@ describe("administrator MCP model control", () => {
   });
 
   it("enforces missing tool scopes", async () => {
+    const key = await server.db.adminMcpKey.findUniqueOrThrow({ where: { id: adminKeyId } });
+    await server.db.adminMcpKey.update({ where: { id: adminKeyId }, data: { scopes: key.scopes.filter(scope => scope !== "questions:create") } });
     await expect(callTool("create_questions", { questions: [] })).rejects.toThrow(/Missing questions:create scope/i);
+    await server.db.adminMcpKey.update({ where: { id: adminKeyId }, data: { scopes: key.scopes } });
   });
 
   it("re-checks administrator role and key revocation on every MCP request", async () => {

@@ -151,7 +151,11 @@ export function buildApp(database: PrismaClient = db): express.Express {
   const app = express();
   // requireAuth resolves the same injected client used by every router and test schema.
   app.locals.db = database;
-  app.set("trust proxy", 1);
+  const trustProxyHops = Number(process.env.TRUST_PROXY_HOPS ?? 1);
+  if (!Number.isSafeInteger(trustProxyHops) || trustProxyHops < 0 || trustProxyHops > 10) {
+    throw new Error("TRUST_PROXY_HOPS must be an integer from 0 to 10 and match the deployed proxy chain.");
+  }
+  app.set("trust proxy", trustProxyHops);
   // Morgan request logs expose route, status, latency and origin without logging
   // cookies, bearer tokens, request bodies or query-string secrets.
   morgan.token("route", (req) => req.path);

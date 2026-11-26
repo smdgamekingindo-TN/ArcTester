@@ -24,6 +24,14 @@ function formatDate(value: string | null): string {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
 }
 
+function formatRemainingTime(totalSeconds: number): string {
+  const safe = Math.max(0, Math.floor(totalSeconds));
+  const hours = Math.floor(safe / 3600);
+  const minutes = Math.floor((safe % 3600) / 60);
+  const seconds = safe % 60;
+  return [hours, minutes, seconds].map(value => String(value).padStart(2, "0")).join(":");
+}
+
 function availability(assignment: Assignment, now: number): { canStart: boolean; label: string } {
   if (assignment.submission) return { canStart: false, label: assignment.submission.status === "REVIEW_REQUIRED" ? "Submitted · awaiting review" : "Submitted" };
   if (assignment.availableFrom && new Date(assignment.availableFrom).getTime() > now) return { canStart: false, label: `Available ${formatDate(assignment.availableFrom)}` };
@@ -279,10 +287,16 @@ export default function StudentAssignedExams() {
     const current = questions[currentIndex];
     const answered = questions.filter((question) => answers[question.id] !== undefined && answers[question.id] !== null).length;
     const unanswered = questions.length - answered;
+    const nextUnansweredIndex = questions.findIndex((question) => answers[question.id] === undefined || answers[question.id] === null);
     const goToQuestion = (index: number) => setActiveQuestionIndex(Math.max(0, Math.min(index, questions.length - 1)));
     return <section className="assigned-exams assigned-exam-session">
+      <aside className={"exam-status-dock" + ((remainingSeconds ?? 0) < 300 ? " timer-warning" : "")} aria-label="Exam status" aria-live="off">
+        <div className="exam-status-time"><span>TIME LEFT</span><strong>{formatRemainingTime(remainingSeconds ?? 0)}</strong></div>
+        <div className="exam-status-counts"><strong>{unanswered}</strong><span>unanswered</span><small>{answered} of {questions.length} answered · {saving ? "Saving…" : "Autosaved"}</small></div>
+        <button type="button" className="button button-secondary exam-status-next" disabled={nextUnansweredIndex < 0} onClick={() => nextUnansweredIndex >= 0 && goToQuestion(nextUnansweredIndex)}>{nextUnansweredIndex < 0 ? "All answered" : "Next unanswered"}</button>
+      </aside>
       {guardNotice ? <div className="panel exam-guard-notice" role="status"><strong>Exam guard · {guardViolationCount} recorded</strong><p>{guardNotice}</p></div> : null}
-      <header className="page-heading"><div><p className="eyebrow">ASSIGNED EXAM · VERSION {active.assignment.version}</p><h1>{active.exam.title}</h1><p className="muted">{answered}/{questions.length} answered · {saving ? "Saving answers…" : dirtyRef.current ? "Answer save pending" : "Answers saved"}</p></div><strong className={remainingSeconds !== null && remainingSeconds < 300 ? "timer-warning" : "exam-countdown"}>{Math.floor((remainingSeconds ?? 0) / 60).toString().padStart(2, "0")}:{((remainingSeconds ?? 0) % 60).toString().padStart(2, "0")}</strong></header>
+      <header className="page-heading"><div><p className="eyebrow">ASSIGNED EXAM · VERSION {active.assignment.version}</p><h1>{active.exam.title}</h1><p className="muted">{answered}/{questions.length} answered · {saving ? "Saving answers…" : dirtyRef.current ? "Answer save pending" : "Answers saved"}</p></div></header>
       {active.exam.instructions ? <div className="panel"><b>Instructions</b><p>{active.exam.instructions}</p></div> : null}
       <section className="panel exam-question-navigator" aria-label="Assigned exam question navigator">
         <div className="exam-progress-heading"><strong>Question {currentIndex + 1} of {questions.length}</strong><span>{answered} answered · {unanswered} remaining · {markedForReview.size} marked</span></div>

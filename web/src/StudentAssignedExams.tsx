@@ -131,11 +131,18 @@ export default function StudentAssignedExams() {
     const onContextMenu = (event: MouseEvent) => { event.preventDefault(); record("CONTEXT_MENU", "Context menu was blocked during the exam."); };
     const onKeyDown = (event: KeyboardEvent) => {
       const key = event.key.toLowerCase();
-      if (key === "f12" || (event.ctrlKey && event.shiftKey && ["i", "j", "c"].includes(key)) || (event.metaKey && event.altKey && ["i", "j", "c"].includes(key))) {
+      if (key === "p" && (event.ctrlKey || event.metaKey)) {
+        event.preventDefault(); record("PRINT_ATTEMPT", "Print shortcut was blocked during the exam.");
+      } else if (key === "f12" || (event.ctrlKey && event.shiftKey && ["i", "j", "c"].includes(key)) || (event.metaKey && event.altKey && ["i", "j", "c"].includes(key))) {
         event.preventDefault(); record("DEVTOOLS_KEY", "Developer-tools keyboard shortcut was blocked.");
       }
     };
-    const onBeforeUnload = (event: BeforeUnloadEvent) => {\n      record("CLOSE_ATTEMPT", "Candidate attempted to leave or reload the exam page.");\n      event.preventDefault();\n      event.returnValue = "";\n    };\n    const onBeforePrint = () => record("PRINT_ATTEMPT", "Browser print dialog was requested.");
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      record("CLOSE_ATTEMPT", "Candidate attempted to leave or reload the exam page.");
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    const onBeforePrint = () => record("PRINT_ATTEMPT", "Browser print dialog was requested.");
     document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("blur", onBlur);
     document.addEventListener("fullscreenchange", onFullscreen);
@@ -144,7 +151,8 @@ export default function StudentAssignedExams() {
     document.addEventListener("paste", onPaste, true);
     document.addEventListener("contextmenu", onContextMenu, true);
     window.addEventListener("keydown", onKeyDown, true);
-    window.addEventListener("beforeunload", onBeforeUnload);\n    window.addEventListener("beforeprint", onBeforePrint);
+    window.addEventListener("beforeunload", onBeforeUnload);
+    window.addEventListener("beforeprint", onBeforePrint);
     return () => {
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("blur", onBlur);
@@ -154,7 +162,8 @@ export default function StudentAssignedExams() {
       document.removeEventListener("paste", onPaste, true);
       document.removeEventListener("contextmenu", onContextMenu, true);
       window.removeEventListener("keydown", onKeyDown, true);
-      window.removeEventListener("beforeunload", onBeforeUnload);\n      window.removeEventListener("beforeprint", onBeforePrint);
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      window.removeEventListener("beforeprint", onBeforePrint);
       if (flushTimer !== null) window.clearTimeout(flushTimer);
       if (queued.length) void flush();
       if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined);

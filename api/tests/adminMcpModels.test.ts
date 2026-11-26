@@ -151,6 +151,10 @@ describe("administrator MCP model control", () => {
     });
     expect(review.modelInference).not.toHaveProperty("prediction");
     expect(review.reviewGuidance.modelPredictionIsSupplementaryNotAGrade).toBe(true);
+    await server.db.registeredModel.updateMany({
+      where: { modelId: "student_readiness", isActive: true },
+      data: { isActive: false },
+    });
   });
 
   it("uses a compatible active Model Lab artifact in student performance reviews", async () => {

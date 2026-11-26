@@ -2,7 +2,7 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import AuthScreen from "./AuthScreen";
 function renderAuth(overrides: Partial<React.ComponentProps<typeof AuthScreen>> = {}) {
- const props={email:"",password:"",register:false,busy:false,error:"",academicProfile:{fullName:"",collegeName:"",collegeCode:"",registrationNumber:"",branchName:"",branchCode:""},onAcademicChange:vi.fn(),onEmailChange:vi.fn(),onPasswordChange:vi.fn(),onRegisterChange:vi.fn(),onAuthenticate:vi.fn(),...overrides};
+ const props={email:"",password:"",register:false,busy:false,error:"",academicProfile:{fullName:"",collegeName:"",collegeCode:"",registrationNumber:"",branchName:"",branchCode:""},onAcademicChange:vi.fn(),onEmailChange:vi.fn(),onPasswordChange:vi.fn(),onRegisterChange:vi.fn(),onAuthenticate:vi.fn(),onRequestPasswordReset:vi.fn(),onResetPassword:vi.fn(),...overrides};
  render(<AuthScreen {...props}/>);return props;
 }
 describe("AuthScreen",()=>{
@@ -14,4 +14,5 @@ describe("AuthScreen",()=>{
  it("toggles password visibility",()=>{renderAuth();const password=screen.getByLabelText("Password") as HTMLInputElement;fireEvent.change(password,{target:{value:"secret123"}});fireEvent.click(screen.getByRole("button",{name:"Show password"}));expect(password.type).toBe("text");fireEvent.click(screen.getByRole("button",{name:"Hide password"}));expect(password.type).toBe("password")});
  it("disables submit while busy and shows API errors",()=>{renderAuth({busy:true,error:"The invitation has expired."});expect(screen.getByRole("button",{name:"Please wait…"}).hasAttribute("disabled")).toBe(true);expect(screen.getByText("The invitation has expired.")).toBeTruthy()});
  it("delegates switching to registration",()=>{const props=renderAuth();fireEvent.click(screen.getByRole("button",{name:"New student? Create an account"}));expect(props.onRegisterChange).toHaveBeenCalledWith(true)});
+ it("opens the forgot password form",()=>{const props=renderAuth();fireEvent.click(screen.getByRole("button",{name:"Forgot password?"}));expect(screen.getByRole("button",{name:"Send reset link"})).toBeTruthy();expect(props.onRequestPasswordReset).not.toHaveBeenCalled()});
 });

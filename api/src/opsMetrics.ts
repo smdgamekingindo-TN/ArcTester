@@ -60,13 +60,13 @@ async function persistSnapshot(db: PrismaClient, dbLatencyMs: number | null = nu
        ${value.requestRate}, ${value.p50LatencyMs}, ${value.p95LatencyMs}, ${value.dbLatencyMs})
     ON CONFLICT (instance_id) DO UPDATE SET
       hostname = EXCLUDED.hostname, version = EXCLUDED.version, build_sha = EXCLUDED.build_sha,
-      started_at = EXCLUDED.started_at, last_seen_at = EXCLUDED.last_seen_at,
+      started_at = LEAST(server_instance_metrics.started_at, EXCLUDED.started_at), last_seen_at = GREATEST(server_instance_metrics.last_seen_at, EXCLUDED.last_seen_at),
       cpu_percent = EXCLUDED.cpu_percent, rss_bytes = EXCLUDED.rss_bytes,
       heap_used_bytes = EXCLUDED.heap_used_bytes, uptime_seconds = EXCLUDED.uptime_seconds,
-      active_requests = EXCLUDED.active_requests, requests_total = EXCLUDED.requests_total,
-      errors_total = EXCLUDED.errors_total, request_rate = EXCLUDED.request_rate,
+      active_requests = EXCLUDED.active_requests, requests_total = GREATEST(server_instance_metrics.requests_total, EXCLUDED.requests_total),
+      errors_total = GREATEST(server_instance_metrics.errors_total, EXCLUDED.errors_total), request_rate = EXCLUDED.request_rate,
       p50_latency_ms = EXCLUDED.p50_latency_ms, p95_latency_ms = EXCLUDED.p95_latency_ms,
-      db_latency_ms = EXCLUDED.db_latency_ms
+      db_latency_ms = COALESCE(EXCLUDED.db_latency_ms, server_instance_metrics.db_latency_ms)
   `;
 }
 

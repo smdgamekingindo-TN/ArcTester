@@ -20,7 +20,8 @@
 - [x] Document production issuer/audience configuration and forced re-login impact.
 
 ### 4.2 Authorization and tenant/resource boundaries
-- [x] Create the router-level authorization inventory in docs/security/API_AUTHORIZATION_INVENTORY.md.\n- [ ] Complete handler-by-handler endpoint and ownership predicate review (inventory explicitly remains a working review artifact).
+- [x] Create the router-level authorization inventory in docs/security/API_AUTHORIZATION_INVENTORY.md.
+- [ ] Complete handler-by-handler endpoint and ownership predicate review (inventory explicitly remains a working review artifact).
 - [x] Document and test student MCP owner-only reads/edits, per-key scopes, role re-check, and immediate key revocation.
 - [ ] Finish handler-by-handler role/account-approval verification on every privileged path; reviewed router-level guards are recorded in the inventory.
 - [x] Admin MCP tests verify missing tool scopes, current administrator role, and key revocation.

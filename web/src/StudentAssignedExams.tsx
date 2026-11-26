@@ -135,7 +135,7 @@ export default function StudentAssignedExams() {
         event.preventDefault(); record("DEVTOOLS_KEY", "Developer-tools keyboard shortcut was blocked.");
       }
     };
-    const onBeforeUnload = () => record("CLOSE_ATTEMPT", "Candidate attempted to leave or reload the exam page.");
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {\n      record("CLOSE_ATTEMPT", "Candidate attempted to leave or reload the exam page.");\n      event.preventDefault();\n      event.returnValue = "";\n    };\n    const onBeforePrint = () => record("PRINT_ATTEMPT", "Browser print dialog was requested.");
     document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("blur", onBlur);
     document.addEventListener("fullscreenchange", onFullscreen);
@@ -144,7 +144,7 @@ export default function StudentAssignedExams() {
     document.addEventListener("paste", onPaste, true);
     document.addEventListener("contextmenu", onContextMenu, true);
     window.addEventListener("keydown", onKeyDown, true);
-    window.addEventListener("beforeunload", onBeforeUnload);
+    window.addEventListener("beforeunload", onBeforeUnload);\n    window.addEventListener("beforeprint", onBeforePrint);
     return () => {
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("blur", onBlur);
@@ -154,7 +154,7 @@ export default function StudentAssignedExams() {
       document.removeEventListener("paste", onPaste, true);
       document.removeEventListener("contextmenu", onContextMenu, true);
       window.removeEventListener("keydown", onKeyDown, true);
-      window.removeEventListener("beforeunload", onBeforeUnload);
+      window.removeEventListener("beforeunload", onBeforeUnload);\n      window.removeEventListener("beforeprint", onBeforePrint);
       if (flushTimer !== null) window.clearTimeout(flushTimer);
       if (queued.length) void flush();
       if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined);

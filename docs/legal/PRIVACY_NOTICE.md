@@ -14,6 +14,7 @@ ArcTester is operated by the project operator. **[OPERATOR LEGAL NAME, ADDRESS A
 Depending on features used, ArcTester may process:
 
 - Account email, name, password hash, account status and registration timestamps.
+- Legal acceptance evidence: Terms/Privacy Notice versions, server-recorded acceptance time, registration source and adult age attestation.
 - Academic profile: institution name/code, branch/code and diploma registration number; postal PIN only if supplied.
 - Learning data: created questions, practice and exam answers, submissions, scores, progress and learning analytics.
 - Security data: session/device metadata, login history, passkey public credentials, encrypted authenticator secrets, hashed recovery codes and security audit events.
@@ -35,7 +36,7 @@ Authorized staff and contracted providers may process data to host, operate, sec
 
 ## 6. Retention
 
-Data is retained only as needed for the purposes above, account operation, academic records, security and applicable law. Current engineering documentation describes 365-day audit-event retention and pruning of certain expired session/login metadata; production configuration must be verified. Publish category-specific retention and backup expiry: **[VERIFIED RETENTION SCHEDULE REQUIRED]**. Deletion from live systems may not immediately remove immutable backup copies.
+Data is retained only as needed for the purposes above, account operation, academic records, security and applicable law. Current engineering documentation describes 365-day audit-event retention and pruning of certain expired session/login metadata; production configuration must be verified. Publish category-specific retention for account, academic, consent-evidence and backup records: **[VERIFIED RETENTION SCHEDULE REQUIRED]**. Deletion from live systems may not immediately remove immutable backup copies.
 
 ## 7. Rights and choices
 

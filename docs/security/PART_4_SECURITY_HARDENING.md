@@ -43,13 +43,16 @@
 - [x] Replace the global API request limiter with a shared PostgreSQL atomic counter; liveness/readiness probes bypass the limiter database dependency.
 - [x] Preserve per-IP+account and per-IP failure ceilings; success clears the corresponding hashed buckets.
 - [ ] Review shared IP lockout behavior against denial-of-service tradeoffs.
-- [x] Review CORS allowlist, cookie flags, CSRF behavior, HTTPS enforcement, Helmet/security headers, body limits, schema validation, upload handling, and safe errors at middleware/config level; Helmet CSP defaults are enabled.\n- [x] Production browser registration fails closed if Turnstile secret is missing; TRUST_PROXY_HOPS is validated and documented.\n- [ ] Complete deployment-specific CORS origin, proxy chain, upload route, and host-level log verification.
+- [x] Review CORS allowlist, cookie flags, CSRF behavior, HTTPS enforcement, Helmet/security headers, body limits, schema validation, upload handling, and safe errors at middleware/config level; Helmet CSP defaults are enabled.
+- [x] Production browser registration fails closed if Turnstile secret is missing; TRUST_PROXY_HOPS is validated and documented.
+- [ ] Complete deployment-specific CORS origin, proxy chain, upload route, and host-level log verification.
 - [x] Add login throttle tests and assert hashed PostgreSQL bucket identifiers.
 - [x] Add exact 300-request API limiter boundary test and hashed bucket check.
 - [ ] Add trusted/untrusted cookie mutation-origin tests.
 
 ### 4.5 Secrets, data, admin MCP/model controls
-- [x] Verify JWT/TOTP secret validation and document production environment checklist in docs/security/PRODUCTION_SECURITY_CONFIGURATION.md.\n- [ ] Confirm actual production secrets, DB least-privilege, object-storage policies and host configuration without exposing secret values.
+- [x] Verify JWT/TOTP secret validation and document production environment checklist in docs/security/PRODUCTION_SECURITY_CONFIGURATION.md.
+- [ ] Confirm actual production secrets, DB least-privilege, object-storage policies and host configuration without exposing secret values.
 - [ ] Review database least-privilege/backup access and sensitive fields.
 - [ ] Review every admin MCP tool's required scope and current-admin checks; verify student MCP remains user-owned and scoped.
 - [x] Add tests for missing admin MCP scopes, revoked/demoted admin keys, and student MCP cross-user access/role/revocation.
@@ -65,4 +68,5 @@
 - JWTs now carry `iss=arctester-api` and `aud=arctester-client` by default. Override with `JWT_ISSUER` and `JWT_AUDIENCE` consistently across all API instances/environments.
 - Verifier rejects missing/wrong issuer or audience, missing/future `iat`, expired tokens, invalid `nbf`, and lifetimes over seven days.
 - Existing tokens minted before this change do not contain the required claims and will be rejected after deployment. Users will need to sign in again. This is intentional; schedule deployment with a user-facing re-login notice.
-- Password login, bearer-token endpoint, and general API throttling now use atomic PostgreSQL upserts in `auth_rate_limit_buckets`, shared across instances. The migration is `20261126070000_add_shared_auth_rate_limits`; account/IP bucket keys are SHA-256 digests and stale rows are cleaned during login failure handling and periodic API requests. `/health` and `/ready` bypass the limiter so liveness/readiness remain meaningful during database trouble.\n- Production browser registration fails closed without Turnstile secret configuration. Helmet's default CSP and SAMEORIGIN headers are enabled. `TRUST_PROXY_HOPS` is validated; deployers must configure it to match the actual trusted proxy chain.
+- Password login, bearer-token endpoint, and general API throttling now use atomic PostgreSQL upserts in `auth_rate_limit_buckets`, shared across instances. The migration is `20261126070000_add_shared_auth_rate_limits`; account/IP bucket keys are SHA-256 digests and stale rows are cleaned during login failure handling and periodic API requests. `/health` and `/ready` bypass the limiter so liveness/readiness remain meaningful during database trouble.
+- Production browser registration fails closed without Turnstile secret configuration. Helmet's default CSP and SAMEORIGIN headers are enabled. `TRUST_PROXY_HOPS` is validated; deployers must configure it to match the actual trusted proxy chain.

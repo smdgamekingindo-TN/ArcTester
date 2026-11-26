@@ -21,6 +21,8 @@ const JWT_TTL_SECONDS = 7 * 24 * 60 * 60;
 const JWT_ISSUER = process.env.JWT_ISSUER?.trim() || "arctester-api";
 const JWT_AUDIENCE = process.env.JWT_AUDIENCE?.trim() || "arctester-client";
 const INVITATION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+// Explicit parameters keep password hashes stable across Node runtime upgrades.
+const SCRYPT_OPTIONS = { N: 1 << 14, r: 8, p: 1, maxmem: 64 * 1024 * 1024 };
 
 export function validateJwtSecret(secret: string, production = process.env.NODE_ENV === "production"): void {
   if (!production) return;
@@ -142,13 +144,13 @@ export function verifyJwt(token: string): Record<string, unknown> {
 
 export function hashPassword(password: string): string {
   const salt = randomBytes(16);
-  const derived = scryptSync(password, salt, 64);
+  const derived = scryptSync(password, salt, 64, SCRYPT_OPTIONS);
   return `${salt.toString("hex")}:${derived.toString("hex")}`;
 }
 
 export function verifyPassword(password: string, stored: string): boolean {
   const [saltHex, hashHex] = stored.split(":");
-  if (!saltHex || !hashHex) return false;
+  if (!saltHex || !hashHex || !/^[a-f0-9]{32}$/i.test(saltHex) || !/^[a-f0-9]{128}$/i.test(hashHex)) return false;
   const salt = Buffer.from(saltHex, "hex");
   const expected = Buffer.from(hashHex, "hex");
   const derived = scryptSync(password, salt, 64);
@@ -157,7 +159,7 @@ export function verifyPassword(password: string, stored: string): boolean {
 
 function scryptAsync(password: string | Buffer, salt: string | Buffer, keylen: number): Promise<Buffer> {
   return new Promise((resolve, reject) => {
-    scrypt(password, salt, keylen, (error, derived) => {
+    scrypt(password, salt, keylen, SCRYPT_OPTIONS, (error, derived) => {
       if (error) reject(error);
       else resolve(derived as Buffer);
     });

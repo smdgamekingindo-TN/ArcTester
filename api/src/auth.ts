@@ -214,7 +214,16 @@ function validateRegistrationIdentity(registrationNumber: string, collegeCode: s
   return { collegeCode: parts[2], branchCode: branch.code, branchName: branch.name };
 }
 
+const TERMS_VERSION = "2026-11-27-v1";
+const PRIVACY_NOTICE_VERSION = "2026-11-27-v1";
+const CONSENT_NOTICE_VERSION = "2026-11-27-v1";
+
 export const RegisterSchema = z.object({
+  termsAccepted: z.literal(true),
+  privacyConsent: z.literal(true),
+  termsVersion: z.literal(TERMS_VERSION),
+  privacyNoticeVersion: z.literal(PRIVACY_NOTICE_VERSION),
+  consentNoticeVersion: z.literal(CONSENT_NOTICE_VERSION),
   email: z.string().email("Enter a valid email address.").trim().toLowerCase(),
   password: z.string().min(8, "Password must be at least 8 characters.").max(128),
   captchaToken: z.string().optional(),
@@ -627,9 +636,21 @@ export function authRouter(db: PrismaClient): Router {
       }
       await verifyRegistrationCaptcha(input.captchaToken, req.ip ?? "unknown", nativeClient);
       const passwordHash = await hashPasswordAsync(input.password);
-      const user = await db.user.create({
-        data: { email: input.email, passwordHash, role: "STUDENT", accessStatus: "PENDING", fullName: input.fullName, collegeName: input.collegeName, collegeCode: registrationCollegeCode, postalPin: input.postalPin || null, branchName: registrationBranchName, branchCode: registrationBranchCode, registrationNumber },
-        select: { id: true, email: true, role: true, accessStatus: true, fullName: true, collegeName: true, collegeCode: true, postalPin: true, branchName: true, branchCode: true, registrationNumber: true },
+      const user = await db.$transaction(async (tx) => {
+        const created = await tx.user.create({
+          data: { email: input.email, passwordHash, role: "STUDENT", accessStatus: "PENDING", fullName: input.fullName, collegeName: input.collegeName, collegeCode: registrationCollegeCode, postalPin: input.postalPin || null, branchName: registrationBranchName, branchCode: registrationBranchCode, registrationNumber },
+          select: { id: true, email: true, role: true, accessStatus: true, fullName: true, collegeName: true, collegeCode: true, postalPin: true, branchName: true, branchCode: true, registrationNumber: true },
+        });
+        await tx.legalAcceptance.create({
+          data: {
+            userId: created.id,
+            termsVersion: input.termsVersion,
+            privacyNoticeVersion: input.privacyNoticeVersion,
+            consentNoticeVersion: input.consentNoticeVersion,
+            source: nativeClient ? "mobile" : "web",
+          },
+        });
+        return created;
       });
       res.status(201).json({
         ok: true,

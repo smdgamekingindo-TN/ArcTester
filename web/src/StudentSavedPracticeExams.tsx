@@ -110,7 +110,7 @@ export default function StudentSavedPracticeExams() {
           <span className="muted" aria-live="polite">Question {activeQuestionIndex + 1} of {active.questions.length}</span>
           <button type="button" className="button button-secondary" disabled={activeQuestionIndex >= active.questions.length - 1} onClick={() => setActiveQuestionIndex(index => Math.min(active.questions.length - 1, index + 1))}>Next question</button>
         </div>
-      </div> : null}}
+      </div> : null}
       <button type="button" className="primary" disabled={busy} onClick={() => void finish()}>{busy ? "Submitting…" : "Submit practice exam"}</button>
       </>}
     </article> : <>

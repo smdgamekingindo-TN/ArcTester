@@ -94,6 +94,7 @@ export default function App() {
   const [practiceQuestionTypes, setPracticeQuestionTypes] = useState<PracticeQuestionType[]>([]);
   const [register, setRegister] = useState(false);
   const [twoFactorChallenge, setTwoFactorChallenge] = useState("");
+  const [passwordResetToken, setPasswordResetToken] = useState(() => new URLSearchParams(window.location.search).get("passwordResetToken") ?? "");
   const [test, setTest] = useState<Test | null>(null);
   const [result, setResult] = useState<Result | null>(null);
   const [answers, setAnswers] = useState<Record<number, unknown>>({});
@@ -149,6 +150,11 @@ export default function App() {
 
 
   useEffect(() => {
+    if (passwordResetToken) {
+      setUser(null);
+      setSessionRestoring(false);
+      return;
+    }
     request<{ user: User }>("/auth/me")
       .then(({ user: current }) => {
         setUser(current);
@@ -158,7 +164,7 @@ export default function App() {
         setUser(null);
         setSessionRestoring(false);
       });
-  }, []);
+  }, [passwordResetToken]);
 
   useEffect(() => {
     if (!user) return;
@@ -314,6 +320,43 @@ export default function App() {
       setPassword("");
     } catch (cause) {
       await animationMinimum;
+      setError((cause as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function requestPasswordReset(emailAddress: string) {
+    setBusy(true);
+    setError("");
+    try {
+      const result = await request<{ message: string }>("/auth/password-reset/request", {
+        method: "POST",
+        body: JSON.stringify({ email: emailAddress }),
+      });
+      setError(result.message);
+    } catch {
+      setError("If an account with that email exists, a password reset link will be sent.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function completePasswordReset(token: string, newPassword: string, code: string) {
+    setBusy(true);
+    setError("");
+    try {
+      const result = await request<{ message: string }>("/auth/password-reset/complete", {
+        method: "POST",
+        body: JSON.stringify({ token, newPassword, ...(code ? { code } : {}) }),
+      });
+      setPasswordResetToken("");
+      const currentUrl = new URL(window.location.href);
+      currentUrl.searchParams.delete("passwordResetToken");
+      window.history.replaceState({}, "", currentUrl.pathname + currentUrl.search + currentUrl.hash);
+      setPassword("");
+      setError(result.message);
+    } catch (cause) {
       setError((cause as Error).message);
     } finally {
       setBusy(false);
@@ -594,6 +637,9 @@ export default function App() {
         twoFactorChallenge={twoFactorChallenge}
         onCompleteTwoFactor={(challengeId, code) => void completeTwoFactor(challengeId, code)}
         onPasskeyAuthenticate={() => void authenticateWithPasskey()}
+        passwordResetToken={passwordResetToken}
+        onRequestPasswordReset={(emailAddress) => void requestPasswordReset(emailAddress)}
+        onResetPassword={(token, newPassword, code) => void completePasswordReset(token, newPassword, code)}
       />
     );
   }

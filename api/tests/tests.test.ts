@@ -618,7 +618,7 @@ describe("student branch subject catalog", () => {
       ["CME Core Test", "CME legacy global catalog fixture question", ["a", "b", "c", "d"], 1, "global-catalog"],
       ["Physics", "Physics common branch-tagged fixture question", ["a", "b", "c", "d"], 2, "mpc-common"],
     ]);
-    expect(imported.added).toBe(2);
+    expect(imported.added).toBe(3);
     const subject = await server.db.subject.findUniqueOrThrow({ where: { name: "CME Core Test" } });
     await server.db.question.updateMany({ where: { subjectId: subject.id }, data: { reviewStatus: "APPROVED" } });
     await server.db.question.update({

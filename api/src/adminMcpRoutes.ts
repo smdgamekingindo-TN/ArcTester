@@ -166,7 +166,7 @@ export function adminMcpRouter(db: PrismaClient): Router {
               formal_exam_maximum_score: performance.formalExams.maximumScore,
             };
             const aliases: Record<string, string> = {
-              completedattempts: "practice_completed_attempts", practicecompletedattempts: "practice_completed_attempts",
+              completedattempts: "practice_completed_attempts", completedtests: "practice_completed_attempts", practicecompletedattempts: "practice_completed_attempts", practicecompletedtests: "practice_completed_attempts",
               practiceaccuracy: "practice_accuracy", accuracy: "practice_accuracy",
               questionsanswered: "practice_questions_answered", practicequestionsanswered: "practice_questions_answered",
               correct: "practice_correct", practicecorrect: "practice_correct",

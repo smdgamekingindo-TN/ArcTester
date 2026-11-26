@@ -1,0 +1,23 @@
+/* Compact exam controls stay in normal document flow; no floating palette or submit dock. */
+.exam-layout-question-navigation{gap:6px!important;padding:7px!important;border-radius:9px!important;box-shadow:none!important}
+.exam-question-navigation{display:grid;gap:6px;min-width:0}
+.exam-question-navigation-heading{font-size:11px!important;gap:8px!important}
+.exam-question-navigation-heading span{font-size:10px!important}
+.exam-question-navigation-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(28px,1fr));gap:4px!important;align-items:center}
+.exam-question-number{width:100%;max-width:34px;min-width:0;height:28px;min-height:28px;padding:2px!important;border:1px solid var(--border)!important;border-radius:6px!important;background:var(--surface)!important;color:var(--text)!important;font-size:10px!important;font-weight:750;box-shadow:none!important;outline:none!important;outline-offset:0!important;cursor:pointer}
+.exam-question-number.is-current{border:2px solid var(--accent)!important;background:var(--accent-soft)!important}
+.exam-question-number.is-answered:not(.is-current){border-color:var(--success,#16834a)!important;background:color-mix(in srgb,var(--success,#16834a) 9%,var(--surface))!important}
+.exam-question-number.is-marked{box-shadow:inset 0 -2px 0 var(--warning,#d97706)!important}
+.exam-question-number:focus-visible{outline:2px solid var(--accent)!important;outline-offset:1px!important}
+.exam-question-navigation-legend{margin:0;font-size:9px;line-height:1.35}
+.exam-layout-footer{gap:5px!important;padding:6px!important;border-radius:9px!important;box-shadow:none!important}
+.exam-layout-nav{min-height:28px!important;padding:4px 8px!important;font-size:10px!important;border-radius:7px!important}
+.exam-layout-submit{min-height:30px!important;padding:6px 10px!important;font-size:10px!important;border-radius:7px!important;margin-left:auto}
+@media(max-width:560px){
+ .exam-layout-question-navigation{padding:6px!important}
+ .exam-question-navigation-grid{grid-template-columns:repeat(auto-fill,minmax(26px,1fr));gap:3px!important}
+ .exam-question-number{height:26px;min-height:26px;max-width:30px;font-size:9px!important}
+ .exam-layout-footer{gap:4px!important;padding:5px!important}
+ .exam-layout-nav{min-height:26px!important;padding:4px 6px!important;font-size:9px!important}
+ .exam-layout-submit{min-height:28px!important;padding:5px 8px!important;font-size:9px!important}
+}

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import "./ExamLayout.css";
 
 type ExamLayoutProps = {
   title: string;

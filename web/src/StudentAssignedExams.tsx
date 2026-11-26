@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { request } from "./apiClient";
 import ExamLayout from "./components/ExamLayout";
+import ExamQuestionNavigation from "./components/ExamQuestionNavigation";
 
 type Assignment = {
   id: string;
@@ -304,6 +305,7 @@ export default function StudentAssignedExams() {
       onPrevious={() => goToQuestion(currentIndex - 1)}
       onNext={() => goToQuestion(currentIndex + 1)}
       onSubmit={() => setShowSubmit(true)}
+      questionNavigation={<ExamQuestionNavigation questionCount={questions.length} currentIndex={currentIndex} answered={questions.map(question => answers[question.id] !== undefined && answers[question.id] !== null)} marked={questions.map(question => markedForReview.has(question.id))} onSelect={goToQuestion} />}
     >
       {active.exam.instructions ? <div className="panel exam-layout-instructions"><b>Instructions</b><p>{active.exam.instructions}</p></div> : null}
       {current ? <article className="panel question-card assigned-current-question" key={current.id}>

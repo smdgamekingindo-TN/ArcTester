@@ -469,6 +469,11 @@ describe("auth — bearer token (native/mobile clients)", () => {
     expect(body.user.email).toBe("mobile@example.com");
     // A bearer client must not be handed a cookie it cannot use.
     expect(res.headers.getSetCookie?.() ?? []).toHaveLength(0);
+    const account = await server.db.user.findUniqueOrThrow({ where: { email: "mobile@example.com" } });
+    const alert = await server.db.studentNotification.findFirst({ where: { userId: account.id, kind: "SECURITY_NEW_DEVICE" } });
+    expect(alert).toBeTruthy();
+    expect(alert!.title).toBe("New sign-in detected");
+    expect(alert!.message).toContain("If this wasn't you");
   });
 
   it("rejects a wrong password on /auth/token", async () => {

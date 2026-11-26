@@ -15,6 +15,7 @@ async function request<T>(path: string): Promise<T> {
 export default function AdminStudentAudit({ student, onClose, onError }: Props) {
   const [page, setPage] = useState(1);
   const [action, setAction] = useState("");
+  const [search, setSearch] = useState("");
   const [outcome, setOutcome] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
@@ -28,13 +29,14 @@ export default function AdminStudentAudit({ student, onClose, onError }: Props) 
   const params = useMemo(() => {
     const query = new URLSearchParams({ page: String(page), limit: "25" });
     if (action) query.set("action", action);
+    if (search.trim()) query.set("q", search.trim());
     if (outcome) query.set("outcome", outcome);
     if (from) query.set("from", new Date(from).toISOString());
     if (to) query.set("to", new Date(to).toISOString());
     if (collegeCode.trim()) query.set("collegeCode", collegeCode.trim());
     if (branchCode.trim()) query.set("branchCode", branchCode.trim());
     return query;
-  }, [page, action, outcome, from, to, collegeCode, branchCode]);
+  }, [page, action, search, outcome, from, to, collegeCode, branchCode]);
   useEffect(() => {
     let active = true;
     setLoading(true);
@@ -76,8 +78,9 @@ export default function AdminStudentAudit({ student, onClose, onError }: Props) 
     finally { setExporting(false); }
   }
   return <section className="admin-panel admin-student-audit" aria-label="Student audit timeline">
-    <div className="admin-panel-head"><div><p className="eyebrow">STUDENT ACTIVITY</p><h2>Audit timeline · {student.fullName || student.email}</h2><p className="admin-muted">Account {student.id} · {student.registrationNumber || "No registration number"} · {student.collegeName || "College not set"} / {student.branchName || "Branch not set"}</p></div><button className="ghost" type="button" onClick={onClose}>Close timeline</button></div>
+    <div className="admin-panel-head"><div><p className="eyebrow">STUDENT ACTIVITY</p><h2>Audit timeline · {student.fullName || student.email}</h2><p className="admin-muted">Account {student.id} · {student.registrationNumber || "No registration number"} · {student.collegeName || "College not set"} / {student.branchName || "Branch not set"}</p></div><button className="ghost" type="button" onClick={onClose}>← Back to students</button></div>
     <div className="admin-toolbar audit-filter-toolbar">
+      <label className="audit-search-label">Search events<input type="search" value={search} placeholder="Action, route, resource, request ID or details…" onChange={event => { setSearch(event.target.value); setPage(1); }} /></label>
       <label>Event type<select value={action} onChange={event => { setAction(event.target.value); setPage(1); }}><option value="">All event types</option>{actions.map(value=><option key={value} value={value}>{value.replaceAll("_"," ")}</option>)}</select></label>
       <label>Outcome<select value={outcome} onChange={event => { setOutcome(event.target.value); setPage(1); }}><option value="">All outcomes</option><option value="SUCCESS">Success</option><option value="FAILURE">Failure</option></select></label>
       <label>From<input type="datetime-local" value={from} onChange={event => { setFrom(event.target.value); setPage(1); }} /></label>
@@ -92,6 +95,7 @@ export default function AdminStudentAudit({ student, onClose, onError }: Props) 
       <div className="admin-panel-head"><div><strong>{event.action.replaceAll("_"," ")}</strong><p className="admin-muted">{new Date(event.createdAt).toLocaleString()} · Actor {event.actorId ?? "unknown"} ({event.actorRole})</p></div><span className={event.outcome==="SUCCESS"?"status-pill success":"status-pill danger"}>{event.outcome}</span></div>
       <p>{event.resourceType || "Request"} {event.resourceId ? "· " + event.resourceId : ""} · {event.route}</p>
       <small className="admin-muted">Request ID: {event.requestId} · College {event.collegeCode || "—"} · Branch {event.branchCode || "—"}</small>
+      {event.contextJson && event.contextJson !== "{}" && <details className="audit-event-details"><summary>Event details</summary><pre>{(() => { try { return JSON.stringify(JSON.parse(event.contextJson), null, 2); } catch { return event.contextJson; } })()}</pre></details>
     </article>)}</div>
     {!loading && data?.events.length===0 && <div className="empty-state"><h3>No audit events match</h3><p>Try clearing some filters or check back after the student performs an action.</p></div>}
     {data && data.totalPages>1 && <div className="pagination"><button className="ghost" disabled={page<=1||loading} onClick={()=>setPage(value=>value-1)}>Previous</button><span>Page {data.page} of {data.totalPages}</span><button className="ghost" disabled={page>=data.totalPages||loading} onClick={()=>setPage(value=>value+1)}>Next</button></div>}

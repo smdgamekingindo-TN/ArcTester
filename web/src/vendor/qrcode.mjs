@@ -1,3 +1,4 @@
+/* eslint-disable -- Vendored upstream QR encoder; keep upstream implementation unchanged. */
 //---------------------------------------------------------------------
 //
 // QR Code Generator for JavaScript

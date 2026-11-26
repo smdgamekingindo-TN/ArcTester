@@ -18,6 +18,23 @@ Complete this checklist for each production/staging environment. Do not paste se
 - [ ] Keep API and worker credentials separate where feasible; restrict model artifact bucket permissions.
 - [ ] Verify that production migrations are applied before rolling out code that uses the shared `auth_rate_limit_buckets` table.
 
+## Automated production preflight
+
+Run this in the target API environment immediately before rollout:
+
+```bash
+cd api
+NODE_ENV=production npm run security:preflight
+```
+
+The preflight validates exact HTTPS CORS origins, JWT configuration, proxy-hop count, TOTP key format, Turnstile configuration, published privacy-notice URL and named privacy/grievance/incident contacts. It connects to PostgreSQL and rejects a runtime role with SUPERUSER, CREATEDB, CREATEROLE, or CREATE privilege on the public schema. Use a separate privileged migration role.
+
+The script never prints secret values. It cannot inspect the hosting provider's log residency/retention controls, reverse-proxy topology, or object-storage bucket policy; those require operator verification and remain a manual sign-off.
+
+Required additional environment variables:
+- `STUDENT_PRIVACY_NOTICE_URL`: published HTTPS notice URL (not a draft/template).
+- `PRIVACY_CONTACT_EMAIL`, `GRIEVANCE_CONTACT_EMAIL`, `SECURITY_INCIDENT_OWNER_EMAIL`: real monitored operational addresses.
+
 ## Logs, retention and scheduled operations
 - [ ] Confirm hosting/security logs are enabled, protected from modification, retained for the required period and stored in the required jurisdiction. CERT-In Directions may require rolling 180-day logs within India for covered entities; confirm applicability and provider controls.
 - [ ] Designate and register the appropriate CERT-In point of contact if applicable.

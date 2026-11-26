@@ -156,7 +156,7 @@ export function adminMcpRouter(db: PrismaClient): Router {
           output = { sent: true, notification, message: "Performance review delivered to the student's in-app notification inbox." };
           summary = "sent performance review notification to student " + student.id; break;
         }
-        case "set_student_access_status":
+        case "set_student_access_status": {
           if (!scope(key, "students:manage")) return res.json(rpcError(id, -32003, "Missing students:manage scope."));
           const input = z.object({ studentId:z.number().int().positive(), accessStatus:z.enum(["PENDING","APPROVED","REJECTED"]), confirm:z.literal(true) }).parse(args);
           const existing = await db.user.findFirst({ where:{ id:input.studentId,role:"STUDENT",NOT:{email:{endsWith:".deleted.invalid"}} }, select:{id:true,accessStatus:true} });

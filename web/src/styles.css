@@ -1268,7 +1268,7 @@ html[data-admin-density="compact"] .bank-question{padding:12px 16px}
 .security-enrollment-panel,.security-recovery-panel{display:grid;gap:10px;margin:12px 0;padding:14px;border:1px solid var(--border);border-radius:12px;background:var(--surface-2,var(--surface))}
 .security-enrollment-panel>strong,.security-recovery-panel>strong{font-size:12px}
 .security-enrollment-panel>p,.security-recovery-panel>p{margin:0;font-size:11px;line-height:1.6;color:var(--muted)}
-.security-secret-key{display:block;padding:12px;border-radius:9px;background:var(--surface);font-size:14px;font-weight:850;letter-spacing:1.4px;overflow-wrap:anywhere}
+.security-secret-copy-row{display:flex;align-items:stretch;gap:8px;min-width:0}.security-secret-copy-row .security-secret-key{flex:1;min-width:0}.security-copy-secret-button{flex:0 0 auto;align-self:stretch}.security-secret-key{display:block;padding:12px;border-radius:9px;background:var(--surface);font-size:14px;font-weight:850;letter-spacing:1.4px;overflow-wrap:anywhere}
 .security-enrollment-panel textarea{width:100%;box-sizing:border-box;resize:vertical;padding:9px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--ink);font:11px/1.5 monospace}
 .security-inline-form{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .security-inline-form input{width:130px;max-width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--border);border-radius:9px;background:var(--surface);color:var(--ink);font:inherit;letter-spacing:2px}

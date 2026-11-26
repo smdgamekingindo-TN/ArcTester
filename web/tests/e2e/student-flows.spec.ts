@@ -95,6 +95,7 @@ async function setupStudent(page: Page) {
 test.describe("Student Practice Flow", () => {
   test("student can create, take, and submit a practice test", async ({ page }) => {
     test.setTimeout(60000);
+    await page.setViewportSize({ width: 390, height: 844 });
     const { studentEmail } = await setupStudent(page);
 
     // Login as student through UI
@@ -120,6 +121,7 @@ test.describe("Student Practice Flow", () => {
     // Confirm the practice engine actually opened a question, not just that
     // generic navigation controls remain on screen.
     await expect(page.locator(".question-card").first()).toBeVisible({ timeout: 15000 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     // Shared exam controls must stay in document flow and remain comfortably tappable.
     const examFooter = page.locator(".exam-layout-footer");
     await expect(examFooter).toBeVisible();

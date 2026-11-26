@@ -248,7 +248,7 @@ if (process.env.NODE_ENV !== "test") {
     if (shutdownStarted) return;
     shutdownStarted = true;
     console.log(`ecet-api received ${signal}; draining requests`);
-    stopOpsMetricsHeartbeat();
+    (app.locals as { stopOpsMetricsHeartbeat?: () => void }).stopOpsMetricsHeartbeat?.();
     server.close((error) => {
       if (error) {
         console.error("ecet-api HTTP shutdown failed", error);

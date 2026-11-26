@@ -82,8 +82,8 @@ async function persistSnapshot(db: PrismaClient, dbLatencyMs: number | null = nu
       db_latency_ms = COALESCE(EXCLUDED.db_latency_ms, server_instance_metrics.db_latency_ms)
   `;
   cleanupPersistCount += 1;
-  if (cleanupPersistCount % 240 === 0) {
-    await db.$executeRaw`DELETE FROM server_instance_metrics WHERE last_seen_at < NOW() - INTERVAL '30 days'`;
+  if (cleanupPersistCount % 20 === 0) {
+    await db.$executeRaw`DELETE FROM server_instance_metrics WHERE last_seen_at < NOW() - INTERVAL '10 minutes'`;
   }
 }
 
@@ -126,6 +126,10 @@ export function opsMetricsRouter(db: PrismaClient): Router {
         databaseStatus = "unavailable";
       }
       await persistSnapshot(db, dbLatencyMs);
+      // This endpoint is a live fleet view, not a historical deployment log.
+      // Remove expired heartbeats before reading so old deploy containers cannot
+      // inflate the current fleet or remain listed as offline for days.
+      await db.$executeRaw`DELETE FROM server_instance_metrics WHERE last_seen_at < NOW() - INTERVAL '10 minutes'`;
       const rows = await db.$queryRaw<Array<{
         instance_id: string; hostname: string; version: string; build_sha: string;
         started_at: Date; last_seen_at: Date; cpu_percent: number; rss_bytes: bigint;

@@ -107,14 +107,14 @@ export default function StudentSavedPracticeExams() {
       currentIndex={activeQuestionIndex}
       questionCount={active.questions.length}
       answeredCount={answered}
-      submitLabel={busy ? "Submitting…" : "Submit practice exam"}
-      submitDisabled={busy}
+      submitLabel={run ? "Completed" : busy ? "Submitting…" : "Submit practice exam"}
+      submitDisabled={busy || Boolean(run)}
       busy={busy}
       onPrevious={() => setActiveQuestionIndex(index => Math.max(0, index - 1))}
       onNext={() => setActiveQuestionIndex(index => Math.min(active.questions.length - 1, index + 1))}
       onSubmit={() => void finish()}
     >
-      {run ? <div className="panel stack"><h2>{run.correctCount} / {run.totalQuestions} correct · {run.percentage}%</h2><p className="muted">Result saved to your practice history.</p>{active.questions.map((q, i) => <div className="panel" key={i}><strong>Q{i + 1}. {q.text}</strong><p className="muted">Your answer: {answers[i] == null ? "Unanswered" : q.options[answers[i]!]}</p><p className="muted">Correct answer: {q.options[q.correctIndex]}</p>{q.explanation ? <p className="muted">{q.explanation}</p> : null}</div>)}</div> : currentQuestion ? <article className="panel stack question-card" key={activeQuestionIndex}>
+      {run ? <div className="panel stack"><h2>{run.correctCount} / {run.totalQuestions} correct · {run.percentage}%</h2><p className="muted">Result saved to your practice history.</p>{currentQuestion ? <div className="panel stack"><strong>Q{activeQuestionIndex + 1}. {currentQuestion.text}</strong><p className="muted">Your answer: {answers[activeQuestionIndex] == null ? "Unanswered" : currentQuestion.options[answers[activeQuestionIndex]!]}</p><p className="muted">Correct answer: {currentQuestion.options[currentQuestion.correctIndex]}</p>{currentQuestion.explanation ? <p className="muted">{currentQuestion.explanation}</p> : null}</div> : null}</div> : currentQuestion ? <article className="panel stack question-card" key={activeQuestionIndex}>
       <p className="eyebrow">QUESTION {activeQuestionIndex + 1} · {currentQuestion.subject ?? "General"}</p>
       <h2>{currentQuestion.text}</h2>
       {currentQuestion.options.map((option, j) => <label className="row saved-practice-option" key={j}><input type="radio" name={`saved-exam-${activeQuestionIndex}`} checked={answers[activeQuestionIndex] === j} onChange={() => setAnswers(current => ({ ...current, [activeQuestionIndex]: j }))} /><span>{String.fromCharCode(65 + j)}. {option}</span></label>)}

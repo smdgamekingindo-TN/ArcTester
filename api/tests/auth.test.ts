@@ -171,6 +171,20 @@ describe("auth", () => {
     expect((res.json as { ok: boolean; user: { accessStatus: string } }).ok).toBe(true);
     expect((res.json as { user: { accessStatus: string } }).user.accessStatus).toBe("PENDING");
     expect((res.json as { user: { registrationNumber: string } }).user.registrationNumber).toBe("24999-CM-053");
+    const registeredUserId = (res.json as { user: { id: number } }).user.id;
+    const acceptance = await server.db.legalAcceptance.findFirst({ where: { userId: registeredUserId } });
+    expect(acceptance).toMatchObject({ termsVersion: "2026-11-27-v1", privacyNoticeVersion: "2026-11-27-v1", consentNoticeVersion: "2026-11-27-v1", source: "web" });
+    expect(acceptance?.acceptedAt).toBeInstanceOf(Date);
+  });
+
+  it("rejects registration when explicit terms and privacy consent are missing", async () => {
+    const response = await fetch(`${server.baseUrl}/auth/register`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ ...STUDENT_PROFILE, email: "missing-legal-consent@example.com", password: "secret1234" }),
+    });
+    expect(response.status).toBe(400);
+    expect(await server.db.user.findUnique({ where: { email: "missing-legal-consent@example.com" } })).toBeNull();
   });
 
   it("rejects a registration number with an unsupported branch code", async () => {

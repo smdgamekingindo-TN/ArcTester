@@ -15,10 +15,11 @@ describe("AdminQuestionImport", () => {
 
   it("shows audience scope and delegates branch metadata changes", () => {
     const onAudienceScopeChange = vi.fn(), onAudienceFieldChange = vi.fn();
-    render(<AdminQuestionImport {...props} onAudienceScopeChange={onAudienceScopeChange} onAudienceFieldChange={onAudienceFieldChange} />);
+    const { rerender } = render(<AdminQuestionImport {...props} onAudienceScopeChange={onAudienceScopeChange} onAudienceFieldChange={onAudienceFieldChange} />);
+    expect(screen.getByText(/Use this for MPC and other common subjects/)).toBeTruthy();
     fireEvent.change(screen.getByRole("combobox", { name: "Upload question audience" }), { target: { value: "BRANCH" } });
     expect(onAudienceScopeChange).toHaveBeenCalledWith("BRANCH");
-    expect(screen.getByText(/Use this for MPC and other common subjects/)).toBeTruthy();
+    rerender(<AdminQuestionImport {...props} audienceScope="BRANCH" onAudienceScopeChange={onAudienceScopeChange} onAudienceFieldChange={onAudienceFieldChange} />);
     fireEvent.change(screen.getByPlaceholderText("e.g. Mechanical Engineering"), { target: { value: "Mechanical Engineering" } });
     expect(onAudienceFieldChange).toHaveBeenCalledWith("targetBranchName", "Mechanical Engineering");
   });

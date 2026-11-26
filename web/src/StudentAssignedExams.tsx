@@ -45,6 +45,8 @@ export default function StudentAssignedExams() {
   const [viewSubmission, setViewSubmission] = useState<Assignment | null>(null);
   const [activeQuestionIndex, setActiveQuestionIndex] = useState(0);
   const [markedForReview, setMarkedForReview] = useState<Set<string>>(new Set());
+  const [guardNotice, setGuardNotice] = useState("");
+  const [guardViolationCount, setGuardViolationCount] = useState(0);
   const revisionRef = useRef(0);
   const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
   const saveTimerRef = useRef<number | null>(null);
@@ -80,11 +82,93 @@ export default function StudentAssignedExams() {
     return () => { window.clearInterval(timer); window.clearInterval(heartbeat); };
   }, [active]);
 
+  useEffect(() => {
+    if (!active) return;
+    let queued: { type: string; at: string; detail?: string }[] = [];
+    let flushTimer: number | null = null;
+    const lastEventAt = new Map<string, number>();
+    let sending = false;
+    const endpoint = "/exams/assignments/" + encodeURIComponent(active.assignment.id) + "/session/";
+    const flush = async () => {
+      if (flushTimer !== null) { window.clearTimeout(flushTimer); flushTimer = null; }
+      if (sending || queued.length === 0) return;
+      sending = true;
+      const batch = queued.splice(0, 20);
+      try {
+        const result = await request<{ violationCount?: number; max?: number; warn?: boolean; flagged?: boolean }>(
+          endpoint + "integrity", { method: "POST", body: JSON.stringify({ events: batch }) },
+        );
+        if (typeof result.violationCount === "number") setGuardViolationCount(result.violationCount);
+        if (result.warn || result.flagged) setGuardNotice(result.flagged
+          ? "Your exam session has been flagged for invigilator review. Continue honestly and contact your invigilator if this was accidental."
+          : "Exam guard warning: browser activity has been recorded. Keep the exam tab active.");
+      } catch {
+        setGuardNotice("Exam guard could not sync an activity event. Keep this exam open and check your connection.");
+      } finally {
+        sending = false;
+        if (queued.length) void flush();
+      }
+    };
+    const record = (type: string, detail: string) => {
+      const now = Date.now();
+      if (now - (lastEventAt.get(type) ?? 0) < 2000) return;
+      lastEventAt.set(type, now);
+      queued.push({ type, at: new Date(now).toISOString(), detail: detail.slice(0, 200) });
+      setGuardNotice("Exam guard recorded browser activity. Please keep this exam window focused.");
+      if (flushTimer === null) flushTimer = window.setTimeout(() => void flush(), 350);
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") record("TAB_HIDDEN", "Exam tab became hidden.");
+      else void request(endpoint + "heartbeat", { method: "POST", body: JSON.stringify({ event: "FOCUS_RESTORED" }) }).catch(() => undefined);
+    };
+    const onBlur = () => {
+      record("WINDOW_BLUR", "Exam window lost focus.");
+      void request(endpoint + "heartbeat", { method: "POST", body: JSON.stringify({ event: "FOCUS_LOST" }) }).catch(() => undefined);
+    };
+    const onFullscreen = () => { if (!document.fullscreenElement) record("FULLSCREEN_EXIT", "Fullscreen mode was exited."); };
+    const onCopy = (event: ClipboardEvent) => { event.preventDefault(); record("COPY_ATTEMPT", "Copy or cut was blocked during the exam."); };
+    const onPaste = (event: ClipboardEvent) => { event.preventDefault(); record("PASTE_ATTEMPT", "Paste was blocked during the exam."); };
+    const onContextMenu = (event: MouseEvent) => { event.preventDefault(); record("CONTEXT_MENU", "Context menu was blocked during the exam."); };
+    const onKeyDown = (event: KeyboardEvent) => {
+      const key = event.key.toLowerCase();
+      if (key === "f12" || (event.ctrlKey && event.shiftKey && ["i", "j", "c"].includes(key)) || (event.metaKey && event.altKey && ["i", "j", "c"].includes(key))) {
+        event.preventDefault(); record("DEVTOOLS_KEY", "Developer-tools keyboard shortcut was blocked.");
+      }
+    };
+    const onBeforeUnload = () => record("CLOSE_ATTEMPT", "Candidate attempted to leave or reload the exam page.");
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("blur", onBlur);
+    document.addEventListener("fullscreenchange", onFullscreen);
+    document.addEventListener("copy", onCopy, true);
+    document.addEventListener("cut", onCopy, true);
+    document.addEventListener("paste", onPaste, true);
+    document.addEventListener("contextmenu", onContextMenu, true);
+    window.addEventListener("keydown", onKeyDown, true);
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("blur", onBlur);
+      document.removeEventListener("fullscreenchange", onFullscreen);
+      document.removeEventListener("copy", onCopy, true);
+      document.removeEventListener("cut", onCopy, true);
+      document.removeEventListener("paste", onPaste, true);
+      document.removeEventListener("contextmenu", onContextMenu, true);
+      window.removeEventListener("keydown", onKeyDown, true);
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      if (flushTimer !== null) window.clearTimeout(flushTimer);
+      if (queued.length) void flush();
+      if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined);
+    };
+  }, [active]);
+
   const remainingSeconds = active
     ? Math.max(0, Math.ceil((new Date(active.deadline).getTime() - now) / 1000))
     : null;
 
   const startExam = async (assignment: Assignment) => {
+    if (document.documentElement.requestFullscreen && !document.fullscreenElement) void document.documentElement.requestFullscreen().catch(() => undefined);
+    setGuardNotice("");
+    setGuardViolationCount(0);
     setBusy(true);
     setError("");
     setNotice("");
@@ -188,6 +272,7 @@ export default function StudentAssignedExams() {
     const unanswered = questions.length - answered;
     const goToQuestion = (index: number) => setActiveQuestionIndex(Math.max(0, Math.min(index, questions.length - 1)));
     return <section className="assigned-exams assigned-exam-session">
+      {guardNotice ? <div className="panel exam-guard-notice" role="status"><strong>Exam guard · {guardViolationCount} recorded</strong><p>{guardNotice}</p></div> : null}
       <header className="page-heading"><div><p className="eyebrow">ASSIGNED EXAM · VERSION {active.assignment.version}</p><h1>{active.exam.title}</h1><p className="muted">{answered}/{questions.length} answered · {saving ? "Saving answers…" : dirtyRef.current ? "Answer save pending" : "Answers saved"}</p></div><strong className={remainingSeconds !== null && remainingSeconds < 300 ? "timer-warning" : "exam-countdown"}>{Math.floor((remainingSeconds ?? 0) / 60).toString().padStart(2, "0")}:{((remainingSeconds ?? 0) % 60).toString().padStart(2, "0")}</strong></header>
       {active.exam.instructions ? <div className="panel"><b>Instructions</b><p>{active.exam.instructions}</p></div> : null}
       <section className="panel exam-question-navigator" aria-label="Assigned exam question navigator">

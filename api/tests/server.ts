@@ -110,11 +110,13 @@ export async function postJson(
   if (url.endsWith("/auth/register") && body && typeof body === "object" && !Array.isArray(body)) {
     const input = body as Record<string, unknown>;
     const withLegalAcceptance = {
+      adultAttestation: true,
       termsAccepted: true,
       privacyConsent: true,
       termsVersion: "2026-11-27-v1",
       privacyNoticeVersion: "2026-11-27-v1",
       consentNoticeVersion: "2026-11-27-v1",
+      ageGateVersion: "2026-11-27-v1",
       ...input,
     };
     payload = withLegalAcceptance;

@@ -268,60 +268,24 @@ const DeviceSchema = z.object({
   fingerprint: z.string().trim().min(16).max(128),
 });
 
-// Login throttling is keyed by client IP *and* target email:
-// - the ip+email bucket stops one IP from guessing one account's password
-//   without letting a different IP lock that account out;
-// - the ip-only bucket bounds brute force from a single source so one IP
-//   cannot exhaust the shared failure map or hammer many accounts.
-// Both buckets are process-local (not a distributed limiter), matching the
-// existing best-effort throttle.
+// Shared PostgreSQL login throttling; only hashed bucket identifiers are stored.
 const LOGIN_FAILURE_LIMIT = 8;
 const IP_FAILURE_LIMIT = 20;
-const LOGIN_FAILURE_WINDOW_MS = 15 * 60 * 1000;
-const loginFailures = new Map<string, { count: number; windowStartedAt: number; blockedUntil: number }>();
-
-function loginBucketKey(ip: string, email?: string): string {
-  return email ? `${ip}::${email.toLowerCase()}` : `ip-only::${ip}`;
+function loginBucketKey(ip: string, email?: string): string { return email ? `${ip}::${email.toLowerCase()}` : `ip-only::${ip}`; }
+async function loginRetryAfter(db: PrismaClient, key: string): Promise<number> {
+ const hash = sha256(key);
+ const rows = await db.$queryRaw<Array<{ retryAfterSeconds: number }>>`SELECT GREATEST(0, CEIL(EXTRACT(EPOCH FROM (blocked_until - NOW()))))::int AS "retryAfterSeconds" FROM auth_rate_limit_buckets WHERE bucket_key = ${hash} AND window_started_at > NOW() - INTERVAL '15 minutes' AND blocked_until IS NOT NULL`;
+ return rows[0]?.retryAfterSeconds ?? 0;
 }
-
-function loginRetryAfter(key: string, now = Date.now()): number {
-  const bucket = loginFailures.get(key);
-  if (!bucket) return 0;
-  if (now - bucket.windowStartedAt >= LOGIN_FAILURE_WINDOW_MS && bucket.blockedUntil <= now) {
-    loginFailures.delete(key);
-    return 0;
-  }
-  return bucket.blockedUntil > now ? Math.ceil((bucket.blockedUntil - now) / 1000) : 0;
+async function recordLoginFailure(db: PrismaClient, key: string): Promise<number> {
+ const hash = sha256(key), limit = key.startsWith("ip-only::") ? IP_FAILURE_LIMIT : LOGIN_FAILURE_LIMIT;
+ await db.$executeRaw`INSERT INTO auth_rate_limit_buckets (bucket_key,failure_count,window_started_at,blocked_until,updated_at) VALUES (${hash},1,NOW(),NULL,NOW()) ON CONFLICT (bucket_key) DO UPDATE SET failure_count=CASE WHEN auth_rate_limit_buckets.window_started_at <= NOW()-INTERVAL '15 minutes' THEN 1 ELSE auth_rate_limit_buckets.failure_count+1 END, window_started_at=CASE WHEN auth_rate_limit_buckets.window_started_at <= NOW()-INTERVAL '15 minutes' THEN NOW() ELSE auth_rate_limit_buckets.window_started_at END, blocked_until=CASE WHEN (CASE WHEN auth_rate_limit_buckets.window_started_at <= NOW()-INTERVAL '15 minutes' THEN 1 ELSE auth_rate_limit_buckets.failure_count+1 END) >= ${limit} THEN NOW()+INTERVAL '15 minutes' ELSE NULL END, updated_at=NOW()`;
+ return loginRetryAfter(db,key);
 }
-
-function recordLoginFailure(key: string, now = Date.now()): number {
-  let bucket = loginFailures.get(key);
-  if (!bucket || now - bucket.windowStartedAt >= LOGIN_FAILURE_WINDOW_MS) {
-    bucket = { count: 0, windowStartedAt: now, blockedUntil: 0 };
-  }
-  bucket.count += 1;
-  const limit = key.startsWith("ip-only::") ? IP_FAILURE_LIMIT : LOGIN_FAILURE_LIMIT;
-  if (bucket.count >= limit) bucket.blockedUntil = now + LOGIN_FAILURE_WINDOW_MS;
-  loginFailures.set(key, bucket);
-
-  if (loginFailures.size > 5000) {
-    for (const [bucketKey, value] of loginFailures) {
-      if (now - value.windowStartedAt >= LOGIN_FAILURE_WINDOW_MS && value.blockedUntil <= now) loginFailures.delete(bucketKey);
-    }
-    while (loginFailures.size > 5000) {
-      const oldestKey = loginFailures.keys().next().value;
-      if (oldestKey === undefined) break;
-      loginFailures.delete(oldestKey);
-    }
-  }
-  return loginRetryAfter(key, now);
+async function clearLoginFailures(db: PrismaClient, ip: string, email?: string): Promise<void> {
+ const keys=[loginBucketKey(ip,email),loginBucketKey(ip)].map(sha256);
+ await db.$executeRaw`DELETE FROM auth_rate_limit_buckets WHERE bucket_key IN (${keys[0]},${keys[1]})`;
 }
-
-function clearLoginFailures(ip: string, email?: string): void {
-  loginFailures.delete(loginBucketKey(ip, email));
-  loginFailures.delete(loginBucketKey(ip));
-}
-
 function rejectThrottledLogin(res: Response, retryAfter: number): void {
   res.setHeader("Retry-After", String(retryAfter));
   res.status(429).json({ error: "Too many failed sign-in attempts. Try again later." });
@@ -579,18 +543,18 @@ export function authRouter(db: PrismaClient): Router {
       const ip = req.ip ?? "unknown";
       const emailKey = loginBucketKey(ip, input.email);
       const ipKey = loginBucketKey(ip);
-      const retryAfter = Math.max(loginRetryAfter(emailKey), loginRetryAfter(ipKey));
+      const retryAfter = Math.max(loginRetryAfter(db, emailKey), loginRetryAfter(db, ipKey));
       if (retryAfter > 0) return rejectThrottledLogin(res, retryAfter);
       const user = await db.user.findUnique({ where: { email: input.email } });
       if (!user || !await verifyPasswordAsync(input.password, user.passwordHash)) {
         await recordLoginEvent(db, req, input.email, user?.id ?? null, "failed", "password");
-        recordLoginFailure(emailKey);
-        recordLoginFailure(ipKey);
-        const blockedFor = Math.max(loginRetryAfter(emailKey), loginRetryAfter(ipKey));
+        await recordLoginFailure(db, emailKey);
+        await recordLoginFailure(db, ipKey);
+        const blockedFor = Math.max(loginRetryAfter(db, emailKey), loginRetryAfter(db, ipKey));
         if (blockedFor > 0) return rejectThrottledLogin(res, blockedFor);
         return next(badRequest("Invalid email or password."));
       }
-      clearLoginFailures(ip, input.email);
+      await clearLoginFailures(db, ip, input.email);
       if (user.accessStatus !== "APPROVED") { await recordLoginEvent(db, req, input.email, user.id, "blocked"); return next(forbidden(user.accessStatus === "REJECTED" ? "Your account was not approved. Contact your administrator." : "Your account is waiting for administrator approval.")); }
       const totp = await db.totpCredential.findUnique({ where: { userId: user.id }, select: { enabledAt: true } });
       if (totp?.enabledAt) {
@@ -614,17 +578,17 @@ export function authRouter(db: PrismaClient): Router {
       const ip = req.ip ?? "unknown";
       const emailKey = loginBucketKey(ip, input.email);
       const ipKey = loginBucketKey(ip);
-      const retryAfter = Math.max(loginRetryAfter(emailKey), loginRetryAfter(ipKey));
+      const retryAfter = Math.max(loginRetryAfter(db, emailKey), loginRetryAfter(db, ipKey));
       if (retryAfter > 0) return rejectThrottledLogin(res, retryAfter);
       const user = await db.user.findUnique({ where: { email: input.email } });
       if (!user || !await verifyPasswordAsync(input.password, user.passwordHash)) {
-        recordLoginFailure(emailKey);
-        recordLoginFailure(ipKey);
-        const blockedFor = Math.max(loginRetryAfter(emailKey), loginRetryAfter(ipKey));
+        await recordLoginFailure(db, emailKey);
+        await recordLoginFailure(db, ipKey);
+        const blockedFor = Math.max(loginRetryAfter(db, emailKey), loginRetryAfter(db, ipKey));
         if (blockedFor > 0) return rejectThrottledLogin(res, blockedFor);
         return next(badRequest("Invalid email or password."));
       }
-      clearLoginFailures(ip, input.email);
+      await clearLoginFailures(db, ip, input.email);
       if (user.accessStatus !== "APPROVED") { await recordLoginEvent(db, req, input.email, user.id, "blocked"); return next(forbidden(user.accessStatus === "REJECTED" ? "Your account was not approved. Contact your administrator." : "Your account is waiting for administrator approval.")); }
       await recordLoginEvent(db, req, input.email, user.id, "success", "password");
       const { token } = await createAuthSession(db, req, user, "password");

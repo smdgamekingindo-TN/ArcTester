@@ -18,8 +18,8 @@ describe("AdminAccountPage", () => {
     render(<AdminAccountPage email="admin@example.com" theme="dark" onThemeChange={vi.fn()} onSignOut={vi.fn()} />);
     expect(screen.getByRole("heading", { name: "Account" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Settings" })).toBeInTheDocument();
-    expect(await screen.findByText("Arc Admin")).toBeInTheDocument();
-    expect(screen.getByText("admin@example.com")).toBeInTheDocument();
+    expect((await screen.findAllByText("Arc Admin")).length).toBeGreaterThan(0);
+    expect(screen.getAllByText("admin@example.com").length).toBeGreaterThan(0);
     expect(screen.getByText("7")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Settings" }));

@@ -622,7 +622,7 @@ describe("student branch subject catalog", () => {
       ["CME Core Test", "CME legacy global catalog fixture question", ["a", "b", "c", "d"], 1, "global-catalog"],
       ["Physics", "Physics common branch-tagged fixture question", ["a", "b", "c", "d"], 2, "mpc-common"],
       ["Data Structures", "CME legacy all-scoped subject fixture question", ["a", "b", "c", "d"], 3, "cme-core"],
-      ["Engineering Mechanics", "MEC legacy all-scoped subject fixture question", ["a", "b", "c", "d"], 4, "mec-core"],
+      ["Engineering Mechanics", "MEC legacy all-scoped subject fixture question", ["a", "b", "c", "d"], 0, "mec-core"],
     ]);
     expect(imported.added).toBe(5);
     const subject = await server.db.subject.findUniqueOrThrow({ where: { name: "CME Core Test" } });

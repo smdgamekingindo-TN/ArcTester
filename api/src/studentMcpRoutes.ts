@@ -25,7 +25,7 @@ const PracticeSetInput = z.object({
   title: z.string().trim().min(2).max(120),
   description: z.string().trim().max(2000).default(""),
   durationMinutes: z.number().int().min(1).max(600).default(20),
-  questions: z.array(QuestionInput).min(1).max(100),
+  questions: z.array(QuestionInput.refine((question) => question.options.length >= 2 && question.correctIndex < question.options.length, { message: "Practice exam questions need at least two options and a valid correct answer.", path: ["options"] })).min(1).max(100),
 });
 type StudentKey = { id: string; userId: number; scopes: string[] };
 

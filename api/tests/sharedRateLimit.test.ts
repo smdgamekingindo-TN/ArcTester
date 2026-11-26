@@ -8,6 +8,13 @@ describe("shared API rate limiter", () => {
   beforeAll(async () => { server = await startTestServer(buildApp); });
   afterAll(async () => { await server.close(); });
 
+  it("keeps Helmet's default security headers enabled", async () => {
+    const response = await fetch(server.baseUrl + "/health");
+    expect(response.headers.get("content-security-policy")).toContain("default-src 'self'");
+    expect(response.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(response.headers.get("x-frame-options")).toBe("SAMEORIGIN");
+  });
+
   it("allows exactly 300 requests in the window, then returns 429 with retry headers", async () => {
     for (let request = 0; request < 300; request += 1) {
       const response = await fetch(server.baseUrl + "/auth/me");

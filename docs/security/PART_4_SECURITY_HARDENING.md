@@ -36,7 +36,7 @@
 - [x] MFA removal revokes all sessions; passkey removal revokes all sessions. Password change already increments session version.
 - [x] Require a session issued within five minutes for TOTP enrollment and passkey enrollment/removal; TOTP disable verifies password and current factor.
 - [ ] Verify client UX handles re-authentication-required responses for these security changes.
-- [x] Add concurrent one-time recovery-code use and MFA-removal session-revocation tests.
+- [x] Add recent-auth, concurrent one-time recovery-code use, MFA-removal and passkey-removal session-revocation tests.
 - [ ] Add exhaustive expired-challenge, passkey replay, and attempt-limit tests.
 
 ### 4.4 Abuse protection and perimeter
@@ -49,7 +49,7 @@
 - [ ] Complete deployment-specific CORS origin, proxy chain, upload route, and host-level log verification.
 - [x] Add login throttle tests and assert hashed PostgreSQL bucket identifiers.
 - [x] Add exact 300-request API limiter boundary test and hashed bucket check.
-- [ ] Add trusted/untrusted cookie mutation-origin tests.
+- [x] Add trusted/untrusted cookie mutation-origin tests (unit coverage in api/tests/csrf.test.ts).
 
 ### 4.5 Secrets, data, admin MCP/model controls
 - [x] Verify JWT/TOTP secret validation and document production environment checklist in docs/security/PRODUCTION_SECURITY_CONFIGURATION.md.

@@ -54,14 +54,14 @@ describe("student MCP authorization and ownership", () => {
 
     const otherQuestion = await server.db.studentPrivateQuestion.findFirst({ where: { text: "Other student's question" } });
     const edit = await rpc("edit_my_question", { id: otherQuestion!.id, patch: { text: "Attempted cross-account edit" } });
-    expect((edit.body as { error: { code: number } }).error.code).toBe(-32004);
+    expect(edit.body, JSON.stringify(edit.body)).toMatchObject({ error: { code: -32004 } });
     expect((await server.db.studentPrivateQuestion.findUnique({ where: { id: otherQuestion!.id } }))?.text).toBe("Other student's question");
   });
 
   it("enforces per-key scopes and re-checks current account role", async () => {
     await server.db.studentMcpKey.update({ where: { id: keyId }, data: { scopes: ["questions:read"] } });
     const denied = await rpc("create_my_questions", { questions: [{ subject: "Math", text: "Should be denied", options: ["A", "B"], correctIndex: 0 }] });
-    expect((denied.body as { error: { code: number } }).error.code).toBe(-32003);
+    expect(denied.body, JSON.stringify(denied.body)).toMatchObject({ error: { code: -32003 } });
 
     await server.db.user.update({ where: { id: studentId }, data: { role: "ADMIN" } });
     const demotedOrWrongRole = await rpc("list_my_questions", { limit: 10 });

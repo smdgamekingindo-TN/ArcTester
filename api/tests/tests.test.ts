@@ -629,7 +629,7 @@ describe("student branch subject catalog", () => {
     });
     await server.db.question.update({
       where: { questionHash: hashQuestion("Physics common branch-tagged fixture question") },
-      data: { audienceScope: "BRANCH", targetBranchCode: "CM", targetBranchName: "Computer Engineering (CME)" },
+      data: { reviewStatus: "APPROVED", audienceScope: "BRANCH", targetBranchCode: "CM", targetBranchName: "Computer Engineering (CME)" },
     });
     await server.db.question.update({
       where: { questionHash: hashQuestion("CME legacy all-scoped subject fixture question") },

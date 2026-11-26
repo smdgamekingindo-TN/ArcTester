@@ -15,9 +15,16 @@ type AdminQuestionImportProps = {
   onPreview: () => void;
   onConfirm: () => void;
   onCancelPreview: () => void;
+  audienceScope: "ALL" | "COLLEGE" | "BRANCH";
+  targetCollegeCode: string;
+  targetCollegeName: string;
+  targetBranchCode: string;
+  targetBranchName: string;
+  onAudienceScopeChange: (value: "ALL" | "COLLEGE" | "BRANCH") => void;
+  onAudienceFieldChange: (field: "targetCollegeCode" | "targetCollegeName" | "targetBranchCode" | "targetBranchName", value: string) => void;
 };
 
-export default function AdminQuestionImport({ uploadText, uploadFormat, previewReady, report, busy, onReadFile, onTextChange, onFormatChange, onLoadExample, onDownloadTemplate, onPreview, onConfirm, onCancelPreview }: AdminQuestionImportProps) {
+export default function AdminQuestionImport({ uploadText, uploadFormat, previewReady, report, busy, onReadFile, onTextChange, onFormatChange, onLoadExample, onDownloadTemplate, onPreview, onConfirm, onCancelPreview, audienceScope, targetCollegeCode, targetCollegeName, targetBranchCode, targetBranchName, onAudienceScopeChange, onAudienceFieldChange }: AdminQuestionImportProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   return (
@@ -29,9 +36,15 @@ export default function AdminQuestionImport({ uploadText, uploadFormat, previewR
             <input ref={fileRef} type="file" accept=".csv,.json,text/csv,application/json" hidden onChange={(event) => { const selected = event.target.files?.[0]; if (selected) void onReadFile(selected); }} />
             <span className="upload-icon">⇧</span><b>Drop CSV or JSON file here</b><small>or click to browse your device</small><em>CSV · JSON · Up to 8 MB</em>
           </div>
-          <div className="format-note"><b>CSV columns</b><code>subject, topic, text, optionA, optionB, optionC, optionD, correctIndex, explanation, source, difficulty</code><button className="text-button" onClick={(event) => { event.stopPropagation(); onLoadExample(); }}>Load CSV example</button><div className="template-actions"><button className="ghost" onClick={() => onDownloadTemplate("csv")}>Download CSV template</button><button className="ghost" onClick={() => onDownloadTemplate("json")}>Download JSON template</button></div></div>
+          <div className="format-note"><b>CSV columns</b><code>subject, topic, text, optionA, optionB, optionC, optionD, correctIndex, explanation, source, difficulty, audienceScope, targetCollegeCode, targetCollegeName, targetBranchCode, targetBranchName</code><button className="text-button" onClick={(event) => { event.stopPropagation(); onLoadExample(); }}>Load CSV example</button><div className="template-actions"><button className="ghost" onClick={() => onDownloadTemplate("csv")}>Download CSV template</button><button className="ghost" onClick={() => onDownloadTemplate("json")}>Download JSON template</button></div></div>
         </section>
         <section className="admin-panel"><div className="admin-panel-head"><div><p className="eyebrow">STEP 2 · REVIEW</p><h2>Preview and import</h2></div></div>
+          <section className="question-import-audience" aria-label="Question audience">
+            <div><p className="eyebrow">QUESTION AUDIENCE</p><strong>{audienceScope==="ALL"?"Shared across every branch":audienceScope==="COLLEGE"?"College-specific question set":"Branch-specific question set"}</strong><p className="muted">{audienceScope==="ALL"?"Use this for MPC and other common subjects.":"Questions in this upload are tagged to the selected academic audience; students in other branches will not see them."}</p></div>
+            <label>Upload scope<select aria-label="Upload question audience" value={audienceScope} disabled={busy||previewReady} onChange={e=>onAudienceScopeChange(e.target.value as "ALL"|"COLLEGE"|"BRANCH")}><option value="ALL">Shared · all branches (MPC)</option><option value="COLLEGE">One college</option><option value="BRANCH">One diploma branch</option></select></label>
+            {(audienceScope==="COLLEGE"||audienceScope==="BRANCH")&&<div className="question-import-audience-fields"><label>College name<input value={targetCollegeName} disabled={busy||previewReady} onChange={e=>onAudienceFieldChange("targetCollegeName",e.target.value)} placeholder="Optional college name"/></label><label>College code<input value={targetCollegeCode} disabled={busy||previewReady} onChange={e=>onAudienceFieldChange("targetCollegeCode",e.target.value)} placeholder="Optional college code"/></label>{audienceScope==="BRANCH"&&<><label>Branch name<input value={targetBranchName} disabled={busy||previewReady} onChange={e=>onAudienceFieldChange("targetBranchName",e.target.value)} placeholder="e.g. Mechanical Engineering"/></label><label>Branch code<input value={targetBranchCode} disabled={busy||previewReady} onChange={e=>onAudienceFieldChange("targetBranchCode",e.target.value)} placeholder="e.g. MEC"/></label></>}</div>}
+            <small>CSV/JSON rows can override this default using audienceScope and targetBranchCode/targetBranchName. Branch uploads should include the branch code or name.</small>
+          </section>
           <div className="segmented"><button className={uploadFormat === "csv" ? "chosen" : ""} onClick={() => onFormatChange("csv")}>CSV</button><button className={uploadFormat === "json" ? "chosen" : ""} onClick={() => onFormatChange("json")}>JSON</button></div>
           <textarea className="import-editor" value={uploadText} onChange={(event) => onTextChange(event.target.value)} placeholder="File contents appear here. You can also paste your question data…" />
           <button className="primary full" disabled={!uploadText.trim() || busy} onClick={previewReady ? onConfirm : onPreview}>{busy ? (previewReady ? "Importing…" : "Validating…") : previewReady ? "Confirm import" : "Preview import"}</button>

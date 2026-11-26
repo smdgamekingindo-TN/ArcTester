@@ -1821,3 +1821,47 @@ html[data-admin-density="compact"] .bank-question{padding:12px 16px}
 @media(prefers-reduced-motion:reduce){
  .student-practice-area .practice-subject-grid label,.student-practice-area .practice-topic-list label,.student-practice-area .subject-card{transition:none}
 }
+
+/* Shared compact exam frame: keep navigation and submit controls in document flow. */
+.exam-layout{display:grid;gap:14px;min-width:0}
+.exam-layout-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;min-width:0}
+.exam-layout-heading{min-width:0}
+.exam-layout-heading h1{margin:3px 0 5px;font-size:clamp(22px,3vw,30px);line-height:1.15}
+.exam-layout-meta{margin:0;font-size:12px}
+.exam-layout-header-actions{flex:0 0 auto;display:flex;align-items:center;gap:8px}
+.exam-layout-timer{display:grid;gap:2px;border:1px solid var(--border);border-radius:10px;padding:7px 10px;background:var(--surface);text-align:center}
+.exam-layout-timer small{font-size:9px;letter-spacing:.08em;color:var(--muted);font-weight:800}
+.exam-layout-timer strong{font-size:16px;line-height:1.1;font-variant-numeric:tabular-nums}
+.exam-layout-status{display:grid;gap:6px;min-width:0}
+.exam-layout-status>p{margin:0}
+.exam-layout-progress{display:grid;gap:7px;border:1px solid var(--border);border-radius:12px;padding:10px 12px;background:var(--surface)}
+.exam-layout-progress-copy{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:12px}
+.exam-layout-progress-copy span{color:var(--muted);font-size:11px;text-align:right}
+.exam-layout-progress .exam-progress-track{height:5px;background:var(--border)}
+.exam-layout-question{min-width:0}
+.exam-layout-question>.question-card{margin:0}
+.exam-layout-instructions{padding:12px 14px}
+.exam-layout-instructions p{margin:5px 0 0}
+.exam-layout-footer{display:flex;align-items:center;gap:8px;flex-wrap:wrap;border:1px solid var(--border);border-radius:12px;padding:10px;background:var(--surface)}
+.exam-layout-nav{min-height:34px;padding:7px 11px;font-size:12px}
+.exam-layout-index{font-size:11px;color:var(--muted);font-weight:800;min-width:36px;text-align:center;font-variant-numeric:tabular-nums}
+.exam-layout-submit{min-height:36px;padding:8px 14px;font-size:12px;margin-left:auto}
+.exam-layout-submit span{font-size:11px}
+.exam-layout-footer button:disabled{opacity:.45}
+.saved-practice-option{gap:10px;border:1px solid var(--border);border-radius:10px;padding:11px 12px;cursor:pointer}
+.saved-practice-option:has(input:checked){border:2px solid var(--accent);background:var(--accent-soft)}
+.saved-practice-option input{flex:0 0 auto}
+@media(max-width:560px){
+ .exam-layout{gap:10px}
+ .exam-layout-header{gap:8px}
+ .exam-layout-heading h1{font-size:22px}
+ .exam-layout-progress{padding:9px 10px}
+ .exam-layout-progress-copy{font-size:11px}
+ .exam-layout-progress-copy span{font-size:10px}
+ .exam-layout-footer{gap:6px;padding:7px}
+ .exam-layout-nav{padding:6px 8px;min-height:32px;font-size:11px}
+ .exam-layout-index{min-width:26px;font-size:10px}
+ .exam-layout-submit{min-height:32px;padding:7px 10px;font-size:11px}
+ .exam-layout-timer{padding:6px 8px}
+ .exam-layout-timer strong{font-size:14px}
+}

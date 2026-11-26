@@ -2,7 +2,7 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import AuthScreen from "./AuthScreen";
 function renderAuth(overrides: Partial<React.ComponentProps<typeof AuthScreen>> = {}) {
- const props={email:"",password:"",register:false,busy:false,error:"",academicProfile:{fullName:"",collegeName:"",collegeCode:"",registrationNumber:"",branchName:"",branchCode:""},onAcademicChange:vi.fn(),onEmailChange:vi.fn(),onPasswordChange:vi.fn(),onRegisterChange:vi.fn(),onAuthenticate:vi.fn(),...overrides};
+ const props={email:"",password:"",register:false,busy:false,error:"",academicProfile:{fullName:"",collegeName:"",collegeCode:"",registrationNumber:"",branchName:"",branchCode:""},onAcademicChange:vi.fn(),onEmailChange:vi.fn(),onPasswordChange:vi.fn(),onRegisterChange:vi.fn(),onAuthenticate:vi.fn(),onRequestPasswordReset:vi.fn(),onResetPassword:vi.fn(),...overrides};
  render(<AuthScreen {...props}/>);return props;
 }
 describe("AuthScreen",()=>{
@@ -15,4 +15,6 @@ describe("AuthScreen",()=>{
  it("shows registration password strength and requirement feedback",()=>{renderAuth({register:true,password:"Abcd123!"});expect(screen.getByRole("progressbar",{name:"Password strength"}).getAttribute("aria-valuenow")).toBe("4");expect(screen.getByText("Strong")).toBeTruthy();expect(screen.getByText("At least 8 characters")).toBeTruthy();expect(screen.getByText("Contains a symbol")).toBeTruthy()});
  it("disables submit while busy and shows API errors",()=>{renderAuth({busy:true,error:"The invitation has expired."});expect(screen.getByRole("button",{name:"Please wait…"}).hasAttribute("disabled")).toBe(true);expect(screen.getByText("The invitation has expired.")).toBeTruthy()});
  it("delegates switching to registration",()=>{const props=renderAuth();fireEvent.click(screen.getByRole("button",{name:"New student? Create an account"}));expect(props.onRegisterChange).toHaveBeenCalledWith(true)});
+ it("opens the forgot password form",()=>{const props=renderAuth();fireEvent.click(screen.getByRole("button",{name:"Forgot password?"}));expect(screen.getByRole("button",{name:"Send reset link"})).toBeTruthy();expect(props.onRequestPasswordReset).not.toHaveBeenCalled()});
+ it("submits a reset token with a replacement password and recovery code",()=>{const props=renderAuth({passwordResetToken:"reset-token-12345678901234567890123456789012"});fireEvent.change(screen.getByLabelText(/New password/),{target:{value:"replacement-password-123"}});fireEvent.change(screen.getByLabelText(/Authenticator \/ recovery code/),{target:{value:"recovery-code"}});fireEvent.submit(screen.getByRole("button",{name:"Reset password"}).closest("form")!);expect(props.onResetPassword).toHaveBeenCalledWith("reset-token-12345678901234567890123456789012","replacement-password-123","recovery-code")});
 });

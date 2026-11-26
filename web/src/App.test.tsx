@@ -81,6 +81,30 @@ describe("live Vite application", () => {
     fireEvent.click(screen.getByRole("button", { name: "Open notifications" }));
     await waitFor(() => expect(screen.getByRole("heading", { name: "Notification inbox" })).toBeInTheDocument());
   });
+  it("shows an exam result in the announcement-style popup and marks it read", async () => {
+    fetchMock.mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const path = String(input);
+      if (path.endsWith("/auth/me")) return Promise.resolve(response(200, { user: { id: 9, email: "result-student@example.com", role: "STUDENT" } }));
+      if (path.endsWith("/bank")) return Promise.resolve(response(200, { total: 0, subjects: [] }));
+      if (path.endsWith("/announcements/active") || path.endsWith("/announcements")) return Promise.resolve(response(200, { announcements: [] }));
+      if (path.endsWith("/notifications?unread=true")) return Promise.resolve(response(200, { notifications: [{
+        id: "exam-result-notice-1", kind: "EXAM_RESULT", title: "Your exam result is ready",
+        message: "You scored 82 out of 100. Open your result to review the answers.",
+        href: "/results/1", createdAt: "2026-11-26T09:00:00.000Z", readAt: null, expiresAt: null,
+      }], unreadCount: 1 }));
+      if (path.endsWith("/notifications/exam-result-notice-1/read") && init?.method === "POST") return Promise.resolve(response(200, { readAt: "2026-11-26T09:01:00.000Z" }));
+      return Promise.resolve(response(200, { ok: true }));
+    });
+
+    render(<App />);
+    const popup = await screen.findByRole("dialog", { name: "Your exam result is ready" });
+    expect(within(popup).getByText("EXAM RESULT AVAILABLE")).toBeInTheDocument();
+    expect(within(popup).getByText(/82 out of 100/)).toBeInTheDocument();
+    fireEvent.click(within(popup).getByRole("button", { name: "Got it" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Your exam result is ready" })).not.toBeInTheDocument());
+    expect(fetchMock.mock.calls.some((call) => String(call[0]).endsWith("/notifications/exam-result-notice-1/read"))).toBe(true);
+  });
+
   it("lets an administrator add a question and build a mock exam from it", async () => {
     const createdQuestion = {
       id: 91,

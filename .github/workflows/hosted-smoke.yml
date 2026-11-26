@@ -18,16 +18,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
-      ARCTESTER_WEB_URL: ${{ vars.ARCTESTER_WEB_URL }}
-      ARCTESTER_API_URL: ${{ vars.ARCTESTER_API_URL }}
+      ARCTESTER_WEB_URL: ${{ vars.ARCTESTER_WEB_URL || 'https://arctester.vercel.app' }}
+      ARCTESTER_API_URL: ${{ vars.ARCTESTER_API_URL || 'https://arctester.onrender.com' }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Validate deployment URLs are configured
+      - name: Validate deployment URLs
         run: |
-          test -n "$ARCTESTER_WEB_URL" || { echo "Set repository variable ARCTESTER_WEB_URL." >&2; exit 1; }
-          test -n "$ARCTESTER_API_URL" || { echo "Set repository variable ARCTESTER_API_URL." >&2; exit 1; }
+          test -n "$ARCTESTER_WEB_URL"
+          test -n "$ARCTESTER_API_URL"
 
       - name: Run HTTPS hosted smoke checks
         run: bash scripts/hosted-smoke.sh

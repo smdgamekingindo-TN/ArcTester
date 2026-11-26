@@ -8,7 +8,7 @@ import { buildPracticeConfig, type PracticeConfig, type PracticeQuestionType } f
 import { ApiRequestError, createApiClient } from "./apiClient";
 import { getRemainingPracticeSeconds } from "./practiceTimer";
 import AdminWorkspace from "./AdminWorkspace";
-import AuthScreen, { type AcademicRegistration } from "./AuthScreen";
+import AuthScreen, { type AcademicRegistration, type LegalAcceptance } from "./AuthScreen";
 import StudentNavigation, { type StudentPage } from "./StudentNavigation";
 import StudentAnnouncementDialog from "./StudentAnnouncementDialog";
 import StudentNotificationsInbox from "./StudentNotificationsInbox";
@@ -289,7 +289,7 @@ export default function App() {
     setActivePage(page);
   }
 
-  async function authenticate(captchaToken?: string) {
+  async function authenticate(captchaToken?: string, legalAcceptance?: LegalAcceptance) {
     setBusy(true);
     setError("");
     // Keep the connection/creation animation visible for a deliberate 5 seconds
@@ -300,7 +300,7 @@ export default function App() {
         await Promise.all([
           request("/auth/register", {
             method: "POST",
-            body: JSON.stringify({ email, password, ...academicProfile, captchaToken }),
+            body: JSON.stringify({ email, password, ...academicProfile, captchaToken, ...legalAcceptance }),
           }),
           animationMinimum,
         ]);
@@ -633,7 +633,7 @@ export default function App() {
         onEmailChange={setEmail}
         onPasswordChange={setPassword}
         onRegisterChange={(value) => { setRegister(value); setTwoFactorChallenge(""); }}
-        onAuthenticate={(captchaToken) => void authenticate(captchaToken)}
+        onAuthenticate={(captchaToken, legalAcceptance) => void authenticate(captchaToken, legalAcceptance)}
         onCaptchaLoad={loadRegistrationCaptcha}
         twoFactorChallenge={twoFactorChallenge}
         onCompleteTwoFactor={(challengeId, code) => void completeTwoFactor(challengeId, code)}

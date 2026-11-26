@@ -38,7 +38,7 @@ import { toggleMultiSelectAnswer } from "./src/multiSelectAnswer";
 import { getBranchCode, getCollegeCode, searchBranches, searchColleges, validateAcademicRegistration, type AcademicRegistration } from "./src/academicRegistration";
 import { AGE_GATE_VERSION, CONSENT_NOTICE_VERSION, PRIVACY_NOTICE_VERSION, TERMS_VERSION } from "./src/legalVersions";
 
-const WEB_URL = (process.env.EXPO_PUBLIC_WEB_URL || "https://arctester.vercel.app").replace(/\\/+$/, "");
+const WEB_URL = (process.env.EXPO_PUBLIC_WEB_URL || "https://arctester.vercel.app").replace(/\/+$/, "");
 const API_URL = (() => {
   const url = process.env.EXPO_PUBLIC_API_URL;
   const isDev = typeof __DEV__ !== "undefined" ? __DEV__ : true;

@@ -28,9 +28,14 @@ describe("API route authentication coverage", () => {
       for (const match of starts) {
         const index = match.index ?? 0;
         const snippet = source.slice(index, index + 1200);
-        const pathMatch = snippet.match(/["']\s*(\/[^"']+)["']/);
-        if (!pathMatch) continue;
-        const routePath = pathMatch[1]!.split(",")[0]!.trim();
+        const doubleQuoteIndex = snippet.indexOf('"');
+        const singleQuoteIndex = snippet.indexOf("'");
+        const quoteIndex = doubleQuoteIndex < 0 ? singleQuoteIndex : singleQuoteIndex < 0 ? doubleQuoteIndex : Math.min(doubleQuoteIndex, singleQuoteIndex);
+        if (quoteIndex < 0) continue;
+        const quote = snippet[quoteIndex]!;
+        const pathEnd = snippet.indexOf(quote, quoteIndex + 1);
+        if (pathEnd < 0) continue;
+        const routePath = snippet.slice(quoteIndex + 1, pathEnd).split(",")[0]!.trim();
         if (file === "auth.ts" && selfAuthenticatingPublicAuthPaths.has(routePath)) continue;
         const asyncIndex = snippet.search(/\basync\s*\(/);
         const middleware = asyncIndex >= 0 ? snippet.slice(0, asyncIndex) : snippet;

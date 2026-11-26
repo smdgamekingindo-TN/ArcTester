@@ -1894,3 +1894,10 @@ html[data-admin-density="compact"] .bank-question{padding:12px 16px}
 .saved-exam-status{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
 .saved-exam-status p{margin:0}
 @media(max-width:560px){.exam-layout-question-navigation{padding:9px}.exam-question-navigation-grid{grid-template-columns:repeat(auto-fill,minmax(36px,1fr));gap:6px}.exam-question-number{min-height:35px}.exam-layout-fullscreen{padding-left:10px;padding-right:10px}}
+
+/* Registration legal acceptance: clear, readable and keyboard accessible. */
+.auth-legal-consent{display:grid;gap:10px;padding:12px;border:1px solid var(--border);border-radius:12px;background:var(--surface-soft,var(--surface));}
+.auth-legal-check{display:flex!important;flex-direction:row!important;align-items:flex-start;gap:9px!important;font-size:13px;line-height:1.5;font-weight:500!important;}
+.auth-legal-check input{width:17px;height:17px;flex:0 0 17px;margin:2px 0 0;accent-color:var(--accent);}
+.auth-legal-check a{font-weight:750;text-decoration:underline;text-underline-offset:2px;color:var(--accent);}
+.auth-legal-consent .auth-field-hint{margin:0;font-size:11px;line-height:1.4;}

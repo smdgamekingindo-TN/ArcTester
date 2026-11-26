@@ -7,7 +7,7 @@ import { Prisma, type PrismaClient } from "@prisma/client";
 import { z } from "zod";
 import { badRequest, conflict, forbidden, notFound } from "./errors.js";
 import { decodeOptions } from "./questions.js";
-import { isContentAudienceVisible, type ContentAudience } from "./contentAudience.js";
+
 import { filterBranchSubjectQuestions } from "./branchSubjectVisibility.js";
 import { gradeQuestion, normalizeResponse, type QuestionType } from "./questionTypes.js";
 import {

@@ -1541,3 +1541,13 @@ html[data-admin-density="compact"] .bank-question{padding:12px 16px}
 .admin-security-panel .security-secret-actions{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px;min-width:0;}
 .admin-security-panel .security-secret-actions .security-secret-key{min-width:0;overflow-wrap:anywhere;}
 @media(max-width:620px){.admin-security-panel .account-device-row{grid-template-columns:minmax(0,1fr)!important;}.admin-security-panel .account-device-row>div:first-child{grid-column:1;grid-row:1;}.admin-security-panel .account-device-row>button{grid-column:1;grid-row:2;justify-self:start;}.admin-security-panel .security-secret-actions{grid-template-columns:minmax(0,1fr);}}
+
+
+/* Strong, stable borders for the exam question palette. */
+.exam-palette-item{box-sizing:border-box;border:1.5px solid var(--border);outline:none;transition:border-color .12s ease,background-color .12s ease,box-shadow .12s ease}
+.exam-palette-item.answered{border:1.5px solid var(--accent)}
+.exam-palette-item.marked-for-review{border:1.5px solid var(--warning,#d99a28)}
+.exam-palette-item[aria-current="step"]{border:2px solid var(--accent);outline:2px solid color-mix(in srgb,var(--accent) 38%,transparent);outline-offset:2px;box-shadow:0 0 0 1px var(--surface) inset}
+.exam-palette-item:focus-visible{outline:3px solid color-mix(in srgb,var(--accent) 65%,transparent);outline-offset:3px}
+.exam-palette-item:disabled{opacity:.55;cursor:not-allowed}
+@media(prefers-reduced-motion:reduce){.exam-palette-item{transition:none}}

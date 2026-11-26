@@ -7,7 +7,7 @@ import { requireAuth, type AuthedRequest } from "./auth.js";
 
 const KEY_PREFIX = "arc_student_";
 const KEY_SCOPES = ["questions:read", "questions:write", "practice:read", "practice:write"] as const;
-const QuestionInput = z.object({
+const QuestionBase = z.object({
   subject: z.string().trim().min(1).max(100),
   topic: z.string().trim().min(1).max(100).default("General"),
   text: z.string().trim().min(1).max(5000),
@@ -15,10 +15,12 @@ const QuestionInput = z.object({
   correctIndex: z.number().int().min(0).default(0),
   explanation: z.string().max(5000).default(""),
   difficulty: z.enum(["easy", "medium", "hard"]).default("medium"),
-}).refine((q) => q.options.length === 0 || q.correctIndex < q.options.length, {
+});
+const QuestionInput = QuestionBase.refine((q) => q.options.length === 0 || q.correctIndex < q.options.length, {
   message: "correctIndex must refer to an existing option.",
   path: ["correctIndex"],
 });
+const QuestionPatchInput = QuestionBase.partial();
 const PracticeSetInput = z.object({
   title: z.string().trim().min(2).max(120),
   description: z.string().trim().max(2000).default(""),

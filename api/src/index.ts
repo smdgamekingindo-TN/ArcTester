@@ -34,7 +34,6 @@ const db = new PrismaClient();
 // Shared atomic request limiting in PostgreSQL; works across API instances.
 // Store only a SHA-256 digest of the client IP, not the IP itself.
 const API_LIMIT = 300;
-const API_WINDOW_SECONDS = 15 * 60;
 const apiBucketHash = (ip: string) => "api:" + createHash("sha256").update(ip || "unknown").digest("hex");
 let apiLimiterCleanupCounter = 0;
 function sharedApiRateLimit(database: PrismaClient): express.RequestHandler {

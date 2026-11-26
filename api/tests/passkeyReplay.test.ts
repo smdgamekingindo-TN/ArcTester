@@ -87,7 +87,7 @@ describe("passkey assertion replay protection", () => {
       expect(response.status).toBe(200);
       return response.json() as Promise<{ challengeId: string }>;
     };
-    const makeAssertion = (challengeId: string, counter: number) => {
+    const makeAssertion = (challengeId: string, counter: number, assertionCredentialId = credentialId, assertionPrivateKey = privateKey) => {
       const origin = "https://study.example.com";
       const clientData = Buffer.from(JSON.stringify({ type: "webauthn.get", challenge: challengeId, origin }));
       const counterBytes = Buffer.alloc(4);
@@ -98,10 +98,10 @@ describe("passkey assertion replay protection", () => {
         counterBytes,
       ]);
       const signedData = Buffer.concat([authenticatorData, createHash("sha256").update(clientData).digest()]);
-      const signature = sign("sha256", signedData, privateKey);
+      const signature = sign("sha256", signedData, assertionPrivateKey);
       return {
         challengeId,
-        credentialId,
+        credentialId: assertionCredentialId,
         clientDataJSON: clientData.toString("base64url"),
         authenticatorData: authenticatorData.toString("base64url"),
         signature: signature.toString("base64url"),
@@ -125,6 +125,31 @@ describe("passkey assertion replay protection", () => {
     const secondOptions = await getOptions();
     const repeatedCounterAssertion = makeAssertion(secondOptions.challengeId, 1);
     expect(await verify(repeatedCounterAssertion)).toBe(403); // authenticator counter must advance
+    // Counterless authenticators report zero. The one-time challenge must still
+    // guarantee that two simultaneous valid assertions create only one session.
+    const zeroCounterKeys = generateKeyPairSync("ec", { namedCurve: "prime256v1" });
+    const zeroJwk = zeroCounterKeys.publicKey.export({ format: "jwk" });
+    const zeroCose = cborMap(new Map([
+      [1, 2], [3, -7], [-1, 1],
+      [-2, Buffer.from(zeroJwk.x!, "base64url")],
+      [-3, Buffer.from(zeroJwk.y!, "base64url")],
+    ]));
+    const zeroCredentialId = Buffer.from("arc-passkey-zero-counter-fixture").toString("base64url");
+    await server.db.passkeyCredential.create({
+      data: {
+        userId: user.id,
+        credentialId: zeroCredentialId,
+        publicKey: zeroCose.toString("base64url"),
+        signCount: 0,
+        name: "Counterless test passkey",
+        transports: JSON.stringify(["internal"]),
+      },
+    });
+    const zeroOptions = await getOptions();
+    const zeroAssertion = makeAssertion(zeroOptions.challengeId, 0, zeroCredentialId, zeroCounterKeys.privateKey);
+    const simultaneous = await Promise.all([verify(zeroAssertion), verify(zeroAssertion)]);
+    expect(simultaneous.sort((a, b) => a - b)).toEqual([200, 403]);
+
     const stored = await server.db.passkeyCredential.findUnique({ where: { credentialId } });
     expect(stored?.signCount).toBe(1);
   });

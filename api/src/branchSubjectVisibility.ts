@@ -7,7 +7,7 @@ export function isCommonMpcSubject(name: string): boolean {
   const normalized = name.normalize("NFKC").toLowerCase().replace(/[^a-z0-9]/g, "");
   const mathematics = /^(?:engineering)?maths?(?:ematics)?(?:i|ii|iii|[123])?$/.test(normalized);
   const physics = /^(?:engineering)?physics(?:lab)?$/.test(normalized);
-  const chemistry = /^(?:engineering)?chemistry(?:lab|andenvironmentalstudies)?$/.test(normalized);
+  const chemistry = /^(?:engineering)?chemistry(?:lab|environmentalstudies)?$/.test(normalized);
   return normalized === "mpc" || mathematics || physics || chemistry;
 }
 

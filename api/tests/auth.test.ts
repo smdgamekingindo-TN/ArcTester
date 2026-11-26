@@ -707,6 +707,35 @@ describe("auth — bearer token (native/mobile clients)", () => {
     }
   });
 
+  it("limits failed passkey registration verification attempts", async () => {
+    const email = "passkey-registration-attempts@example.com";
+    await postJsonWithCookie(`${server.baseUrl}/auth/register`, { ...STUDENT_PROFILE, email, password: "passkey-registration-attempt-password" });
+    await server.db.user.update({ where: { email }, data: { accessStatus: "APPROVED" } });
+    cookieJar.delete("ecet_session");
+    await postJsonWithCookie(`${server.baseUrl}/auth/login`, { email, password: "passkey-registration-attempt-password" });
+    const options = await postJsonWithCookie(`${server.baseUrl}/auth/passkeys/register/options`, {});
+    expect(options.status).toBe(200);
+    const challenge = (options.json as { publicKey: { challenge: string } }).publicKey.challenge;
+    const challengeHash = createHash("sha256").update(challenge).digest("hex");
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const response = await postJsonWithCookie(`${server.baseUrl}/auth/passkeys/register/verify`, {
+        challenge,
+        credentialId: "fixture-credential-registration",
+        clientDataJSON: "invalid-client-data".repeat(3),
+        attestationObject: "invalid-attestation-object".repeat(3),
+      });
+      expect(response.status).not.toBe(201);
+    }
+    const stored = await server.db.authChallenge.findUnique({ where: { challenge: challengeHash } });
+    expect(stored?.attempts).toBe(5);
+    expect((await postJsonWithCookie(`${server.baseUrl}/auth/passkeys/register/verify`, {
+      challenge,
+      credentialId: "fixture-credential-registration",
+      clientDataJSON: "invalid-client-data".repeat(3),
+      attestationObject: "invalid-attestation-object".repeat(3),
+    })).status).toBe(403);
+  });
+
   it("enforces passkey login challenge expiry and failed-attempt limits", async () => {
     const previousOrigins = process.env.CORS_ORIGINS;
     process.env.CORS_ORIGINS = "https://study.example.com";

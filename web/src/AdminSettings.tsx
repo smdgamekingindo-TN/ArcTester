@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import "./AdminSettings.css";
 type Props = { theme: "light" | "dark"; onThemeChange: (theme: "light" | "dark") => void };
 
 export default function AdminSettings({ theme, onThemeChange }: Props) {
@@ -29,10 +30,10 @@ export default function AdminSettings({ theme, onThemeChange }: Props) {
   }
 
   return <section className="admin-settings">
-    <div className="admin-page-title">
+    <div className="admin-page-title admin-settings-heading">
       <div><p className="eyebrow">WORKSPACE PREFERENCES</p><h1>Admin settings</h1><p>Personal display preferences for this administrator on this device.</p></div>
     </div>
-    <div className="admin-settings-grid">
+    <div className="admin-settings-grid" aria-label="Administrator workspace preferences">
       <article className="admin-panel">
         <p className="eyebrow">APPEARANCE</p><h2>Theme</h2>
         <p className="muted">Choose a comfortable workspace appearance.</p>

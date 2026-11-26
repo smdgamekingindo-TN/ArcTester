@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { importFromJson } from "../src/importService.js";
 import { buildApp } from "../src/index.js";
 import { bindSession, signUp, startTestServer, type TestServer } from "./server.js";
@@ -611,6 +611,7 @@ describe("PUT /tests/:id/answers", () => {
   });
 });
 describe("student branch subject catalog", () => {
+  afterEach(async () => { await server.db.user.update({ where: { id: userId }, data: { branchCode: null, branchName: null } }); });
   it("hides another branch's subject, keeps MPC common, and shows the subject to its own branch", async () => {
     const imported = await importFromJson(server.db, [
       ["CME Core Test", "CME branch-scoped catalog fixture question", ["a", "b", "c", "d"], 0, "branch-catalog"],

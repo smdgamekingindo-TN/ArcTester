@@ -71,6 +71,7 @@ describe("administrator MCP model control", () => {
     expect(evidence.student).toMatchObject({ id: student.id, fullName: "Performance Review Student" });
     expect(evidence.performance.practice.completedAttempts).toBe(0);
     expect(evidence.reviewGuidance.doNotTreatUnansweredAsIncorrect).toBe(true);
+    expect(evidence.modelInference).toMatchObject({ status: "NOT_CONFIGURED", modelId: "student_readiness" });
 
     const sent = await callTool("send_student_performance_review", {
       studentId: student.id,

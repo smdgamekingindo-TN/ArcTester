@@ -618,8 +618,9 @@ describe("student branch subject catalog", () => {
       ["CME Core Test", "CME legacy global catalog fixture question", ["a", "b", "c", "d"], 1, "global-catalog"],
       ["Physics", "Physics common branch-tagged fixture question", ["a", "b", "c", "d"], 2, "mpc-common"],
       ["Data Structures", "CME legacy all-scoped subject fixture question", ["a", "b", "c", "d"], 3, "cme-core"],
+      ["Engineering Mechanics", "MEC legacy all-scoped subject fixture question", ["a", "b", "c", "d"], 4, "mec-core"],
     ]);
-    expect(imported.added).toBe(4);
+    expect(imported.added).toBe(5);
     const subject = await server.db.subject.findUniqueOrThrow({ where: { name: "CME Core Test" } });
     await server.db.question.updateMany({ where: { subjectId: subject.id }, data: { reviewStatus: "APPROVED" } });
     const { hashQuestion } = await import("../src/questions.js");
@@ -635,12 +636,17 @@ describe("student branch subject catalog", () => {
       where: { questionHash: hashQuestion("CME legacy all-scoped subject fixture question") },
       data: { reviewStatus: "APPROVED" },
     });
+    await server.db.question.update({
+      where: { questionHash: hashQuestion("MEC legacy all-scoped subject fixture question") },
+      data: { reviewStatus: "APPROVED" },
+    });
 
     await server.db.user.update({ where: { id: userId }, data: { branchCode: "M", branchName: "Mechanical Engineering" } });
     const mecBank = await api.get("/bank");
     const mecSubjects = (mecBank.json as { subjects: { subject: string; count: number }[] }).subjects;
     expect(mecSubjects.some(item => item.subject === "CME Core Test")).toBe(false);
     expect(mecSubjects.some(item => item.subject === "Data Structures")).toBe(false);
+    expect(mecSubjects.find(item => item.subject === "Engineering Mechanics")?.count).toBe(1);
     expect(mecSubjects.some(item => item.subject === "Physics" && item.count >= 2)).toBe(true);
     expect(mecSubjects.some(item => item.subject === "Maths")).toBe(true);
 
@@ -649,6 +655,7 @@ describe("student branch subject catalog", () => {
     const cmeSubjects = (cmeBank.json as { subjects: { subject: string; count: number }[] }).subjects;
     expect(cmeSubjects.find(item => item.subject === "CME Core Test")?.count).toBe(2);
     expect(cmeSubjects.find(item => item.subject === "Data Structures")?.count).toBe(1);
+    expect(cmeSubjects.some(item => item.subject === "Engineering Mechanics")).toBe(false);
 
     await server.db.user.update({ where: { id: userId }, data: { branchCode: null, branchName: null } });
   });

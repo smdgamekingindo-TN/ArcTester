@@ -73,11 +73,11 @@ export default function AdminSystemMonitor() {
       {!snapshot?.servers.length ? <div className="empty-state" role="status">{loading ? "Loading server metrics…" : "No instance heartbeat has been recorded yet. The API will appear after it handles a request."}</div> : snapshot.servers.map(server => (
         <article className="result-row" key={server.instanceId}>
           <div><b>{server.hostname}</b><small>{server.instanceId}</small><small>Version {server.version} · Build {server.buildSha === "unknown" ? "not configured" : server.buildSha.slice(0, 12)}</small><small>Uptime {duration(server.uptimeSeconds)} · Seen {server.ageSeconds}s ago</small></div>
-          <div><span className={"status " + (server.status === "healthy" ? "status-used" : "status-revoked")}>{server.status.toUpperCase()}</span><small>Started {new Date(server.startedAt).toLocaleString()}</small></div>
+          <div><span className={"status " + (server.status === "healthy" ? "status-used" : server.status === "stale" ? "status-pending" : "status-revoked")}>{server.status.toUpperCase()}</span><small>Started {new Date(server.startedAt).toLocaleString()}</small></div>
           <div><b>{number(server.cpuPercent)}%</b><small>CPU</small></div>
           <div><b>{bytes(server.rssBytes)}</b><small>RSS memory</small><small>Heap {bytes(server.heapUsedBytes)}</small></div>
           <div><b>{number(server.requestRatePerMinute)}</b><small>Requests/min</small><small>{number(server.activeRequests)} in flight</small></div>
-          <div><b>{number(server.p95LatencyMs)} ms</b><small>p95 latency · p50 {number(server.p50LatencyMs)} ms</small><small>{number(server.errorsTotal)} server errors total</small></div>
+          <div><b>{number(server.p95LatencyMs)} ms</b><small>p95 latency · p50 {number(server.p50LatencyMs)} ms</small><small>{number(server.requestsTotal)} requests total · {number(server.errorsTotal)} server errors</small></div>
         </article>
       ))}
     </section>

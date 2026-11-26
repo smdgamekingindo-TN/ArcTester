@@ -38,6 +38,19 @@ describe("StudentAnnouncementDialog", () => {
     expect(onAcknowledge).toHaveBeenCalledWith("notice-1");
   });
 
+  it("uses announcement popup styling and exam-result copy for result notifications", () => {
+    render(
+      <StudentAnnouncementDialog
+        announcement={{ ...announcement, expiresAt: null }}
+        variant="exam-result"
+        onAcknowledge={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("EXAM RESULT AVAILABLE")).toBeInTheDocument();
+    expect(screen.getByText("This result notice will not pop up again after you mark it as read.")).toBeInTheDocument();
+  });
+
   it("omits the expiry label when the announcement has no expiry", () => {
     render(
       <StudentAnnouncementDialog

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 type Api = <T>(path: string, init?: RequestInit) => Promise<T>;
@@ -14,6 +14,9 @@ export default function StudentAiPracticeTests({ api, darkMode, disabled = false
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, number | null>>({});
   const [run, setRun] = useState<PracticeRun | null>(null);
+  const [deadline, setDeadline] = useState<number | null>(null);
+  const [secondsRemaining, setSecondsRemaining] = useState(0);
+  const autoFinishTriggered = useRef(false);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -34,6 +37,7 @@ export default function StudentAiPracticeTests({ api, darkMode, disabled = false
   useEffect(() => { void refresh(); }, [refresh]);
 
   const current = active?.questions[index];
+  useEffect(() => { if (deadline === null || run) return; const tick = () => setSecondsRemaining(Math.max(0, Math.ceil((deadline - Date.now()) / 1000))); tick(); const timer = setInterval(tick, 1000); return () => clearInterval(timer); }, [deadline, run]);
   const answered = useMemo(() => Object.values(answers).filter(value => value !== null && value !== undefined).length, [answers]);
 
   const start = (test: PracticeSet) => {
@@ -42,7 +46,7 @@ export default function StudentAiPracticeTests({ api, darkMode, disabled = false
       setError("This saved test has invalid question data. Ask Claude to edit or regenerate it.");
       return;
     }
-    setActive(test); setIndex(0); setAnswers({}); setRun(null); setError("");
+    setActive(test); setIndex(0); setAnswers({}); setRun(null); setError(""); autoFinishTriggered.current = false; const nextDeadline = Date.now() + Math.max(1, test.durationMinutes) * 60_000; setDeadline(nextDeadline); setSecondsRemaining(Math.max(1, test.durationMinutes) * 60);
   };
 
   const finish = async () => {
@@ -54,14 +58,22 @@ export default function StudentAiPracticeTests({ api, darkMode, disabled = false
         body: JSON.stringify({ answers: active.questions.map((_q, i) => answers[i] ?? null) }),
       });
       setRun(response.run);
+      setDeadline(null);
+      if (autoFinishTriggered.current) Alert.alert("Time is up", "Your practice test was submitted automatically.");
       await refresh();
     } catch (cause) { setError((cause as Error).message || "Could not save your practice result."); }
     finally { setBusy(false); }
   };
 
+  useEffect(() => {
+    if (!active || run || deadline === null || secondsRemaining > 0 || busy || autoFinishTriggered.current) return;
+    autoFinishTriggered.current = true;
+    void finish();
+  }, [active, run, deadline, secondsRemaining, busy, answers]);
+
   if (active) {
     return <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-      <View style={styles.header}><View style={{ flex: 1 }}><Text style={[styles.title, { color: colors.text }]}>{active.title}</Text><Text style={[styles.muted, { color: colors.muted }]}>{active.questions.length} questions · {active.durationMinutes} min · AI practice</Text></View><TouchableOpacity onPress={() => { setActive(null); setRun(null); setAnswers({}); setIndex(0); }}><Text style={{ color: blue, fontWeight: "800" }}>Close</Text></TouchableOpacity></View>
+      <View style={styles.header}><View style={{ flex: 1 }}><Text style={[styles.title, { color: colors.text }]}>{active.title}</Text><Text style={[styles.muted, { color: colors.muted }]}>{active.questions.length} questions · {active.durationMinutes} min · AI practice · {Math.floor(secondsRemaining / 60).toString().padStart(2, "0")}:{(secondsRemaining % 60).toString().padStart(2, "0")} left</Text></View><TouchableOpacity onPress={() => { setActive(null); setRun(null); setAnswers({}); setIndex(0); }}><Text style={{ color: blue, fontWeight: "800" }}>Close</Text></TouchableOpacity></View>
       {run ? <>
         <Text style={[styles.result, { color: colors.text }]}>{run.correctCount} / {run.totalQuestions} correct · {run.percentage}%</Text>
         <Text style={[styles.muted, { color: colors.muted }]}>Result saved to your private practice history.</Text>

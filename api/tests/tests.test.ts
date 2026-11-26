@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { importFromJson } from "../src/importService.js";
 import { buildApp } from "../src/index.js";
 import { bindSession, signUp, startTestServer, type TestServer } from "./server.js";
@@ -610,6 +610,68 @@ describe("PUT /tests/:id/answers", () => {
     expect((await api.put(`/tests/${attempt.attemptId}/answers`, { answers: [{ questionId: attempt.questions[0].id, selectedIndex: 2 }] })).status).toBe(409);
   });
 });
+describe("student branch subject catalog", () => {
+  afterEach(async () => { await server.db.user.update({ where: { id: userId }, data: { branchCode: null, branchName: null } }); });
+  it("hides another branch's subject, keeps MPC common, and shows the subject to its own branch", async () => {
+    const imported = await importFromJson(server.db, [
+      ["CME Core Test", "CME branch-scoped catalog fixture question", ["a", "b", "c", "d"], 0, "branch-catalog"],
+      ["CME Core Test", "CME legacy global catalog fixture question", ["a", "b", "c", "d"], 1, "global-catalog"],
+    ]);
+    expect(imported.added).toBe(2);
+    const subject = await server.db.subject.findUniqueOrThrow({ where: { name: "CME Core Test" } });
+    await server.db.question.updateMany({ where: { subjectId: subject.id }, data: { reviewStatus: "APPROVED" } });
+    await server.db.question.update({
+      where: { questionHash: (await import("../src/questions.js")).hashQuestion("CME branch-scoped catalog fixture question") },
+      data: { audienceScope: "BRANCH", targetBranchCode: "CME", targetBranchName: "Computer Engineering" },
+    });
+
+    await server.db.user.update({ where: { id: userId }, data: { branchCode: "MEC", branchName: "Mechanical Engineering" } });
+    const mecBank = await api.get("/bank");
+    const mecSubjects = (mecBank.json as { subjects: { subject: string; count: number }[] }).subjects;
+    expect(mecSubjects.some(item => item.subject === "CME Core Test")).toBe(false);
+    expect(mecSubjects.some(item => item.subject === "Physics")).toBe(true);
+    expect(mecSubjects.some(item => item.subject === "Maths")).toBe(true);
+
+    await server.db.user.update({ where: { id: userId }, data: { branchCode: "CME", branchName: "Computer Engineering" } });
+    const cmeBank = await api.get("/bank");
+    const cmeSubjects = (cmeBank.json as { subjects: { subject: string; count: number }[] }).subjects;
+    expect(cmeSubjects.find(item => item.subject === "CME Core Test")?.count).toBe(2);
+
+    await server.db.user.update({ where: { id: userId }, data: { branchCode: null, branchName: null } });
+  });
+});
+
+describe("student branch subject catalog", () => {
+  it("hides another branch's subject, keeps MPC common, and shows the subject to its own branch", async () => {
+    const imported = await importFromJson(server.db, [
+      ["CME Core Test", "CME branch-scoped catalog fixture question", ["a", "b", "c", "d"], 0, "branch-catalog"],
+      ["CME Core Test", "CME legacy global catalog fixture question", ["a", "b", "c", "d"], 1, "global-catalog"],
+    ]);
+    expect(imported.added).toBe(2);
+    const subject = await server.db.subject.findUniqueOrThrow({ where: { name: "CME Core Test" } });
+    await server.db.question.updateMany({ where: { subjectId: subject.id }, data: { reviewStatus: "APPROVED" } });
+    const { hashQuestion } = await import("../src/questions.js");
+    await server.db.question.update({
+      where: { questionHash: hashQuestion("CME branch-scoped catalog fixture question") },
+      data: { audienceScope: "BRANCH", targetBranchCode: "CME", targetBranchName: "Computer Engineering" },
+    });
+
+    await server.db.user.update({ where: { id: userId }, data: { branchCode: "MEC", branchName: "Mechanical Engineering" } });
+    const mecBank = await api.get("/bank");
+    const mecSubjects = (mecBank.json as { subjects: { subject: string; count: number }[] }).subjects;
+    expect(mecSubjects.some(item => item.subject === "CME Core Test")).toBe(false);
+    expect(mecSubjects.some(item => item.subject === "Physics")).toBe(true);
+    expect(mecSubjects.some(item => item.subject === "Maths")).toBe(true);
+
+    await server.db.user.update({ where: { id: userId }, data: { branchCode: "CME", branchName: "Computer Engineering" } });
+    const cmeBank = await api.get("/bank");
+    const cmeSubjects = (cmeBank.json as { subjects: { subject: string; count: number }[] }).subjects;
+    expect(cmeSubjects.find(item => item.subject === "CME Core Test")?.count).toBe(2);
+
+    await server.db.user.update({ where: { id: userId }, data: { branchCode: null, branchName: null } });
+  });
+});
+
 describe("practice and exam question pools", () => {
   it("keeps published exam questions out of practice unless the practice pool is short", async () => {
     const maths = await server.db.subject.findUniqueOrThrow({ where: { name: "Maths" } });

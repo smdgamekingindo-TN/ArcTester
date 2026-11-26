@@ -58,7 +58,7 @@ export default function AdminSystemMonitor() {
 
   return <div className="admin-system-monitor">
     <div className="admin-page-title">
-      <div><p className="eyebrow">SYSTEM OPERATIONS</p><h1>Server monitor</h1><p>Live API instance snapshots from shared PostgreSQL. Instances are marked stale after 30 seconds and offline after 120 seconds without a heartbeat.</p></div>
+      <div><p className="eyebrow">SYSTEM OPERATIONS</p><h1>Server monitor</h1><p>Recent API instance heartbeats from shared PostgreSQL. Instances are marked stale after 30 seconds and offline after 120 seconds; expired snapshots older than 10 minutes are removed from this live view.</p></div>
       <button className="ghost" type="button" disabled={loading} onClick={() => void refresh()}>{loading ? "Refreshing…" : "Refresh metrics"}</button>
     </div>
     <div className="admin-stat-grid admin-monitor-stats">
@@ -69,7 +69,7 @@ export default function AdminSystemMonitor() {
     </div>
     {error && <div className="admin-alert error" role="alert">{error}</div>}
     <section className="admin-panel">
-      <div className="admin-panel-head"><div><p className="eyebrow">API FLEET</p><h2>{snapshot?.servers.length ?? 0} instance snapshot(s)</h2></div><small>{lastRefresh ? "Updated " + new Date(lastRefresh).toLocaleTimeString() : "Waiting for metrics"}</small></div>
+      <div className="admin-panel-head"><div><p className="eyebrow">API FLEET</p><h2>{snapshot?.servers.length ?? 0} recent instance snapshot(s)</h2></div><small>{lastRefresh ? "Updated " + new Date(lastRefresh).toLocaleTimeString() : "Waiting for metrics"}</small></div>
       {!snapshot?.servers.length ? <div className="empty-state" role="status">{loading ? "Loading server metrics…" : "No instance heartbeat has been recorded yet. The API will appear after it handles a request."}</div> : snapshot.servers.map(server => (
         <article className="admin-monitor-instance" key={server.instanceId}>
           <div><b>{server.hostname}</b><small>{server.instanceId}</small><small>Version {server.version} · Build {server.buildSha === "unknown" ? "not configured" : server.buildSha.slice(0, 12)}</small><small>Uptime {duration(server.uptimeSeconds)} · Seen {server.ageSeconds}s ago</small></div>

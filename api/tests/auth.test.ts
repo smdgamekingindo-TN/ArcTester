@@ -65,7 +65,9 @@ async function postJsonWithCookie(
   let payload = body;
   if (url.endsWith("/auth/register") && body && typeof body === "object" && !Array.isArray(body)) {
     const input = body as Record<string, unknown>;
-    if (input.registrationNumber === "24999-CM-053" && typeof input.email === "string") payload = { ...input, registrationNumber: fixtureRegistrationNumber(input.email) };
+    const legal = { termsAccepted: true, privacyConsent: true, termsVersion: "2026-11-27-v1", privacyNoticeVersion: "2026-11-27-v1", consentNoticeVersion: "2026-11-27-v1", ...input };
+    payload = legal;
+    if (input.registrationNumber === "24999-CM-053" && typeof input.email === "string") payload = { ...legal, registrationNumber: fixtureRegistrationNumber(input.email) };
   }
   const res = await fetch(url, {
     method: "POST",

@@ -75,7 +75,7 @@ export default function StudentSavedPracticeExams() {
     setDeadline(end); setSeconds(Math.max(1, test.durationMinutes) * 60);
   }
 
-  async function finish() {
+  const finish = useCallback(async () => {
     if (!active || busy || run) return;
     setBusy(true); setError("");
     try {
@@ -85,10 +85,10 @@ export default function StudentSavedPracticeExams() {
       setRun(response.run); setDeadline(null); await refresh();
     } catch (cause) { setError((cause as Error).message || "Could not submit your practice exam."); }
     finally { setBusy(false); }
-  }
+  }, [active, busy, run, answers, refresh]);
   useEffect(() => {
     if (active && !run && deadline !== null && seconds <= 0 && !busy) void finish();
-  }, [active, run, deadline, seconds, busy]);
+  }, [active, run, deadline, seconds, busy, finish]);
 
   const answered = Object.values(answers).filter(value => value !== null && value !== undefined).length;
   return <section className="stack saved-practice-exams" aria-label="My practice exams">

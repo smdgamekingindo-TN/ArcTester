@@ -69,7 +69,9 @@ This roadmap consolidates the requested admin UX, academic content targeting, ac
 - Sensitive authentication material never appears in logs.
 - Admin-only CSV/JSON exports are filtered, capped, formula-safe, and themselves audited.
 
-## Part 4 — Complete security and compliance hardening\n\n**Implementation status:** Code and regression tests are implemented in PR #198. CI run #3352 passed on the exact head. Operational/legal acceptance checks below remain owned by the deployment operator and qualified reviewer.
+## Part 4 — Complete security and compliance hardening
+
+**Implementation status:** Code and regression tests are implemented in PR #198. CI run #3352 passed on the exact head. Operational/legal acceptance checks below remain owned by the deployment operator and qualified reviewer.
 
 - Verify JWT/session credentials on every protected request: signature, algorithm allowlist, expiry, issuer, audience, session version/revocation, and role.
 - Enforce role, ownership, and academic-scope checks at every API route; test IDOR and privilege escalation.

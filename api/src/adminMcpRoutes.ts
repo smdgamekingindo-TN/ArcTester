@@ -7,9 +7,10 @@ import { requireAuth, requireAdmin, type AuthedRequest } from "./auth.js";
 import { importFromJson } from "./importService.js";
 import { QuestionInputSchema, hashQuestion, encodeOptions } from "./questions.js";
 import { evaluateModelArtifacts } from "./modelInference.js";
+import { getPerformanceOverview } from "./analytics.js";
 
 const PREFIX = "arc_admin_";
-const SCOPES = ["questions:read", "questions:create", "questions:review", "papers:create", "papers:read", "papers:publish", "exams:assign", "announcements:write", "activity:read", "models:read", "models:monitoring:read", "models:dataset:create", "models:verification:read", "models:train", "models:register", "models:evaluate", "models:activate", "students:read", "students:manage"] as const;
+const SCOPES = ["questions:read", "questions:create", "questions:review", "papers:create", "papers:read", "papers:publish", "exams:assign", "announcements:write", "activity:read", "models:read", "models:monitoring:read", "models:dataset:create", "models:verification:read", "models:train", "models:register", "models:evaluate", "models:activate", "students:read", "students:manage", "students:review"] as const;
 const sha = (v: string) => createHash("sha256").update(v).digest("hex");
 type KeyContext = { id: string; userId: number; scopes: string[] };
 function scope(key: KeyContext, required: string) { return key.scopes.includes(required); }
@@ -84,6 +85,8 @@ export function adminMcpRouter(db: PrismaClient): Router {
     if (body.method === "tools/list") {
       return res.json({ jsonrpc: "2.0", id, result: { tools: [
         { name: "list_students", description: "Search and page through student accounts for administration. Returns student profile identifiers and access status; requires students:read.", inputSchema: { type: "object", properties: { search: { type: "string", maxLength: 120 }, accessStatus: { type: "string", enum: ["PENDING","APPROVED","REJECTED"] }, page: { type: "integer", minimum: 1, maximum: 100000 }, limit: { type: "integer", minimum: 1, maximum: 100 } } } },
+        { name: "get_student_performance_for_review", description: "Retrieve privacy-conscious practice and graded exam aggregates for an approved student so the assistant can compose an evidence-based performance review. Requires students:review.", inputSchema: { type: "object", required: ["studentId"], properties: { studentId: { type: "integer", minimum: 1 } } } },
+        { name: "send_student_performance_review", description: "Send the assistant-written performance review to the student as an in-app notification. Requires confirm=true and students:review.", inputSchema: { type: "object", required: ["studentId","title","message","confirm"], properties: { studentId: { type: "integer", minimum: 1 }, title: { type: "string", minLength: 3, maxLength: 120 }, message: { type: "string", minLength: 20, maxLength: 3000 }, confirm: { type: "boolean" } } } },
         { name: "set_student_access_status", description: "Approve, reject, or return a student account to pending. Requires confirm=true; status changes invalidate existing sessions.", inputSchema: { type: "object", required: ["studentId","accessStatus","confirm"], properties: { studentId: { type: "integer", minimum: 1 }, accessStatus: { type: "string", enum: ["PENDING","APPROVED","REJECTED"] }, confirm: { type: "boolean" } } } },
         { name: "update_student_profile", description: "Update validated student profile fields. Requires confirm=true and students:manage scope.", inputSchema: { type: "object", required: ["studentId","patch","confirm"], properties: { studentId: { type: "integer", minimum: 1 }, patch: { type: "object", properties: { fullName: { type: "string", minLength: 2, maxLength: 100 }, email: { type: "string", format: "email", maxLength: 254 }, collegeName: { type: "string", maxLength: 180 }, collegeCode: { type: "string", maxLength: 20 }, postalPin: { type: "string", maxLength: 20 }, branchName: { type: "string", maxLength: 120 }, branchCode: { type: "string", maxLength: 20 }, registrationNumber: { type: ["string","null"], maxLength: 12 } } }, confirm: { type: "boolean" } } } },
         { name: "remove_student_account", description: "Anonymize and revoke a student account while retaining linked academic records. Destructive; requires confirm=true and students:manage.", inputSchema: { type: "object", required: ["studentId","confirm"], properties: { studentId: { type: "integer", minimum: 1 }, confirm: { type: "boolean" } } } },
@@ -135,7 +138,25 @@ export function adminMcpRouter(db: PrismaClient): Router {
           ]);
           output = { students, page:input.page, limit:input.limit, total, totalPages:Math.ceil(total/input.limit) }; summary = "listed "+students.length+" students"; break;
         }
-        case "set_student_access_status": {
+        case "get_student_performance_for_review": {
+          if (!scope(key, "students:review")) return res.json(rpcError(id, -32003, "Missing students:review scope."));
+          const input = z.object({ studentId: z.number().int().positive() }).parse(args);
+          const student = await db.user.findFirst({ where: { id: input.studentId, role: "STUDENT", accessStatus: "APPROVED", NOT: { email: { endsWith: ".deleted.invalid" } } }, select: { id: true, fullName: true, collegeName: true, branchName: true } });
+          if (!student) return res.json(rpcError(id, -32004, "Approved student not found."));
+          const performance = await getPerformanceOverview(db, student.id);
+          output = { student, performance, reviewGuidance: { baseReviewOnObservedCountsAndAccuracy: true, doNotTreatUnansweredAsIncorrect: true, separatePracticeFromFormalExams: true, mentionInsufficientEvidenceWhereApplicable: true, thisIsRuleBasedAnalyticsNotAnMLModel: true } };
+          summary = "retrieved performance evidence for student " + student.id; break;
+        }
+        case "send_student_performance_review": {
+          if (!scope(key, "students:review")) return res.json(rpcError(id, -32003, "Missing students:review scope."));
+          const input = z.object({ studentId: z.number().int().positive(), title: z.string().trim().min(3).max(120), message: z.string().trim().min(20).max(3000), confirm: z.literal(true) }).parse(args);
+          const student = await db.user.findFirst({ where: { id: input.studentId, role: "STUDENT", accessStatus: "APPROVED", NOT: { email: { endsWith: ".deleted.invalid" } } }, select: { id: true } });
+          if (!student) return res.json(rpcError(id, -32004, "Approved student not found."));
+          const notification = await db.studentNotification.create({ data: { userId: student.id, kind: "PERFORMANCE_REVIEW", title: input.title, message: input.message, href: "/analytics", dedupeKey: "admin-performance-review-" + student.id + "-" + randomUUID() }, select: { id: true, userId: true, kind: true, title: true, createdAt: true } });
+          output = { sent: true, notification, message: "Performance review delivered to the student's in-app notification inbox." };
+          summary = "sent performance review notification to student " + student.id; break;
+        }
+        case "set_student_access_status":
           if (!scope(key, "students:manage")) return res.json(rpcError(id, -32003, "Missing students:manage scope."));
           const input = z.object({ studentId:z.number().int().positive(), accessStatus:z.enum(["PENDING","APPROVED","REJECTED"]), confirm:z.literal(true) }).parse(args);
           const existing = await db.user.findFirst({ where:{ id:input.studentId,role:"STUDENT",NOT:{email:{endsWith:".deleted.invalid"}} }, select:{id:true,accessStatus:true} });

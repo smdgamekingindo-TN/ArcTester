@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { getSessionActionLabel, type SecuritySession } from "./StudentSecurityCenter";
+import { getSessionActionLabel } from "./securitySessionActions";
 
 describe("mobile security session actions", () => {
   it("keeps current-session revocation explicit and labels other devices separately", () => {
-    const session = { current: true } as SecuritySession;
+    const session = { current: true };
     expect(getSessionActionLabel(session)).toBe("Sign out this device");
-    expect(getSessionActionLabel({ current: false } as SecuritySession)).toBe("Revoke session");
+    expect(getSessionActionLabel({ current: false })).toBe("Revoke session");
   });
 });

@@ -260,7 +260,7 @@ export function adminMcpRouter(db: PrismaClient): Router {
           const audience={...audienceInput,
             ...(audienceInput?.targetBranchCode||audienceInput?.targetBranchName?{audienceScope:audienceInput.audienceScope??"BRANCH"}:{}),
           };
-          const input=z.object({questions:z.array(QuestionInputSchema).min(1).max(100)}).parse(args);
+          const input=z.object({questions:z.array(z.record(z.string(),z.unknown())).min(1).max(100)}).parse(args);
           output=await importFromJson(db,input.questions,{audience});summary="created question drafts";break;
         }
         case "import_questions": {

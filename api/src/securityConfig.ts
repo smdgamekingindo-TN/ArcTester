@@ -15,7 +15,7 @@ export function validateProductionSecurityConfig(env: NodeJS.ProcessEnv = proces
   }
   for (const name of ["JWT_ISSUER", "JWT_AUDIENCE"] as const) {
     const value = env[name];
-    if (value !== undefined && (!value.trim() || /[\\r\\n\\0]/.test(value))) {
+    if (value !== undefined && (!value.trim() || [...value].some(char => char.charCodeAt(0) < 32 || char.charCodeAt(0) === 127))) {
       throw new Error(`${name} must be a non-empty value without control characters.`);
     }
   }

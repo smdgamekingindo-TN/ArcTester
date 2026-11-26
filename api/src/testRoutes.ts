@@ -16,7 +16,7 @@ import { notFound } from "./errors.js";
 import { getLearningConcept, listLearningConcepts } from "./learningConcepts.js";
 import { awardXp } from "./gamificationService.js";
 import { dailyChallengeRewardKey } from "./dailyChallenge.js";
-import { isContentAudienceVisible, type ContentAudience } from "./contentAudience.js";
+
 import { filterBranchSubjectQuestions, isCommonMpcSubject } from "./branchSubjectVisibility.js";
 
 const AttemptIdSchema = z.object({ id: z.coerce.number().int().positive() });

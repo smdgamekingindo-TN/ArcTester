@@ -10,8 +10,8 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .page-heading h1,.admin-page-title h1{line-height:1.16;letter-spacing:-.7px}
 .page-heading p,.admin-page-title p{max-width:70ch;line-height:1.6}
 .panel{min-width:0}
-.primary,.ghost,.button,.text-button{min-height:40px;display:inline-flex;align-items:center;justify-content:center;gap:8px;line-height:1.25}
-.primary,.ghost,.button{padding:10px 14px}
+.primary,.ghost,.button{min-height:40px;display:inline-flex;align-items:center;justify-content:center;gap:8px;line-height:1.25;padding:10px 14px}
+.text-button{min-height:40px;display:flex;align-items:center;justify-content:center;line-height:1.25}
 .icon-button{width:42px;height:42px;min-width:42px;min-height:42px;display:inline-grid;place-items:center}
 input:not([type=checkbox]):not([type=radio]),select,textarea{min-height:42px;max-width:100%;padding:10px 12px;border-radius:10px;line-height:1.4}
 input[type=checkbox],input[type=radio]{width:18px;height:18px;accent-color:var(--accent);flex:0 0 auto}

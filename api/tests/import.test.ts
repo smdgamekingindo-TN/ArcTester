@@ -156,6 +156,18 @@ describe("importFromCsv", () => {
     expect(report.added).toBe(0);
     expect(report.invalid[0].reason).toContain("missing columns");
   });
+  it("infers branch scope from per-row CSV branch metadata over a shared default", async () => {
+    const db = await testDb();
+    const content = [
+      "subject,topic,text,optionA,optionB,optionC,optionD,correctIndex,targetBranchCode,targetBranchName",
+      "CSE Row Scope,Networks,Per-row branch audience question?,A,B,C,D,0,CSE,Computer Engineering",
+    ].join("\\n");
+    const report = await importFromCsv(db, content, { audience: { audienceScope: "ALL" } });
+    expect(report.added).toBe(1);
+    const saved = await db.question.findFirst({ where: { text: "Per-row branch audience question?" } });
+    expect(saved).toMatchObject({ audienceScope: "BRANCH", targetBranchCode: "CSE", targetBranchName: "Computer Engineering" });
+  });
+
 });
 
 

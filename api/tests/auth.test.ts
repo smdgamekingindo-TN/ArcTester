@@ -1,4 +1,6 @@
 import { createHash, createHmac } from "node:crypto";
+const { mockSendPasswordResetEmail } = vi.hoisted(() => ({ mockSendPasswordResetEmail: vi.fn() }));
+vi.mock("../src/passwordResetEmail.js", () => ({ sendPasswordResetEmail: mockSendPasswordResetEmail }));
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { buildApp } from "../src/index.js";
 import {
@@ -913,6 +915,43 @@ describe("auth — bearer token (native/mobile clients)", () => {
     const revoke = await fetch(`${server.baseUrl}/auth/sessions/${legacy.id}`, { method: "DELETE", headers: { cookie: `ecet_session=${legacyToken}` } });
     expect(revoke.status).toBe(200);
     expect((await getJsonWithCookie(`${server.baseUrl}/auth/me`)).status).toBe(403);
+  });
+ 
+  it("emails a one-time password reset link and requires TOTP before resetting", async () => {
+    const email = "password-reset-totp@example.com";
+    const oldUser = process.env.GMAIL_USER;
+    const oldPassword = process.env.GMAIL_APP_PASSWORD;
+    const oldBase = process.env.APP_BASE_URL;
+    try {
+      process.env.GMAIL_USER = "arctester@example.com";
+      process.env.GMAIL_APP_PASSWORD = "test-app-password";
+      mockSendPasswordResetEmail.mockReset();
+      process.env.APP_BASE_URL = "https://arctester.vercel.app";
+      await postJsonWithCookie(`${server.baseUrl}/auth/register`, { ...STUDENT_PROFILE, email, password: "old-password-1234" });
+      const user = await server.db.user.update({ where: { email }, data: { accessStatus: "APPROVED" } });
+      const secret = generateTotpSecret();
+      await server.db.totpCredential.create({ data: { userId: user.id, secretEncrypted: encryptTotpSecret(secret), enabledAt: new Date(), lastUsedCounter: -1, recoveryCodesJson: "[]" } });
+      const requested = await postJson(`${server.baseUrl}/auth/password-reset/request`, { email });
+      expect(requested.status).toBe(202);
+      const resetUrl = String(mockSendPasswordResetEmail.mock.calls[0]?.[1]);
+      const tokenMatch = resetUrl.match(/passwordResetToken=([A-Za-z0-9_-]+)/);
+      expect(tokenMatch?.[1]).toBeTruthy();
+      const token = tokenMatch![1];
+      const noCode = await postJson(`${server.baseUrl}/auth/password-reset/complete`, { token, newPassword: "new-password-12345" });
+      expect(noCode.status).toBe(403);
+      const counter = Math.floor(Date.now() / 30000);
+      const reset = await postJson(`${server.baseUrl}/auth/password-reset/complete`, { token, newPassword: "new-password-12345", code: totpAt(secret, counter) });
+      expect(reset.status).toBe(200);
+      expect((await postJson(`${server.baseUrl}/auth/login`, { email, password: "old-password-1234" })).status).toBe(400);
+      expect((await postJson(`${server.baseUrl}/auth/login`, { email, password: "new-password-12345" })).status).toBe(200);
+      const replay = await postJson(`${server.baseUrl}/auth/password-reset/complete`, { token, newPassword: "another-password-12345", code: totpAt(secret, counter + 1) });
+      expect(replay.status).toBe(403);
+    } finally {
+      vi.unstubAllGlobals();
+      if (oldUser === undefined) delete process.env.GMAIL_USER; else process.env.GMAIL_USER = oldUser;
+      if (oldPassword === undefined) delete process.env.GMAIL_APP_PASSWORD; else process.env.GMAIL_APP_PASSWORD = oldPassword;
+      if (oldBase === undefined) delete process.env.APP_BASE_URL; else process.env.APP_BASE_URL = oldBase;
+    }
   });
 
 });

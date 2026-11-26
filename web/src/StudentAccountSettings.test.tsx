@@ -64,6 +64,13 @@ describe("StudentAccountSettings", () => {
     await waitFor(() => expect(request).toHaveBeenCalledWith("/auth/reauthenticate", expect.objectContaining({ method: "POST" })));
     await waitFor(() => expect(request).toHaveBeenCalledWith("/auth/2fa/totp/setup", expect.objectContaining({ method: "POST" })));
     expect(await screen.findByText("TESTSECRET")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Authenticator setup QR code" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Copy setup key" })).toBeInTheDocument();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+    fireEvent.click(screen.getByRole("button", { name: "Copy setup key" }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith("TESTSECRET"));
+    expect(await screen.findByRole("status")).toHaveTextContent("Authenticator setup key copied.");
   });
 
   it("requires reauthentication after an academic identity change", async () => {

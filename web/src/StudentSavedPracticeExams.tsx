@@ -140,7 +140,7 @@ export default function StudentSavedPracticeExams() {
           <div><p style={{ ...mutedStyle, fontWeight: 800 }}>RESULT</p><h2 style={{ margin: "5px 0" }}>{run.correctCount} / {run.totalQuestions} correct · {run.percentage}%</h2><p style={mutedStyle}>Your result has been saved to practice history.</p></div>
           {active.questions.map((q, i) => { const selected = answers[i]; return <article key={i} style={{ border: "1px solid var(--border, #e4e8ef)", borderRadius: 12, padding: 16, display: "grid", gap: 10 }}><strong>Q{i + 1}. {q.text}</strong><p style={mutedStyle}>Your answer: {selected == null ? "Unanswered" : q.options[selected]}</p><p style={mutedStyle}>Correct answer: {q.options[q.correctIndex]}</p>{q.explanation ? <p style={mutedStyle}>{q.explanation}</p> : null}</article>})}
           <button type="button" style={primaryStyle} onClick={closeExam}>Back to practice exams</button>
-        </section> : <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16, alignItems: "start" }}>
+        </section> : <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 420px), 1fr))", gap: 16, alignItems: "start" }}>
           <section style={{ ...panelStyle, display: "grid", gap: 18 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
               <div><p style={{ ...mutedStyle, fontWeight: 800, fontSize: 12 }}>QUESTION {questionIndex + 1} OF {active.questions.length}</p><p style={{ ...mutedStyle, fontSize: 13 }}>{current?.subject ?? "General"}</p></div>

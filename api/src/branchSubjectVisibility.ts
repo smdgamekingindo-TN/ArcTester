@@ -34,7 +34,7 @@ const MEC_CORE_SUBJECTS = new Set([
   "machinedrawing", "hydraulicsfluidpowersystems", "heatpowerengineering",
   "heatpowerengineeringi", "heatpowerengineeringii", "designofmachinemembers",
   "theoryofmachines", "refrigerationandairconditioning",
-  "industrialengineeringandestimationcosting", "computer aidedmanufacturingsystems",
+  "industrialengineeringandestimationcosting", "computeraidedmanufacturingsystems",
   "energysourcesandpowerplantengineering", "appliedelectricalelectronics",
   "manufacturingtechnology", "engineeringthermodynamics",
 ]);

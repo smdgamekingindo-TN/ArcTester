@@ -6,7 +6,6 @@ import { requireAdmin, requireAuth } from "./auth.js";
 
 type LatencySample = { at: number; durationMs: number };
 const startedAt = new Date();
-const processStartedMs = Date.now();
 const instanceId = (process.env.INSTANCE_ID ?? process.env.RENDER_INSTANCE_ID ?? `${hostname()}-${process.pid}`).slice(0, 180);
 const buildSha = (process.env.RENDER_GIT_COMMIT ?? process.env.GIT_SHA ?? process.env.SOURCE_VERSION ?? "unknown").slice(0, 80);
 const version = (process.env.npm_package_version ?? "0.1.0").slice(0, 40);
@@ -71,7 +70,7 @@ async function persistSnapshot(db: PrismaClient, dbLatencyMs: number | null = nu
 }
 
 export function opsMetricsMiddleware(db: PrismaClient): RequestHandler {
-  return (req, res, next) => {
+  return (_req, res, next) => {
     const started = process.hrtime.bigint();
     activeRequests += 1;
     res.once("finish", () => {

@@ -958,7 +958,11 @@ export function authRouter(db: PrismaClient): Router {
       const input = z.object({ challengeId: z.string().min(20).max(100), code: z.string().min(6).max(32) }).parse(req.body);
       const challenge = await db.authChallenge.findUnique({ where: { challenge: sha256(input.challengeId) } });
       if (!challenge || challenge.purpose !== "totp-login" || challenge.expiresAt <= new Date() || challenge.attempts >= 5) return next(forbidden("The verification request expired. Sign in again."));
-      await db.authChallenge.update({ where: { id: challenge.id }, data: { attempts: { increment: 1 } } });
+      const attempt = await db.authChallenge.updateMany({
+        where: { id: challenge.id, purpose: "totp-login", attempts: { lt: 5 }, expiresAt: { gt: new Date() } },
+        data: { attempts: { increment: 1 } },
+      });
+      if (attempt.count !== 1) return next(forbidden("The verification request expired. Sign in again."));
       const credential = await db.totpCredential.findUnique({ where: { userId: challenge.userId } });
       const user = await db.user.findUnique({ where: { id: challenge.userId } });
       if (!credential?.enabledAt || !user || user.accessStatus !== "APPROVED") return next(forbidden("Two-step verification is unavailable for this account."));
@@ -984,7 +988,7 @@ export function authRouter(db: PrismaClient): Router {
         }
       }
       if (!valid) {
-        if (challenge.attempts + 1 >= 5) await db.authChallenge.deleteMany({ where: { id: challenge.id } });
+        await db.authChallenge.deleteMany({ where: { id: challenge.id, attempts: { gte: 5 } } });
         return next(forbidden("Authenticator or recovery code is incorrect."));
       }
       await db.authChallenge.delete({ where: { id: challenge.id } });
@@ -1026,12 +1030,22 @@ export function authRouter(db: PrismaClient): Router {
       const input = z.object({ challenge: z.string().min(20), credentialId: z.string().min(8), clientDataJSON: z.string().min(20), attestationObject: z.string().min(20), name: z.string().trim().min(1).max(80).optional(), transports: z.array(z.string().max(32)).max(8).optional() }).parse(req.body);
       const { origin, rpId } = passkeyOrigin(req);
       const challenge = await db.authChallenge.findUnique({ where: { challenge: sha256(input.challenge) } });
-      if (!challenge || challenge.userId !== req.user!.id || challenge.purpose !== "passkey-register" || challenge.expiresAt <= new Date()) return next(forbidden("Passkey setup expired. Start again."));
+      if (!challenge || challenge.userId !== req.user!.id || challenge.purpose !== "passkey-register" || challenge.expiresAt <= new Date() || challenge.attempts >= 5) return next(forbidden("Passkey setup expired. Start again."));
+      const attempt = await db.authChallenge.updateMany({
+        where: { id: challenge.id, userId: req.user!.id, purpose: "passkey-register", attempts: { lt: 5 }, expiresAt: { gt: new Date() } },
+        data: { attempts: { increment: 1 } },
+      });
+      if (attempt.count !== 1) return next(forbidden("Passkey setup expired. Start again."));
       verifyClientData(input.clientDataJSON, input.challenge, origin, "webauthn.create");
       const attested = parseNoneAttestation(input.attestationObject, rpId);
       if (attested.credentialId !== input.credentialId) return next(badRequest("Passkey credential ID does not match."));
+      // Consume the challenge atomically before persisting a credential. Concurrent
+      // registration submissions cannot attach multiple credentials to one challenge.
+      const consumed = await db.authChallenge.deleteMany({
+        where: { id: challenge.id, userId: req.user!.id, purpose: "passkey-register", expiresAt: { gt: new Date() }, attempts: { lte: 5 } },
+      });
+      if (consumed.count !== 1) return next(forbidden("Passkey setup expired. Start again."));
       const credential = await db.passkeyCredential.create({ data: { userId: req.user!.id, credentialId: attested.credentialId, publicKey: attested.publicKey, signCount: attested.signCount, name: input.name ?? "Passkey", transports: JSON.stringify(input.transports ?? []) } });
-      await db.authChallenge.delete({ where: { id: challenge.id } });
       res.status(201).json({ ok: true, passkey: { id: credential.id, name: credential.name, createdAt: credential.createdAt } });
     } catch (error) {
       if (error && typeof error === "object" && "code" in error && error.code === "P2002") return next(conflict("This passkey is already registered."));
@@ -1059,7 +1073,11 @@ export function authRouter(db: PrismaClient): Router {
       const { origin, rpId } = passkeyOrigin(req);
       const challenge = await db.authChallenge.findUnique({ where: { challenge: sha256(input.challengeId) } });
       if (!challenge || challenge.purpose !== "passkey-login" || challenge.expiresAt <= new Date() || challenge.attempts >= 5) return next(forbidden("Passkey request expired. Start sign-in again."));
-      await db.authChallenge.update({ where: { id: challenge.id }, data: { attempts: { increment: 1 } } });
+      const attempt = await db.authChallenge.updateMany({
+        where: { id: challenge.id, purpose: "passkey-login", attempts: { lt: 5 }, expiresAt: { gt: new Date() } },
+        data: { attempts: { increment: 1 } },
+      });
+      if (attempt.count !== 1) return next(forbidden("Passkey request expired. Start sign-in again."));
       const credential = await db.passkeyCredential.findUnique({ where: { credentialId: input.credentialId } });
       if (!credential || credential.userId !== challenge.userId) return next(forbidden("Passkey could not be verified."));
       verifyClientData(input.clientDataJSON, input.challengeId, origin, "webauthn.get");
@@ -1073,7 +1091,10 @@ export function authRouter(db: PrismaClient): Router {
       }
       const user = await db.user.findUnique({ where: { id: challenge.userId } });
       if (!user || user.accessStatus !== "APPROVED") return next(forbidden("Account access is not approved."));
-      await db.authChallenge.delete({ where: { id: challenge.id } });
+      const consumed = await db.authChallenge.deleteMany({
+        where: { id: challenge.id, purpose: "passkey-login", expiresAt: { gt: new Date() }, attempts: { lte: 5 } },
+      });
+      if (consumed.count !== 1) return next(forbidden("Passkey request was already used. Start sign-in again."));
       await recordLoginEvent(db, req, user.email, user.id, "success", "passkey");
       const { token } = await createAuthSession(db, req, user, "passkey");
       setSessionCookie(res, token);

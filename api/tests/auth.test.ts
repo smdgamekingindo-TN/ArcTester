@@ -527,6 +527,15 @@ describe("auth — bearer token (native/mobile clients)", () => {
     });
     expect(blocked.status).toBe(429);
     expect(Number(blocked.headers.get("retry-after"))).toBeGreaterThan(0);
+
+    // Counters live in PostgreSQL for cross-instance enforcement, and the
+    // persisted identifiers are hashes rather than raw IP/email strings.
+    const buckets = await server.db.$queryRaw<Array<{ bucket_key: string; failure_count: number }>>`
+      SELECT bucket_key, failure_count FROM auth_rate_limit_buckets
+      WHERE failure_count > 0
+    `;
+    expect(buckets.length).toBeGreaterThanOrEqual(2);
+    expect(buckets.every((bucket) => /^[a-f0-9]{64}$/.test(bucket.bucket_key))).toBe(true);
   });
 
   it("tracks active sessions and previous login activity", async () => {

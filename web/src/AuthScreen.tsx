@@ -15,7 +15,6 @@ const BRANCH_OPTIONS:SearchOption[]=[
 {value:"Automobile Engineering",label:"Automobile Engineering",detail:"Registration code: A",code:"A"}];
 const BRANCH_BY_REGISTRATION_CODE=new Map(BRANCH_OPTIONS.map(item=>[item.code!,item]));
 const REGISTRATION_PATTERN=/^(\d{2})(\d{3})-([A-Z]{1,3})-(\d{3})$/;
-declare global{interface Window{turnstile?:{render:(container:HTMLElement,options:{sitekey:string;callback:(token:string)=>void;"expired-callback"?:()=>void;"error-callback"?:()=>void})=>string;remove:(widgetId:string)=>void}}}
 function SearchableSelect({label,value,options,placeholder,allowCustom=false,onChange,onSelect}:{label:string;value:string;options:SearchOption[];placeholder:string;allowCustom?:boolean;onChange:(value:string)=>void;onSelect:(option:SearchOption)=>void}){
 const[open,setOpen]=useState(false);const[activeIndex,setActiveIndex]=useState(0);const rootRef=useRef<HTMLDivElement>(null);useEffect(()=>{if(!open)return;const closeOutside=(event:PointerEvent)=>{if(!rootRef.current?.contains(event.target as Node))setOpen(false)};document.addEventListener("pointerdown",closeOutside);return()=>document.removeEventListener("pointerdown",closeOutside)},[open]);const filtered=options.filter(o=>(o.label+" "+o.value+" "+(o.detail??"")).toLocaleLowerCase().includes(value.trim().toLocaleLowerCase())).slice(0,8);
 function choose(option:SearchOption){onSelect(option);setOpen(false);setActiveIndex(0)}

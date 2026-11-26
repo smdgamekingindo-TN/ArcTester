@@ -717,7 +717,7 @@ describe("auth — bearer token (native/mobile clients)", () => {
         return response.status;
       };
       for (let attempt = 0; attempt < 5; attempt += 1) expect(await verify(challengeId)).toBe(403);
-      expect((await verify(challengeId)).status).toBe(403);
+      expect(await verify(challengeId)).toBe(403);
       const stored = await server.db.authChallenge.findUnique({ where: { challenge: createHash("sha256").update(challengeId).digest("hex") } });
       expect(stored?.attempts).toBe(5);
 

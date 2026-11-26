@@ -43,7 +43,7 @@
 ### 4.4 Abuse protection and perimeter
 - [x] Replace process-local password-login/token failure counters with atomic PostgreSQL buckets shared across API instances; bucket keys are hashed and raw email/IP are not stored.
 - [x] Replace the global API request limiter with a shared PostgreSQL atomic counter; liveness/readiness probes bypass the limiter database dependency.
-- [x] Preserve per-IP+account and per-IP failure ceilings; success clears the corresponding hashed buckets.
+- [x] Preserve per-IP+account and per-IP failure ceilings; success clears the corresponding hashed buckets. Failed/throttled sign-ins are recorded; new device/network sign-ins generate an in-app security notification.
 - [x] Review lockout tradeoff: no global per-account lockout; account failures are scoped to IP+account and an IP-only ceiling limits one source, so another network is not locked out.
 - [x] Review CORS allowlist, cookie flags, CSRF behavior, HTTPS enforcement, Helmet/security headers, body limits, schema validation, upload handling, and safe errors at middleware/config level; Helmet CSP defaults are enabled.
 - [x] Production browser registration fails closed if Turnstile secret is missing; TRUST_PROXY_HOPS is validated and documented.
@@ -61,6 +61,7 @@
 
 ### 4.6 Privacy and incident readiness (India)
 - [x] Draft privacy/data-purpose/minimization, retention/deletion, data-request and incident-response runbook in docs/security/PRIVACY_AND_INCIDENT_RESPONSE.md.
+- [x] Extend the scheduled retention command to prune old login-history metadata and stale session records.
 - [ ] Publish student-facing privacy notice and establish the actual request/grievance contact before production.
 - [x] Record the current official DPDP phased commencement and CERT-In 6-hour incident reporting / 180-day log requirements with official links.
 - [ ] Obtain qualified legal/security review and confirm applicability, hosting jurisdiction, log retention and point of contact.

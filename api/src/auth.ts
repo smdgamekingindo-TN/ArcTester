@@ -883,8 +883,12 @@ export function authRouter(db: PrismaClient): Router {
       const counter = verifyTotp(secret, input.code, Date.now(), credential.lastUsedCounter);
       const recovery = (JSON.parse(credential.recoveryCodesJson) as string[]).map(hash => hash === hashRecoveryCode(input.code));
       if (counter === null && !recovery.some(Boolean)) return next(forbidden("Authenticator or recovery code is incorrect."));
-      await db.totpCredential.delete({ where: { userId: req.user!.id } });
-      res.json({ ok: true, message: "Two-step verification disabled." });
+      await db.$transaction([
+        db.totpCredential.delete({ where: { userId: req.user!.id } }),
+        db.user.update({ where: { id: req.user!.id }, data: { sessionVersion: { increment: 1 } } }),
+        db.authSession.updateMany({ where: { userId: req.user!.id, revokedAt: null }, data: { revokedAt: new Date() } }),
+      ]);
+      res.json({ ok: true, message: "Two-step verification disabled. Sign in again on your devices." });
     } catch (error) { next(error); }
   });
 
@@ -909,8 +913,13 @@ export function authRouter(db: PrismaClient): Router {
         const index = recovery.indexOf(hash);
         if (index >= 0) {
           recovery.splice(index, 1);
-          await db.totpCredential.update({ where: { id: credential.id }, data: { recoveryCodesJson: JSON.stringify(recovery) } });
-          valid = true;
+          // Compare-and-swap prevents two concurrent requests consuming the
+          // same one-time recovery code successfully.
+          const consumed = await db.totpCredential.updateMany({
+            where: { id: credential.id, recoveryCodesJson: credential.recoveryCodesJson },
+            data: { recoveryCodesJson: JSON.stringify(recovery) },
+          });
+          valid = consumed.count === 1;
         }
       }
       if (!valid) {
@@ -1022,7 +1031,11 @@ export function authRouter(db: PrismaClient): Router {
     try {
       const result = await db.passkeyCredential.deleteMany({ where: { id: req.params.id, userId: req.user!.id } });
       if (!result.count) return next(notFound("Passkey not found."));
-      res.json({ ok: true });
+      await db.$transaction([
+        db.user.update({ where: { id: req.user!.id }, data: { sessionVersion: { increment: 1 } } }),
+        db.authSession.updateMany({ where: { userId: req.user!.id, revokedAt: null }, data: { revokedAt: new Date() } }),
+      ]);
+      res.json({ ok: true, message: "Passkey removed. Sign in again on your devices." });
     } catch (error) { next(error); }
   });
 

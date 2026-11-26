@@ -277,10 +277,12 @@ describe("live Vite application", () => {
     const restoredSelectedOption = within(restoredQuestion!).getAllByRole("button").find((button) => button.getAttribute("aria-pressed") === "true");
     expect(restoredSelectedOption).toBeDefined();
     expect(restoredSelectedOption).toHaveClass("selected");
+    expect(screen.queryByText("Second restored question?")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Next question" }));
     expect(await screen.findByText("Second restored question?")).toBeInTheDocument();
     const secondQuestion = screen.getByText("Second restored question?").closest("article");
     expect(within(secondQuestion!).getAllByRole("button").every((button) => !button.classList.contains("selected"))).toBe(true);
-    expect(screen.getByText(/1 \/ 2 answered/)).toBeInTheDocument();
+    expect(screen.getByText(/1 answered · 1 remaining/)).toBeInTheDocument();
 
     await act(async () => {
       window.dispatchEvent(new StorageEvent("storage", {
@@ -291,7 +293,7 @@ describe("live Vite application", () => {
     const updatedSelectedOption = within(secondQuestion!).getAllByRole("button").find((button) => button.getAttribute("aria-pressed") === "true");
     expect(updatedSelectedOption).toBeDefined();
     expect(updatedSelectedOption).toHaveClass("selected");
-    expect(screen.getByText(/2 \/ 2 answered/)).toBeInTheDocument();
+    expect(screen.getByText(/2 answered · 0 remaining/)).toBeInTheDocument();
   });
 
   it("preserves practice recovery data when restore fails because the network is unavailable", async () => {

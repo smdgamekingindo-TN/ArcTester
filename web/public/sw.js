@@ -1,5 +1,5 @@
 /* ArcTester service worker: network-first app shell, cache-first versioned assets. */
-const CACHE_NAME = "arctester-shell-v2";
+const CACHE_NAME = "arctester-shell-v3";
 const SHELL_URLS = ["/", "/index.html", "/manifest.json", "/icon-192.png", "/icon-512.png"];
 
 self.addEventListener("install", (event) => {
@@ -40,14 +40,17 @@ self.addEventListener("fetch", (event) => {
   }
 
   if (url.pathname.startsWith("/assets/") || url.pathname.startsWith("/icon-") || url.pathname === "/manifest.json") {
+    // Network-first even for fingerprinted bundles: cache-first assets can
+    // keep a previous admin stylesheet/script active after a production deploy.
+    // Keep cached assets as an offline fallback only.
     event.respondWith(
-      caches.match(request).then((cached) => cached || fetch(request).then((response) => {
+      fetch(request).then((response) => {
         if (response && response.status === 200) {
           const copy = response.clone();
           void caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
         }
         return response;
-      }))
+      }).catch(async () => (await caches.match(request)) || Response.error())
     );
     return;
   }

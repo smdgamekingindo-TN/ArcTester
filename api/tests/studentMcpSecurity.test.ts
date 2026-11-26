@@ -37,7 +37,7 @@ describe("student MCP authorization and ownership", () => {
     });
     bearer = "arc_student_" + randomBytes(32).toString("base64url");
     const key = await server.db.studentMcpKey.create({
-      data: { userId: student.id, name: "security-test", keyHash: digest(bearer), scopes: ["questions:read", "questions:write"] },
+      data: { userId: student.id, name: "security-test", keyHash: digest(bearer), scopes: ["questions:read", "questions:write", "practice:read", "practice:write"] },
     });
     keyId = key.id;
   });
@@ -56,6 +56,29 @@ describe("student MCP authorization and ownership", () => {
     const edit = await rpc("edit_my_question", { id: otherQuestion!.id, patch: { text: "Attempted cross-account edit" } });
     expect(edit.body, JSON.stringify(edit.body)).toMatchObject({ error: { code: -32004 } });
     expect((await server.db.studentPrivateQuestion.findUnique({ where: { id: otherQuestion!.id } }))?.text).toBe("Other student's question");
+  });
+
+  it("creates practice exams through MCP in the same student-owned library", async () => {
+    const created = await rpc("create_my_practice_exam", {
+      title: "MCP-created exam",
+      description: "Shared library test",
+      durationMinutes: 15,
+      questions: [{ subject: "Math", topic: "Algebra", text: "What is 2 + 2?", options: ["3", "4", "5", "6"], correctIndex: 1, explanation: "Two plus two equals four.", difficulty: "easy" }],
+    });
+    expect(created.status).toBe(200);
+    const response = created.body as { result: { content: Array<{ text: string }> } };
+    const output = JSON.parse(response.result.content[0]!.text) as { practiceTest: { id: string; userId: number; title: string } };
+    expect(output.practiceTest.title).toBe("MCP-created exam");
+    expect(output.practiceTest.userId).toBe(studentId);
+
+    const saved = await server.db.studentPracticeSet.findUnique({ where: { id: output.practiceTest.id } });
+    expect(saved?.userId).toBe(studentId);
+    expect(saved?.title).toBe("MCP-created exam");
+
+    const listed = await rpc("list_my_practice_exams", { limit: 10 });
+    const listBody = listed.body as { result: { content: Array<{ text: string }> } };
+    const listOutput = JSON.parse(listBody.result.content[0]!.text) as { practiceTests: Array<{ id: string }> };
+    expect(listOutput.practiceTests.some(test => test.id === output.practiceTest.id)).toBe(true);
   });
 
   it("enforces per-key scopes and re-checks current account role", async () => {

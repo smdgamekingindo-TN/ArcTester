@@ -1,5 +1,5 @@
 -- Shared, atomic login throttling across API instances. Bucket keys are SHA-256 hashes;
--- no raw email or IP address is stored. Expired rows are periodically cleaned.
+-- no raw email or IP address is stored. Stale rows are removed opportunistically.
 CREATE TABLE "auth_rate_limit_buckets" (
   "bucket_key" TEXT NOT NULL,
   "failure_count" INTEGER NOT NULL DEFAULT 0,

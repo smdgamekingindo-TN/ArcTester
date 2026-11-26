@@ -124,7 +124,7 @@ export function studentMcpRouter(db: PrismaClient): Router {
   });
   router.patch("/student/private-questions/:id", requireAuth, requireStudent(db), async (req: AuthedRequest, res, next) => {
     try {
-      const patch = QuestionInput.partial().parse(req.body);
+      const patch = QuestionPatchInput.parse(req.body);
       const existing = await db.studentPrivateQuestion.findFirst({ where: { id: req.params.id, userId: req.user!.id } });
       if (!existing) return next(notFound("Private question not found."));
       const merged = QuestionInput.parse({ ...existing, ...patch, options: patch.options ?? existing.options });
@@ -253,7 +253,7 @@ export function studentMcpRouter(db: PrismaClient): Router {
         }
         case "edit_my_question": {
           if (!hasScope(key, "questions:write")) return res.json(jsonRpcError(id, -32003, "Missing questions:write scope."));
-          const input = z.object({ id: z.string().min(1), patch: QuestionInput.partial() }).parse(args);
+          const input = z.object({ id: z.string().min(1), patch: QuestionPatchInput }).parse(args);
           const existing = await db.studentPrivateQuestion.findFirst({ where: { id: input.id, userId: key.userId } });
           if (!existing) return res.json(jsonRpcError(id, -32004, "Private question not found."));
           const patch = input.patch;

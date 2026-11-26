@@ -109,7 +109,18 @@ export async function postJson(
   let payload = body;
   if (url.endsWith("/auth/register") && body && typeof body === "object" && !Array.isArray(body)) {
     const input = body as Record<string, unknown>;
-    if (input.registrationNumber === "24999-CM-053" && typeof input.email === "string" && input.email !== "alice@example.com") payload = { ...input, registrationNumber: testRegistrationNumber(input.email) };
+    const withLegalAcceptance = {
+      adultAttestation: true,
+      termsAccepted: true,
+      privacyConsent: true,
+      termsVersion: "2026-11-27-v1",
+      privacyNoticeVersion: "2026-11-27-v1",
+      consentNoticeVersion: "2026-11-27-v1",
+      ageGateVersion: "2026-11-27-v1",
+      ...input,
+    };
+    payload = withLegalAcceptance;
+    if (input.registrationNumber === "24999-CM-053" && typeof input.email === "string" && input.email !== "alice@example.com") payload = { ...withLegalAcceptance, registrationNumber: testRegistrationNumber(input.email) };
   }
   const res = await fetch(url, {
     method: "POST",

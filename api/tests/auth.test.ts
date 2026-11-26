@@ -1,4 +1,6 @@
 import { createHash, createHmac } from "node:crypto";
+const { mockSendPasswordResetEmail } = vi.hoisted(() => ({ mockSendPasswordResetEmail: vi.fn() }));
+vi.mock("../src/passwordResetEmail.js", () => ({ sendPasswordResetEmail: mockSendPasswordResetEmail }));
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { buildApp } from "../src/index.js";
 import {
@@ -917,27 +919,23 @@ describe("auth — bearer token (native/mobile clients)", () => {
  
   it("emails a one-time password reset link and requires TOTP before resetting", async () => {
     const email = "password-reset-totp@example.com";
-    const oldKey = process.env.RESEND_API_KEY;
-    const oldFrom = process.env.RESEND_FROM_EMAIL;
+    const oldUser = process.env.GMAIL_USER;
+    const oldPassword = process.env.GMAIL_APP_PASSWORD;
     const oldBase = process.env.APP_BASE_URL;
     const originalFetch = globalThis.fetch;
     try {
-      process.env.RESEND_API_KEY = "unit-test-key";
-      process.env.RESEND_FROM_EMAIL = "ArcTester <verified@example.test>";
+      process.env.GMAIL_USER = "arctester@example.com";
+      process.env.GMAIL_APP_PASSWORD = "test-app-password";
+      mockSendPasswordResetEmail.mockReset();
       process.env.APP_BASE_URL = "https://arctester.vercel.app";
       await postJsonWithCookie(`${server.baseUrl}/auth/register`, { ...STUDENT_PROFILE, email, password: "old-password-1234" });
       const user = await server.db.user.update({ where: { email }, data: { accessStatus: "APPROVED" } });
       const secret = generateTotpSecret();
       await server.db.totpCredential.create({ data: { userId: user.id, secretEncrypted: encryptTotpSecret(secret), enabledAt: new Date(), lastUsedCounter: -1, recoveryCodesJson: "[]" } });
-      const providerFetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-        if (String(input).startsWith("https://api.resend.com")) return new Response("{}", { status: 200 });
-        return originalFetch(input, init);
-      });
-      vi.stubGlobal("fetch", providerFetch);
-      const requested = await postJson(`${server.baseUrl}/auth/password-reset/request`, { email });
+            const requested = await postJson(`${server.baseUrl}/auth/password-reset/request`, { email });
       expect(requested.status).toBe(202);
-      const mail = JSON.parse(String(providerFetch.mock.calls[0]?.[1]?.body));
-      const tokenMatch = String(mail.text).match(/passwordResetToken=([A-Za-z0-9_-]+)/);
+      const resetUrl = String(mockSendPasswordResetEmail.mock.calls[0]?.[1]);
+      const tokenMatch = resetUrl.match(/passwordResetToken=([A-Za-z0-9_-]+)/);
       expect(tokenMatch?.[1]).toBeTruthy();
       const token = tokenMatch![1];
       const noCode = await postJson(`${server.baseUrl}/auth/password-reset/complete`, { token, newPassword: "new-password-12345" });
@@ -951,8 +949,8 @@ describe("auth — bearer token (native/mobile clients)", () => {
       expect(replay.status).toBe(403);
     } finally {
       vi.unstubAllGlobals();
-      if (oldKey === undefined) delete process.env.RESEND_API_KEY; else process.env.RESEND_API_KEY = oldKey;
-      if (oldFrom === undefined) delete process.env.RESEND_FROM_EMAIL; else process.env.RESEND_FROM_EMAIL = oldFrom;
+      if (oldUser === undefined) delete process.env.GMAIL_USER; else process.env.GMAIL_USER = oldUser;
+      if (oldPassword === undefined) delete process.env.GMAIL_APP_PASSWORD; else process.env.GMAIL_APP_PASSWORD = oldPassword;
       if (oldBase === undefined) delete process.env.APP_BASE_URL; else process.env.APP_BASE_URL = oldBase;
     }
   });

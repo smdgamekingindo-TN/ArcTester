@@ -22,7 +22,7 @@ function eventWhere(studentId: number, filters: AuditFilters): Prisma.AuditEvent
   return {
     subjectUserId: studentId,
     ...(filters.action ? { action: filters.action } : {}),
-    ...(filters.q ? { OR: ["action", "route", "resourceType", "resourceId", "requestId", "contextJson"].map(field => ({ [field]: { contains: filters.q, mode: "insensitive" } })) } : {}),
+    ...(filters.q ? { OR: [{ action: { contains: filters.q, mode: "insensitive" } }, { route: { contains: filters.q, mode: "insensitive" } }, { resourceType: { contains: filters.q, mode: "insensitive" } }, { resourceId: { contains: filters.q, mode: "insensitive" } }, { requestId: { contains: filters.q, mode: "insensitive" } }, { contextJson: { contains: filters.q, mode: "insensitive" } }] } : {}),
     ...(filters.outcome ? { outcome: filters.outcome } : {}),
     ...(filters.collegeCode ? { collegeCode: filters.collegeCode } : {}),
     ...(filters.branchCode ? { branchCode: filters.branchCode } : {}),

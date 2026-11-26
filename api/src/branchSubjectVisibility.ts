@@ -28,7 +28,11 @@ export function filterBranchSubjectQuestions<T extends BranchTaggedQuestion>(
 
   return questions.filter((question) => {
     const subjectName = subjectNames.get(question.subjectId) ?? "";
-    if (!isCommonMpcSubject(subjectName) && branchScopedSubjectIds.has(question.subjectId) && !branchVisibleSubjectIds.has(question.subjectId)) return false;
+    const commonMpc = isCommonMpcSubject(subjectName);
+    if (!commonMpc && branchScopedSubjectIds.has(question.subjectId) && !branchVisibleSubjectIds.has(question.subjectId)) return false;
+    // Branch tags do not split the common MPC subjects. College/student scope
+    // restrictions still apply when a branch-scoped row also has a college target.
+    if (commonMpc && question.audienceScope === "BRANCH" && !question.targetCollegeCode && !question.targetCollegeName) return true;
     return isContentAudienceVisible(question, profile);
   });
 }

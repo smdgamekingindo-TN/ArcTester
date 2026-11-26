@@ -195,6 +195,29 @@ describe("auth", () => {
     }
   });
 
+  it("issues an SVG CAPTCHA and verifies its signed answer for browser registration", async () => {
+    const previousNodeEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = "production";
+    try {
+      const challengeResponse = await getJsonWithCookie(`${server.baseUrl}/auth/captcha/challenge`);
+      expect(challengeResponse.status).toBe(200);
+      const challenge = challengeResponse.json as { svg: string; token: string };
+      expect(challenge.svg).toContain("<svg");
+      expect(challenge.token).toContain(".");
+      const answer = Array.from(challenge.svg.matchAll(/<text[^>]*>([^<]+)<\\/text>/g), match => match[1]).join("");
+      const response = await postJson(`${server.baseUrl}/auth/register`, {
+        ...STUDENT_PROFILE,
+        email: "svg-captcha-valid@example.com",
+        password: "secret1234",
+        captchaToken: challenge.token + ":" + answer,
+      });
+      expect(response.status).toBe(201);
+    } finally {
+      if (previousNodeEnv === undefined) delete process.env.NODE_ENV;
+      else process.env.NODE_ENV = previousNodeEnv;
+    }
+  });
+
   it("requires academic identity fields for new student registration", async () => {
     const res = await postJsonWithCookie(`${server.baseUrl}/auth/register`, {
       email: "missing-profile@example.com",

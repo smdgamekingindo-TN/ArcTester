@@ -140,7 +140,7 @@ export function adminMcpRouter(db: PrismaClient): Router {
           const input = z.object({ studentId:z.number().int().positive(), accessStatus:z.enum(["PENDING","APPROVED","REJECTED"]), confirm:z.literal(true) }).parse(args);
           const existing = await db.user.findFirst({ where:{ id:input.studentId,role:"STUDENT",NOT:{email:{endsWith:".deleted.invalid"}} }, select:{id:true,accessStatus:true} });
           if (!existing) return res.json(rpcError(id,-32004,"Student not found."));
-          const student = await db.user.update({ where:{id:input.studentId}, data:{accessStatus:input.accessStatus,sessionVersion:{increment:1}}, select:{id:true,accessStatus:true} });
+          const student = await db.user.update({ where:{id:input.studentId}, data:{accessStatus:input.accessStatus,...(existing.accessStatus!==input.accessStatus?{sessionVersion:{increment:1}}:{})}, select:{id:true,accessStatus:true} });
           output = { student }; summary = "changed student "+student.id+" access to "+student.accessStatus; break;
         }
         case "update_student_profile": {
@@ -150,7 +150,7 @@ export function adminMcpRouter(db: PrismaClient): Router {
             collegeName:z.string().trim().max(180).nullable().optional(), collegeCode:z.string().trim().max(20).nullable().optional(),
             postalPin:z.string().trim().max(20).nullable().optional(), branchName:z.string().trim().max(120).nullable().optional(),
             branchCode:z.string().trim().max(20).nullable().optional(),
-            registrationNumber:z.preprocess(value=>value===""?null:value,z.string().trim().regex(/^\\d{5}-[A-Z]{1,3}-\\d{3}$/i,"Enter a valid diploma registration number.").nullable().optional()),
+            registrationNumber:z.preprocess(value=>value===""?null:value,z.string().trim().regex(/^\d{5}-[A-Z]{1,3}-\d{3}$/i,"Enter a valid diploma registration number.").nullable().optional()),
           }).strict().refine(value=>Object.keys(value).length>0,"Provide at least one profile field.") }).parse(args);
           const existing = await db.user.findFirst({ where:{id:input.studentId,role:"STUDENT",NOT:{email:{endsWith:".deleted.invalid"}}},select:{id:true,email:true} });
           if (!existing) return res.json(rpcError(id,-32004,"Student not found."));

@@ -1,6 +1,6 @@
 # Part 4 — Security and compliance hardening
 
-**Status:** Part 4 implementation is being hardened on draft PR #198. CI must pass on the final head before merge. Production rollout remains blocked until the automated preflight passes in the target environment and the remaining hosting/privacy/legal sign-offs are completed. No merge or production deployment has been performed.
+**Status:** Part 4 engineering implementation is complete on PR #198 (ready for review). Exact-head ArcTester CI run #3373 passed on `d6415a26d7131c7a803193cf3052389e89939ad8`. Production rollout remains blocked until the automated preflight passes in the target environment and the remaining hosting/privacy/legal sign-offs are completed. No merge or production deployment has been performed.
 
 ## Delivery rules
 - Keep the work on this feature branch and open one reviewable PR for Part 4.

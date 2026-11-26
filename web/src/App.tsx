@@ -131,6 +131,7 @@ export default function App() {
   );
   const [reduceMotion, setReduceMotion] = useState(() => safeStorage.getItem("arctester-reduce-motion") === "true");
   const [showAnnouncementPopups, setShowAnnouncementPopups] = useState(() => safeStorage.getItem("arctester-show-announcement-popups") !== "false");
+  const pendingExamResultNotification = studentNotifications.find((item) => item.kind === "EXAM_RESULT" && !item.readAt);
 
 
   useEffect(() => {
@@ -752,6 +753,18 @@ export default function App() {
         <StudentAnnouncementDialog
           announcement={activeAnnouncements[0]}
           onAcknowledge={(id) => void dismissAnnouncement(id)}
+        />
+      )}
+      {showAnnouncementPopups && !activeAnnouncements[0] && pendingExamResultNotification && (
+        <StudentAnnouncementDialog
+          variant="exam-result"
+          announcement={{
+            id: pendingExamResultNotification.id,
+            title: pendingExamResultNotification.title,
+            message: pendingExamResultNotification.message,
+            expiresAt: pendingExamResultNotification.expiresAt,
+          }}
+          onAcknowledge={(id) => void markNotificationRead(id)}
         />
       )}
       <div className="toast-container">

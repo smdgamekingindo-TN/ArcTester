@@ -4,8 +4,22 @@ import { signIn, signUp, startTestServer, type TestServer } from "./server.js";
 
 describe("admin API instance monitoring", () => {
   let server: TestServer;
-  beforeAll(async () => { server = await startTestServer(buildApp); });
-  afterAll(async () => { await server.close(); });
+  let secondServer: import("node:http").Server;
+  let secondBaseUrl: string;
+  beforeAll(async () => {
+    server = await startTestServer(buildApp);
+    const secondApp = buildApp(server.db);
+    secondServer = await new Promise<import("node:http").Server>((resolve) => {
+      const listener = secondApp.listen(0, () => resolve(listener));
+    });
+    const address = secondServer.address();
+    if (!address || typeof address === "string") throw new Error("Second API instance did not bind a TCP port.");
+    secondBaseUrl = "http://127.0.0.1:" + address.port;
+  });
+  afterAll(async () => {
+    await new Promise<void>((resolve, reject) => secondServer.close((error) => error ? reject(error) : resolve()));
+    await server.close();
+  });
 
   it("requires an authenticated administrator", async () => {
     const response = await fetch(server.baseUrl + "/admin/ops/servers");
@@ -17,6 +31,10 @@ describe("admin API instance monitoring", () => {
     const registered = await signUp(server.baseUrl, email);
     await server.db.user.update({ where: { id: registered.userId }, data: { role: "ADMIN" } });
     const admin = await signIn(server.baseUrl, email);
+    const crossInstance = await fetch(secondBaseUrl + "/auth/me", { headers: { cookie: admin.cookie } });
+    expect(crossInstance.status).toBe(200);
+    const crossInstanceBody = await crossInstance.json() as { user: { email: string; role: string } };
+    expect(crossInstanceBody.user).toMatchObject({ email, role: "ADMIN" });
     const oldSeen = new Date(Date.now() - 180_000);
     await server.db.$executeRaw`
       INSERT INTO server_instance_metrics

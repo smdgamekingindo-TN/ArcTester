@@ -81,7 +81,7 @@ export function startOpsMetricsHeartbeat(db: PrismaClient): () => void {
   return () => clearInterval(timer);
 }
 
-export function opsMetricsMiddleware(db: PrismaClient): RequestHandler {
+export function opsMetricsMiddleware(): RequestHandler {
   return (_req, res, next) => {
     const started = process.hrtime.bigint();
     activeRequests += 1;
@@ -92,8 +92,6 @@ export function opsMetricsMiddleware(db: PrismaClient): RequestHandler {
       const durationMs = Number(process.hrtime.bigint() - started) / 1_000_000;
       samples.push({ at: Date.now(), durationMs });
       if (samples.length > MAX_SAMPLES) samples.splice(0, samples.length - MAX_SAMPLES);
-      // Metrics persistence must never delay or alter the response being served.
-      void persistSnapshot(db).catch(() => undefined);
     });
     next();
   };

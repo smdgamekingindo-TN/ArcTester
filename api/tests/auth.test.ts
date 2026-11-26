@@ -173,7 +173,7 @@ describe("auth", () => {
     expect((res.json as { user: { registrationNumber: string } }).user.registrationNumber).toBe("24999-CM-053");
     const registeredUserId = (res.json as { user: { id: number } }).user.id;
     const acceptance = await server.db.legalAcceptance.findFirst({ where: { userId: registeredUserId } });
-    expect(acceptance).toMatchObject({ termsVersion: "2026-11-27-v1", privacyNoticeVersion: "2026-11-27-v1", consentNoticeVersion: "2026-11-27-v1", source: "web" });
+    expect(acceptance).toMatchObject({ termsVersion: "2026-11-27-v1", privacyNoticeVersion: "2026-11-27-v1", consentNoticeVersion: "2026-11-27-v1", ageGateVersion: "2026-11-27-v1", ageAttested: true, source: "web" });
     expect(acceptance?.acceptedAt).toBeInstanceOf(Date);
   });
 

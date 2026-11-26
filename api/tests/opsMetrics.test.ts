@@ -48,6 +48,19 @@ describe("admin API instance monitoring", () => {
       ON CONFLICT (instance_id) DO UPDATE SET last_seen_at = EXCLUDED.last_seen_at
     `;
 
+    const expiredSeen = new Date(Date.now() - 2 * 3600_000);
+    await server.db.$executeRaw`
+      INSERT INTO server_instance_metrics
+        (instance_id, hostname, version, build_sha, started_at, last_seen_at, cpu_percent,
+         rss_bytes, heap_used_bytes, uptime_seconds, active_requests, requests_total,
+         errors_total, request_rate, p50_latency_ms, p95_latency_ms, db_latency_ms)
+      VALUES
+        ('expired-test-instance', 'old-deploy-api', '0.1.0', 'old-build',
+         ${new Date(Date.now() - 3 * 3600_000)}, ${expiredSeen}, 0, 1048576, 524288,
+         3600, 0, 12, 0, 0, 0, 0, 1)
+      ON CONFLICT (instance_id) DO UPDATE SET last_seen_at = EXCLUDED.last_seen_at
+    `;
+
     const response = await fetch(server.baseUrl + "/admin/ops/servers", { headers: { cookie: admin.cookie } });
     expect(response.status).toBe(200);
     const body = await response.json() as { databaseStatus: string; servers: Array<Record<string, unknown>> };
@@ -55,6 +68,7 @@ describe("admin API instance monitoring", () => {
     expect(body.servers.length).toBeGreaterThanOrEqual(2);
     const remote = body.servers.find((row) => row.instanceId === "test-remote-instance");
     expect(remote).toMatchObject({ hostname: "remote-api", status: "offline", ageSeconds: expect.any(Number), p95LatencyMs: 40 });
+    expect(body.servers.some((row) => row.instanceId === "expired-test-instance")).toBe(false);
     expect(remote).not.toHaveProperty("databaseUrl");
     expect(remote).not.toHaveProperty("ip");
     expect(remote).not.toHaveProperty("studentId");

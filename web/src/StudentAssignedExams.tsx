@@ -84,7 +84,7 @@ export default function StudentAssignedExams() {
 
   useEffect(() => {
     if (!active) return;
-    let queued: { type: string; at: string; detail?: string }[] = [];
+    const queued: { type: string; at: string; detail?: string }[] = [];
     let flushTimer: number | null = null;
     const lastEventAt = new Map<string, number>();
     let sending = false;

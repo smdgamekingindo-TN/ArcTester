@@ -13,7 +13,7 @@ const response = {
   }],
 };
 
-afterEach(() => { cleanup(); vi.restoreAllMocks(); });
+afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 describe("AdminSystemMonitor", () => {
   it("renders actual fleet snapshot metrics and healthy status", async () => {

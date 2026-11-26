@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { request } from "./apiClient";
+import ExamLayout from "./components/ExamLayout";
 
 type DraftQuestion = { subject: string; text: string; options: string[]; correctIndex: number; explanation: string };
 type PracticeQuestion = { subject?: string; topic?: string; text: string; options: string[]; correctIndex: number; explanation?: string };
@@ -97,23 +98,28 @@ export default function StudentSavedPracticeExams() {
   return <section className="stack saved-practice-exams" aria-label="My practice exams">
     <header className="section-head"><div><p className="eyebrow">YOUR PRIVATE EXAM LIBRARY</p><h2>My practice exams</h2><p className="muted">Exams you create here and exams saved by your connected MCP appear in this same list.</p></div><button type="button" className="button button-secondary" onClick={() => void refresh()} disabled={loading}>Refresh</button></header>
     {error ? <p className="error" role="alert">{error}</p> : null}
-    {active ? <article className="panel stack">
-      <div className="row"><div style={{ flex: 1 }}><h3>{active.title}</h3><p className="muted">{active.questions.length} questions · {active.durationMinutes} min · {deadline !== null && !run ? `${Math.floor(seconds / 60).toString().padStart(2, "0")}:${(seconds % 60).toString().padStart(2, "0")} remaining` : "Practice review"}</p></div><button type="button" className="button button-secondary" onClick={() => { setActive(null); setRun(null); setDeadline(null); }}>Close</button></div>
-      {run ? <><h3>{run.correctCount} / {run.totalQuestions} correct · {run.percentage}%</h3><p className="muted">Result saved to your practice history.</p>{active.questions.map((q, i) => <div className="panel" key={i}><strong>Q{i + 1}. {q.text}</strong><p className="muted">Your answer: {answers[i] == null ? "Unanswered" : q.options[answers[i]!]}</p><p className="muted">Correct answer: {q.options[q.correctIndex]}</p>{q.explanation ? <p className="muted">{q.explanation}</p> : null}</div>)}</> : <>
-      <p className="muted">{answered} of {active.questions.length} answered</p>
-      {currentQuestion ? <div className="panel stack" key={activeQuestionIndex}>
-        <p className="eyebrow">QUESTION {activeQuestionIndex + 1} · {currentQuestion.subject ?? "General"}</p>
-        <h3>{currentQuestion.text}</h3>
-        {currentQuestion.options.map((option, j) => <label className="row" key={j} style={{ gap: 10, border: answers[activeQuestionIndex] === j ? "2px solid #2563eb" : "1px solid var(--border, #e4e8ef)", borderRadius: 12, padding: 12, backgroundColor: answers[activeQuestionIndex] === j ? "rgba(37, 99, 235, 0.08)" : "transparent", cursor: "pointer" }}><input type="radio" name={`saved-exam-${activeQuestionIndex}`} checked={answers[activeQuestionIndex] === j} onChange={() => setAnswers(current => ({ ...current, [activeQuestionIndex]: j }))} /><span>{String.fromCharCode(65 + j)}. {option}</span></label>)}
-        <div className="row saved-practice-question-navigation">
-          <button type="button" className="button button-secondary" disabled={activeQuestionIndex === 0} onClick={() => setActiveQuestionIndex(index => Math.max(0, index - 1))}>Previous question</button>
-          <span className="muted" aria-live="polite">Question {activeQuestionIndex + 1} of {active.questions.length}</span>
-          <button type="button" className="button button-secondary" disabled={activeQuestionIndex >= active.questions.length - 1} onClick={() => setActiveQuestionIndex(index => Math.min(active.questions.length - 1, index + 1))}>Next question</button>
-        </div>
-      </div> : null}
-      <button type="button" className="primary" disabled={busy} onClick={() => void finish()}>{busy ? "Submitting…" : "Submit practice exam"}</button>
-      </>}
-    </article> : <>
+    {active ? <ExamLayout
+      title={active.title}
+      eyebrow="MY PRACTICE EXAM"
+      meta={<>{active.questions.length} questions · {active.durationMinutes} min · {deadline !== null && !run ? `${Math.floor(seconds / 60).toString().padStart(2, "0")}:${(seconds % 60).toString().padStart(2, "0")} remaining` : "Practice review"}</>}
+      headerActions={<button type="button" className="button button-secondary" onClick={() => { setActive(null); setRun(null); setDeadline(null); }}>Close</button>}
+      status={<p className="muted">{answered} of {active.questions.length} answered</p>}
+      currentIndex={activeQuestionIndex}
+      questionCount={active.questions.length}
+      answeredCount={answered}
+      submitLabel={run ? "Completed" : busy ? "Submitting…" : "Submit practice exam"}
+      submitDisabled={busy || Boolean(run)}
+      busy={busy}
+      onPrevious={() => setActiveQuestionIndex(index => Math.max(0, index - 1))}
+      onNext={() => setActiveQuestionIndex(index => Math.min(active.questions.length - 1, index + 1))}
+      onSubmit={() => void finish()}
+    >
+      {run ? <div className="panel stack"><h2>{run.correctCount} / {run.totalQuestions} correct · {run.percentage}%</h2><p className="muted">Result saved to your practice history.</p>{currentQuestion ? <div className="panel stack"><strong>Q{activeQuestionIndex + 1}. {currentQuestion.text}</strong><p className="muted">Your answer: {answers[activeQuestionIndex] == null ? "Unanswered" : currentQuestion.options[answers[activeQuestionIndex]!]}</p><p className="muted">Correct answer: {currentQuestion.options[currentQuestion.correctIndex]}</p>{currentQuestion.explanation ? <p className="muted">{currentQuestion.explanation}</p> : null}</div> : null}</div> : currentQuestion ? <article className="panel stack question-card" key={activeQuestionIndex}>
+      <p className="eyebrow">QUESTION {activeQuestionIndex + 1} · {currentQuestion.subject ?? "General"}</p>
+      <h2>{currentQuestion.text}</h2>
+      {currentQuestion.options.map((option, j) => <label className="row saved-practice-option" key={j}><input type="radio" name={`saved-exam-${activeQuestionIndex}`} checked={answers[activeQuestionIndex] === j} onChange={() => setAnswers(current => ({ ...current, [activeQuestionIndex]: j }))} /><span>{String.fromCharCode(65 + j)}. {option}</span></label>)}
+    </article> : <p className="panel muted">No question is available in this exam.</p>}
+    </ExamLayout> : <>
       <article className="panel stack">
         <div className="row"><div style={{ flex: 1 }}><h3>Create a practice exam</h3><p className="muted">Add your own questions, choose the correct answers, and save it for later.</p></div><button type="button" className="button button-secondary" onClick={() => setCreateOpen(value => !value)}>{createOpen ? "Close" : "＋ Create exam"}</button></div>
         {createOpen ? <>

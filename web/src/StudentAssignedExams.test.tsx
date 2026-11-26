@@ -42,7 +42,7 @@ describe("StudentAssignedExams", () => {
       expect.objectContaining({ method: "POST", body: expect.stringContaining("COPY_ATTEMPT") }),
     ));
     expect(screen.queryByRole("heading", { name: "LIFO structure?" })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Go to question 2, unanswered" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Go to question/ })).not.toBeInTheDocument(); expect(screen.getByText("Question 1 of 2")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Next question" }));
     expect(await screen.findByRole("heading", { name: "LIFO structure?" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "FIFO structure?" })).not.toBeInTheDocument();

@@ -12,6 +12,23 @@ export type ImportReport = {
 
 export const MAX_QUESTION_IMPORT_ROWS = 2_000;
 
+export type QuestionAudienceDefaults = Partial<Pick<QuestionInput, "audienceScope" | "targetCollegeCode" | "targetCollegeName" | "targetBranchCode" | "targetBranchName" | "targetStudentIds">>;
+
+function applyAudienceDefaults(value: unknown, audience?: QuestionAudienceDefaults): unknown {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  const raw = value as Record<string, unknown>;
+  const merged = { ...raw };
+  if (audience) {
+    for (const field of ["audienceScope", "targetCollegeCode", "targetCollegeName", "targetBranchCode", "targetBranchName", "targetStudentIds"] as const) {
+      if ((raw[field] === undefined || raw[field] === null || raw[field] === "") && audience[field] !== undefined) merged[field] = audience[field];
+    }
+  }
+  if ((merged.audienceScope === undefined || merged.audienceScope === null || merged.audienceScope === "") && (merged.targetBranchCode || merged.targetBranchName)) {
+    merged.audienceScope = audience?.audienceScope ?? "BRANCH";
+  }
+  return merged;
+}
+
 const CSV_COLUMNS = [
   "subject",
   "topic",
@@ -27,6 +44,12 @@ const CSV_COLUMNS = [
   "questionType",
   "promptData",
   "answerData",
+  "audienceScope",
+  "targetCollegeCode",
+  "targetCollegeName",
+  "targetBranchCode",
+  "targetBranchName",
+  "targetStudentIds",
 ] as const;
 
 function invalidRow(row: number, reason: string): InvalidRow {
@@ -75,6 +98,12 @@ async function insertValidatedQuestions(
       questionType: string;
       promptData: string;
       answerData: string;
+      audienceScope: string;
+      targetCollegeCode: string | null;
+      targetCollegeName: string | null;
+      targetBranchCode: string | null;
+      targetBranchName: string | null;
+      targetStudentIdsJson: string;
     }> = [];
 
     for (const input of pending) {
@@ -101,6 +130,12 @@ async function insertValidatedQuestions(
         questionType: input.questionType,
         promptData: JSON.stringify(input.promptData),
         answerData: JSON.stringify(input.answerData),
+        audienceScope: input.audienceScope,
+        targetCollegeCode: input.targetCollegeCode || null,
+        targetCollegeName: input.targetCollegeName || null,
+        targetBranchCode: input.targetBranchCode || null,
+        targetBranchName: input.targetBranchName || null,
+        targetStudentIdsJson: JSON.stringify(input.targetStudentIds),
         questionHash: hashQuestion(input.text),
       });
     }
@@ -126,7 +161,7 @@ function describeIssue(error: unknown): string {
 }
 
 /** Import BASE/JSON rows: [subject, text, [A,B,C,D], correctIndex, explanation?]. Row numbers are 1-based. */
-export async function importFromJson(db: PrismaClient, payload: unknown, options: { dryRun?: boolean } = {}): Promise<ImportReport> {
+export async function importFromJson(db: PrismaClient, payload: unknown, options: { dryRun?: boolean; audience?: QuestionAudienceDefaults } = {}): Promise<ImportReport> {
   const report: ImportReport = {
     added: 0,
     duplicates: 0,
@@ -155,6 +190,7 @@ export async function importFromJson(db: PrismaClient, payload: unknown, options
       const [subject, text, options, correctIndex, explanation] = tuple.data;
       normalized = { subject, text, options, correctIndex, explanation: explanation ?? "", source: "json" };
     }
+    normalized = applyAudienceDefaults(normalized, options.audience);
     const checked = QuestionInputSchema.safeParse(normalized);
     if (!checked.success) {
       report.invalid.push(invalidRow(rowNumber, describeIssue(checked.error)));
@@ -189,7 +225,7 @@ export async function importFromJson(db: PrismaClient, payload: unknown, options
 /** Import CSV text. Required columns: subject,text,optionA..optionD,correctIndex.
  * Optional: topic,explanation,source,difficulty. Row numbers count the header as row 1.
  */
-export async function importFromCsv(db: PrismaClient, content: string, options: { dryRun?: boolean } = {}): Promise<ImportReport> {
+export async function importFromCsv(db: PrismaClient, content: string, options: { dryRun?: boolean; audience?: QuestionAudienceDefaults } = {}): Promise<ImportReport> {
   const report: ImportReport = { added: 0, duplicates: 0, invalid: [], total: 0 };
   let table;
   try {
@@ -232,6 +268,12 @@ export async function importFromCsv(db: PrismaClient, content: string, options: 
       questionType: get("questiontype") || "mcq",
       promptData: get("promptdata") ? JSON.parse(get("promptdata")) : {},
       answerData: get("answerdata") ? JSON.parse(get("answerdata")) : {},
+      audienceScope: get("audiencescope") || (get("targetbranchcode") || get("targetbranchname") ? "BRANCH" : options.audience?.audienceScope || (options.audience?.targetBranchCode || options.audience?.targetBranchName ? "BRANCH" : "ALL")),
+      targetCollegeCode: get("targetcollegecode") || options.audience?.targetCollegeCode || "",
+      targetCollegeName: get("targetcollegename") || options.audience?.targetCollegeName || "",
+      targetBranchCode: get("targetbranchcode") || options.audience?.targetBranchCode || "",
+      targetBranchName: get("targetbranchname") || options.audience?.targetBranchName || "",
+      targetStudentIds: (() => { const raw = get("targetstudentids"); if (!raw) return options.audience?.targetStudentIds ?? []; const parsed: unknown = JSON.parse(raw); if (!Array.isArray(parsed) || !parsed.every((id) => Number.isSafeInteger(id) && Number(id) > 0)) throw new Error("targetStudentIds must be a JSON array of positive student IDs."); return parsed as number[]; })(),
     });
     if (!checked.success) {
       report.invalid.push(invalidRow(rowNumber, describeIssue(checked.error)));
@@ -274,7 +316,8 @@ export type ImportPreview = {
 export async function previewImport(
   db: PrismaClient,
   format: "csv" | "json",
-  payload: unknown
+  payload: unknown,
+  options: { audience?: QuestionAudienceDefaults } = {}
 ): Promise<ImportPreview> {
   const invalid: InvalidRow[] = [];
   const valid: QuestionInput[] = [];
@@ -305,6 +348,7 @@ export async function previewImport(
         const [subject, text, options, correctIndex, explanation] = parsed.data;
         normalized = { subject, text, options, correctIndex, explanation: explanation ?? "", source: "json" };
       }
+      normalized = applyAudienceDefaults(normalized, options.audience);
       const checked = QuestionInputSchema.safeParse(normalized);
 
       if (!checked.success) {
@@ -369,6 +413,12 @@ export async function previewImport(
         questionType: get("questiontype") || "mcq",
         promptData: get("promptdata") ? JSON.parse(get("promptdata")) : {},
         answerData: get("answerdata") ? JSON.parse(get("answerdata")) : {},
+        audienceScope: get("audiencescope") || (get("targetbranchcode") || get("targetbranchname") ? "BRANCH" : options.audience?.audienceScope || (options.audience?.targetBranchCode || options.audience?.targetBranchName ? "BRANCH" : "ALL")),
+        targetCollegeCode: get("targetcollegecode") || options.audience?.targetCollegeCode || "",
+        targetCollegeName: get("targetcollegename") || options.audience?.targetCollegeName || "",
+        targetBranchCode: get("targetbranchcode") || options.audience?.targetBranchCode || "",
+        targetBranchName: get("targetbranchname") || options.audience?.targetBranchName || "",
+        targetStudentIds: (() => { const raw = get("targetstudentids"); if (!raw) return options.audience?.targetStudentIds ?? []; const parsed: unknown = JSON.parse(raw); if (!Array.isArray(parsed) || !parsed.every((id) => Number.isSafeInteger(id) && Number(id) > 0)) throw new Error("targetStudentIds must be a JSON array of positive student IDs."); return parsed as number[]; })(),
       });
 
       if (!checked.success) {

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { request } from "./apiClient";
+import ExamLayout from "./components/ExamLayout";
 
 type Assignment = {
   id: string;
@@ -287,33 +288,32 @@ export default function StudentAssignedExams() {
     const current = questions[currentIndex];
     const answered = questions.filter((question) => answers[question.id] !== undefined && answers[question.id] !== null).length;
     const unanswered = questions.length - answered;
-    const nextUnansweredIndex = questions.findIndex((question) => answers[question.id] === undefined || answers[question.id] === null);
     const goToQuestion = (index: number) => setActiveQuestionIndex(Math.max(0, Math.min(index, questions.length - 1)));
-    return <section className="assigned-exams assigned-exam-session">
-      <aside className={"exam-status-dock" + ((remainingSeconds ?? 0) < 300 ? " timer-warning" : "")} aria-label="Exam status" aria-live="off">
-        <div className="exam-status-time"><span>TIME LEFT</span><strong>{formatRemainingTime(remainingSeconds ?? 0)}</strong></div>
-        <div className="exam-status-counts"><strong>{unanswered}</strong><span>unanswered</span><small>{answered} of {questions.length} answered · {saving ? "Saving…" : "Autosaved"}</small></div>
-        <button type="button" className="button button-secondary exam-status-next" disabled={nextUnansweredIndex < 0} onClick={() => nextUnansweredIndex >= 0 && goToQuestion(nextUnansweredIndex)}>{nextUnansweredIndex < 0 ? "All answered" : "Next unanswered"}</button>
-      </aside>
-      {guardNotice ? <div className="panel exam-guard-notice" role="status"><strong>Exam guard · {guardViolationCount} recorded</strong><p>{guardNotice}</p></div> : null}
-      <header className="page-heading"><div><p className="eyebrow">ASSIGNED EXAM · VERSION {active.assignment.version}</p><h1>{active.exam.title}</h1><p className="muted">{answered}/{questions.length} answered · {saving ? "Saving answers…" : dirtyRef.current ? "Answer save pending" : "Answers saved"}</p></div></header>
-      {active.exam.instructions ? <div className="panel"><b>Instructions</b><p>{active.exam.instructions}</p></div> : null}
-      <section className="panel exam-question-navigator" aria-label="Assigned exam question navigator">
-        <div className="exam-progress-heading"><strong>Question {currentIndex + 1} of {questions.length}</strong><span>{answered} answered · {unanswered} remaining · {markedForReview.size} marked</span></div>
-        <div className="exam-progress-track" role="progressbar" aria-label="Answered questions" aria-valuemin={0} aria-valuemax={questions.length} aria-valuenow={answered}><span style={{ width: (questions.length ? answered / questions.length * 100 : 0) + "%" }} /></div>
-        <div className="exam-palette">{questions.map((question, index) => { const isAnswered = answers[question.id] !== undefined && answers[question.id] !== null; const marked = markedForReview.has(question.id); return <button type="button" key={question.id} aria-label={"Go to question " + (index + 1) + (isAnswered ? ", answered" : ", unanswered") + (marked ? ", marked for review" : "")} aria-current={currentIndex === index ? "step" : undefined} aria-pressed={currentIndex === index} className={"exam-palette-item" + (isAnswered ? " answered" : "") + (marked ? " marked-for-review" : "") + (currentIndex === index ? " active" : "")} onClick={() => goToQuestion(index)}>{index + 1}</button>; })}</div>
-        <div className="exam-question-controls"><span className="muted">Use the palette to jump between questions.</span><div className="row"><button type="button" className="button button-secondary" disabled={currentIndex === 0} onClick={() => goToQuestion(currentIndex - 1)}>Previous</button><button type="button" className="button button-secondary" disabled={currentIndex >= questions.length - 1} onClick={() => goToQuestion(currentIndex + 1)}>Next</button></div></div>
-      </section>
+    return <ExamLayout
+      title={active.exam.title}
+      eyebrow={"ASSIGNED EXAM · VERSION " + active.assignment.version}
+      meta={answered + "/" + questions.length + " answered · " + (saving ? "Saving answers…" : dirtyRef.current ? "Answer save pending" : "Answers saved")}
+      headerActions={<span className={"exam-layout-timer" + ((remainingSeconds ?? 0) < 300 ? " timer-warning" : "")}><small>TIME LEFT</small><strong>{formatRemainingTime(remainingSeconds ?? 0)}</strong></span>}
+      status={guardNotice ? <div className="exam-guard-notice" role="status"><strong>Exam guard · {guardViolationCount} recorded</strong><p>{guardNotice}</p></div> : null}
+      currentIndex={currentIndex}
+      questionCount={questions.length}
+      answeredCount={answered}
+      submitLabel="Review & submit"
+      submitDisabled={busy || questions.length === 0}
+      busy={busy}
+      onPrevious={() => goToQuestion(currentIndex - 1)}
+      onNext={() => goToQuestion(currentIndex + 1)}
+      onSubmit={() => setShowSubmit(true)}
+    >
+      {active.exam.instructions ? <div className="panel exam-layout-instructions"><b>Instructions</b><p>{active.exam.instructions}</p></div> : null}
       {current ? <article className="panel question-card assigned-current-question" key={current.id}>
         <div className="current-question-heading"><div><p className="eyebrow">QUESTION {currentIndex + 1} · {current.subject}{current.topic ? " · " + current.topic : ""} · +{current.marks} / −{current.negativeMarks}</p><h2>{current.text}</h2></div><button type="button" className={markedForReview.has(current.id) ? "button button-secondary marked-for-review" : "button button-secondary"} aria-pressed={markedForReview.has(current.id)} onClick={() => setMarkedForReview(previous => { const next = new Set(previous); if (next.has(current.id)) next.delete(current.id); else next.add(current.id); return next; })}>{markedForReview.has(current.id) ? "Remove mark" : "Mark for review"}</button></div>
         <div className="options">{current.options.map((option, displayedIndex) => <button type="button" className={answers[current.id] === displayedIndex ? "option selected" : "option"} aria-pressed={answers[current.id] === displayedIndex} key={displayedIndex} disabled={busy || submittingRef.current} onClick={() => selectAnswer(current.id, displayedIndex)}><span>{String.fromCharCode(65 + displayedIndex)}</span>{option}</button>)}</div>
-        <div className="row question-card-navigation"><button type="button" className="ghost" disabled={currentIndex === 0} onClick={() => goToQuestion(currentIndex - 1)}>Previous question</button><button type="button" className="primary" disabled={busy} onClick={() => currentIndex === questions.length - 1 ? setShowSubmit(true) : goToQuestion(currentIndex + 1)}>{currentIndex === questions.length - 1 ? "Review & submit" : "Next question"}</button></div>
       </article> : <p className="panel muted">No questions are available in this exam.</p>}
-      <div className="practice-submit-bar"><p>{unanswered} unanswered · {markedForReview.size} marked for review · {saving ? "Saving…" : "Answers autosave"}</p><button type="button" className="primary" disabled={busy || questions.length === 0} onClick={() => setShowSubmit(true)}>Review & submit</button></div>
       {showSubmit ? <div className="announcement-overlay"><section className="announcement-popup panel" role="dialog" aria-modal="true" aria-labelledby="assigned-exam-submit-title"><p className="eyebrow">FINAL CHECK</p><h2 id="assigned-exam-submit-title">Submit this exam?</h2><p>You answered {answered} of {questions.length} questions.</p><p>{unanswered} unanswered · {markedForReview.size} marked for review. Unanswered questions receive zero marks.</p><div className="row"><button type="button" className="ghost" disabled={busy} onClick={() => setShowSubmit(false)}>Keep reviewing</button><button type="button" className="primary" disabled={busy} onClick={() => void submitExam()}>{busy ? "Submitting…" : "Submit exam"}</button></div></section></div> : null}
       {notice ? <p className="success" role="status">{notice}</p> : null}
       {error ? <p className="error" role="alert">{error}</p> : null}
-    </section>;
+    </ExamLayout>;
   }
 
   return <section className="assigned-exams">

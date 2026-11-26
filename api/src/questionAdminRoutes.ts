@@ -275,13 +275,24 @@ export function questionAdminRouter(db: PrismaClient): Router {
 
   router.post("/admin/questions/import", express.json({ limit: "50mb" }), async (req, res, next) => {
     try {
-      const body = z.object({ format: z.enum(["csv", "json"]), content: z.string().min(1).max(8_000_000) }).parse(req.body);
+      const body = z.object({
+        format: z.enum(["csv", "json"]),
+        content: z.string().min(1).max(8_000_000),
+        audience: z.object({
+          audienceScope: z.enum(["ALL", "COLLEGE", "BRANCH", "STUDENTS"]).optional(),
+          targetCollegeCode: z.string().trim().max(40).optional(),
+          targetCollegeName: z.string().trim().max(160).optional(),
+          targetBranchCode: z.string().trim().max(40).optional(),
+          targetBranchName: z.string().trim().max(160).optional(),
+          targetStudentIds: z.array(z.number().int().positive()).max(500).optional(),
+        }).optional(),
+      }).parse(req.body);
       let payload: unknown;
-      if (body.format === "csv") payload = (await importFromCsv(db, body.content));
+      if (body.format === "csv") payload = (await importFromCsv(db, body.content, { audience: body.audience }));
       else {
         let parsed: unknown;
         try { parsed = JSON.parse(body.content); } catch { return next(badRequest("The JSON file is not valid JSON.")); }
-        payload = await importFromJson(db, parsed);
+        payload = await importFromJson(db, parsed, { audience: body.audience });
       }
       res.json({ ok: true, report: payload });
     } catch (error) { next(error); }

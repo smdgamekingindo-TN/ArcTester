@@ -156,6 +156,18 @@ describe("importFromCsv", () => {
     expect(report.added).toBe(0);
     expect(report.invalid[0].reason).toContain("missing columns");
   });
+  it("infers branch scope from per-row CSV branch metadata over a shared default", async () => {
+    const db = await testDb();
+    const content = [
+      "subject,topic,text,optionA,optionB,optionC,optionD,correctIndex,targetBranchCode,targetBranchName",
+      "CSE Row Scope,Networks,Per-row branch audience question?,A,B,C,D,0,CSE,Computer Engineering",
+    ].join("\n");
+    const report = await importFromCsv(db, content, { audience: { audienceScope: "ALL" } });
+    expect(report.added).toBe(1);
+    const saved = await db.question.findFirst({ where: { text: "Per-row branch audience question?" } });
+    expect(saved).toMatchObject({ audienceScope: "BRANCH", targetBranchCode: "CSE", targetBranchName: "Computer Engineering" });
+  });
+
 });
 
 
@@ -190,4 +202,39 @@ describe("previewImport", () => {
     expect(preview.invalid[0].reason).toContain("Missing columns");
     expect(await db.question.count()).toBe(0);
   });
+  it("previews JSON rows with branch audience defaults and keeps preview non-writing", async () => {
+    const db = await testDb();
+    const preview = await previewImport(db, "json", [{
+      subject: "MEC Branch Preview",
+      topic: "Statics",
+      text: "Branch-only preview question?",
+      options: ["A", "B", "C", "D"],
+      correctIndex: 0,
+    }], { audience: { audienceScope: "BRANCH", targetBranchCode: "MEC", targetBranchName: "Mechanical Engineering" } });
+    expect(preview).toMatchObject({ valid: 1, duplicates: 0, total: 1, invalid: [] });
+    expect(await db.question.count()).toBe(0);
+  });
+
+  it("imports JSON and CSV using branch audience defaults", async () => {
+    const db = await testDb();
+    const json = await importFromJson(db, [{
+      subject: "CSE Branch Import",
+      topic: "Networks",
+      text: "CSE-only MCP-style imported question?",
+      options: ["A", "B", "C", "D"],
+      correctIndex: 2,
+    }], { audience: { audienceScope: "BRANCH", targetBranchCode: "CSE", targetBranchName: "Computer Engineering" } });
+    expect(json.added).toBe(1);
+    const csvBranch = [
+      "subject,topic,text,optionA,optionB,optionC,optionD,correctIndex",
+      "ECE Branch Import,Signals,ECE-only CSV imported question?,A,B,C,D,1",
+    ].join("\n");
+    const csv = await importFromCsv(db, csvBranch, { audience: { audienceScope: "BRANCH", targetBranchCode: "EC", targetBranchName: "Electronics Engineering" } });
+    expect(csv.added).toBe(1);
+    const saved = await db.question.findMany({ include: { subject: true } });
+    expect(saved.find(q => q.subject.name === "CSE Branch Import")).toMatchObject({ audienceScope: "BRANCH", targetBranchCode: "CSE", targetBranchName: "Computer Engineering" });
+    expect(saved.find(q => q.subject.name === "ECE Branch Import")).toMatchObject({ audienceScope: "BRANCH", targetBranchCode: "EC", targetBranchName: "Electronics Engineering" });
+  });
+
+
 });

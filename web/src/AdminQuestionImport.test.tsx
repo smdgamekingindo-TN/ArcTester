@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import AdminQuestionImport, { type AdminImportReport } from "./AdminQuestionImport";
 
 const report: AdminImportReport = { added: 8, duplicates: 2, invalid: [{ row: 4, reason: "Missing option D" }], total: 11 };
-const props = { uploadText: "subject,topic", uploadFormat: "csv" as const, previewReady: false, report: null, busy: false, onReadFile: vi.fn(), onTextChange: vi.fn(), onFormatChange: vi.fn(), onLoadExample: vi.fn(), onDownloadTemplate: vi.fn(), onPreview: vi.fn(), onConfirm: vi.fn(), onCancelPreview: vi.fn() };
+const props = { uploadText: "subject,topic", uploadFormat: "csv" as const, previewReady: false, report: null, busy: false, audienceScope: "ALL" as const, targetCollegeCode: "", targetCollegeName: "", targetBranchCode: "", targetBranchName: "", onAudienceScopeChange: vi.fn(), onAudienceFieldChange: vi.fn(), onReadFile: vi.fn(), onTextChange: vi.fn(), onFormatChange: vi.fn(), onLoadExample: vi.fn(), onDownloadTemplate: vi.fn(), onPreview: vi.fn(), onConfirm: vi.fn(), onCancelPreview: vi.fn() };
 
 describe("AdminQuestionImport", () => {
   it("renders source controls, CSV schema and text editor", () => {
@@ -11,6 +11,17 @@ describe("AdminQuestionImport", () => {
     expect(screen.getByRole("heading", { name: "Upload question sets" })).toBeTruthy();
     expect(screen.getByText(/optionA, optionB, optionC, optionD/)).toBeTruthy();
     expect(screen.getByPlaceholderText(/File contents appear here/)).toBeTruthy();
+  });
+
+  it("shows audience scope and delegates branch metadata changes", () => {
+    const onAudienceScopeChange = vi.fn(), onAudienceFieldChange = vi.fn();
+    const { rerender } = render(<AdminQuestionImport {...props} onAudienceScopeChange={onAudienceScopeChange} onAudienceFieldChange={onAudienceFieldChange} />);
+    expect(screen.getByText(/Use this for MPC and other common subjects/)).toBeTruthy();
+    fireEvent.change(screen.getByRole("combobox", { name: "Upload question audience" }), { target: { value: "BRANCH" } });
+    expect(onAudienceScopeChange).toHaveBeenCalledWith("BRANCH");
+    rerender(<AdminQuestionImport {...props} audienceScope="BRANCH" onAudienceScopeChange={onAudienceScopeChange} onAudienceFieldChange={onAudienceFieldChange} />);
+    fireEvent.change(screen.getByPlaceholderText("e.g. Mechanical Engineering"), { target: { value: "Mechanical Engineering" } });
+    expect(onAudienceFieldChange).toHaveBeenCalledWith("targetBranchName", "Mechanical Engineering");
   });
 
   it("opens the file picker with Enter and Space from the keyboard", () => {

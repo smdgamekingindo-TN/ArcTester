@@ -17,6 +17,15 @@ export function parseOptions(raw: string): string[] {
   return value;
 }
 
+const QuestionAudienceDefaultsSchema = z.object({
+  audienceScope: z.enum(["ALL", "COLLEGE", "BRANCH", "STUDENTS"]).optional(),
+  targetCollegeCode: z.string().trim().max(40).optional(),
+  targetCollegeName: z.string().trim().max(160).optional(),
+  targetBranchCode: z.string().trim().max(40).optional(),
+  targetBranchName: z.string().trim().max(160).optional(),
+  targetStudentIds: z.array(z.number().int().positive()).max(500).optional(),
+}).optional();
+
 export function questionRouter(db: PrismaClient): Router {
   const router = Router();
   async function validateDraftCsv(content: string) {
@@ -32,13 +41,14 @@ export function questionRouter(db: PrismaClient): Router {
     try {
       const format = z.enum(["csv", "json"]).parse(req.body?.format);
       const content = z.string().min(1).max(8_000_000).parse(req.body?.content);
+      const audience = QuestionAudienceDefaultsSchema.parse(req.body?.audience ?? {});
       let report;
       if (format === "csv") {
         const validation = await validateDraftCsv(content);
         if (validation.issues.length) {
           report = { added: 0, duplicates: 0, invalid: validation.issues, total: validation.total };
         } else {
-          report = await importFromCsv(db, content, { dryRun: true });
+          report = await importFromCsv(db, content, { dryRun: true, audience });
         }
       } else {
         let payload: unknown;
@@ -47,7 +57,7 @@ export function questionRouter(db: PrismaClient): Router {
         } catch {
           return next(badRequest("The JSON file is not valid JSON."));
         }
-        report = await importFromJson(db, payload, { dryRun: true });
+        report = await importFromJson(db, payload, { dryRun: true, audience });
       }
       res.json({ ok: true, report });
     } catch (error) { next(error); }
@@ -56,19 +66,21 @@ export function questionRouter(db: PrismaClient): Router {
   router.post("/admin/questions/import/csv", requireAuth, requireAdmin(db), async (req, res, next) => {
     try {
       const content = z.string().min(1).max(8_000_000).parse(req.body?.content);
+      const audience = QuestionAudienceDefaultsSchema.parse(req.body?.audience ?? {});
       const validation = await validateDraftCsv(content);
       if (validation.issues.length) {
         res.status(200).json({ ok: true, report: { added: 0, duplicates: 0, invalid: validation.issues, total: validation.total } });
         return;
       }
-      const report = await importFromCsv(db, content);
+      const report = await importFromCsv(db, content, { audience });
       res.status(200).json({ ok: true, report });
     } catch (error) { next(error); }
   });
 
   router.post("/admin/questions/import/json", requireAuth, requireAdmin(db), async (req, res, next) => {
     try {
-      const report = await importFromJson(db, req.body?.questions);
+      const audience = QuestionAudienceDefaultsSchema.parse(req.body?.audience ?? {});
+      const report = await importFromJson(db, req.body?.questions, { audience });
       res.status(200).json({ ok: true, report });
     } catch (error) { next(error); }
   });

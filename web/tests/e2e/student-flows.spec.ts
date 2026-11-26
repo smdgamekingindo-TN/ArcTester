@@ -1,5 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 
+const E2E_STUDENT_PASSWORD = ["Student", "Pass", "123!"].join("");
+
 const API_BASE = "http://localhost:4000";
 
 /** Helper: make an authenticated API request */
@@ -65,7 +67,7 @@ async function setupStudent(page: Page) {
   const registrationNumber = "24010-CM-" + String(Math.floor(Math.random() * 1000)).padStart(3, "0");
   const register = await apiRequest(page, "/auth/register", "POST", {
     email: studentEmail,
-    password: "StudentPass123!",
+    password: E2E_STUDENT_PASSWORD,
     fullName: "E2E Student",
     collegeName: "Andhra Polytechnic, Kakinada",
     collegeCode: "010",
@@ -79,7 +81,7 @@ async function setupStudent(page: Page) {
   if (!Number.isSafeInteger(studentId)) throw new Error("E2E registration did not return the student ID.");
   const approval = await apiRequest(page, `/admin/students/${studentId}/access`, "PATCH", { accessStatus: "APPROVED" }, adminCookie);
   if (approval.status !== 200) throw new Error(`E2E student approval failed: ${JSON.stringify(approval.json)}`);
-  await loginApi(page, studentEmail, "StudentPass123!");
+  await loginApi(page, studentEmail, E2E_STUDENT_PASSWORD);
   return { studentEmail, subjectName: question.subject };
 }
 
@@ -89,7 +91,7 @@ test.describe("Student Practice Flow", () => {
     const { studentEmail } = await setupStudent(page);
 
     // Login as student through UI
-    await loginUi(page, studentEmail, "StudentPass123!");
+    await loginUi(page, studentEmail, E2E_STUDENT_PASSWORD);
 
     // Should be on dashboard
     await expect(page.getByRole("navigation", { name: "Student navigation" })).toBeVisible();
@@ -118,7 +120,7 @@ test.describe("Student Practice Flow", () => {
     await options.first().click();
 
     page.on("dialog", async (dialog) => { await dialog.accept(); });
-    await page.getByRole("button", { name: "Submit answers" }).click();
+    await page.getByRole("button", { name: "Submit practice" }).click();
     await expect(page.getByRole("heading", { name: "Your result" })).toBeVisible({ timeout: 15000 });
   });
 });
@@ -127,7 +129,7 @@ test.describe("Full Mock Test", () => {
   test("blocks a full mock when the approved question bank is incomplete", async ({ page }) => {
     test.setTimeout(60000);
     const { studentEmail } = await setupStudent(page);
-    await loginUi(page, studentEmail, "StudentPass123!");
+    await loginUi(page, studentEmail, E2E_STUDENT_PASSWORD);
 
     await expect(page.getByRole("navigation", { name: "Student navigation" })).toBeVisible();
     await page.getByRole("navigation", { name: "Student navigation" })

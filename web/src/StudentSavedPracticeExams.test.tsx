@@ -36,7 +36,7 @@ describe("StudentSavedPracticeExams", () => {
     expect(screen.getByRole("heading", { name: "Question two?" })).toBeInTheDocument();
     expect(screen.getByText("Question 2 of 2")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Previous question" }));
+    fireEvent.click(screen.getByRole("button", { name: "Previous" }));
     expect(screen.getByRole("heading", { name: "Question one?" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Question two?" })).toBeNull();
   });
@@ -47,7 +47,7 @@ describe("StudentSavedPracticeExams", () => {
     fireEvent.click(screen.getByRole("radio", { name: "B. A2" }));
     fireEvent.click(screen.getByRole("button", { name: "Next question" }));
     fireEvent.click(screen.getByRole("radio", { name: "C. B3" }));
-    fireEvent.click(screen.getByRole("button", { name: "Previous question" }));
+    fireEvent.click(screen.getByRole("button", { name: "Previous" }));
     expect(screen.getByRole("radio", { name: "B. A2" })).toBeChecked();
   });
 });

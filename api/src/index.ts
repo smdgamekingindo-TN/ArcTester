@@ -158,14 +158,9 @@ export function buildApp(database: PrismaClient = db): express.Express {
   app.use(morgan(":method :route :status :response-time ms origin=:req[origin]", {
     skip: (req) => req.path === "/health" || req.path === "/ready",
   }));
-  // helmet sets secure defaults (HSTS, X-Content-Type-Options, CSP, referrer
-  // policy, etc.). Disable frameguard so the admin live monitor can be framed
-  // only where explicitly desired; keep the rest of the defaults.
-  app.use(
-    helmet({
-      contentSecurityPolicy: false,
-    })
-  );
+  // Keep Helmet's default security headers, including CSP and SAMEORIGIN
+  // framing protection. This API does not need to serve embeddable HTML.
+  app.use(helmet());
   app.use(sharedApiRateLimit(database));
   // Keep the bulk import endpoints on their route-specific parsers. Prepared
   // lesson audio is base64 JSON (up to 12 MiB decoded), so parse it here with

@@ -52,7 +52,7 @@ describe("administrator MCP model control", () => {
       userId: admin.id,
       name: "model-control-test",
       keyHash: digest(bearer),
-      scopes: ["models:read", "models:dataset:create", "models:verification:read", "models:train", "models:register", "models:evaluate", "models:activate"],
+      scopes: ["models:read", "models:dataset:create", "models:verification:read", "models:train", "models:register", "models:evaluate", "models:activate", "students:read", "students:manage"],
     } });
     adminKeyId = key.id;
   });
@@ -179,6 +179,21 @@ describe("administrator MCP model control", () => {
     expect(result.metrics.accuracy).toBeLessThanOrEqual(1);
     expect(result.metrics.baselineAccuracy).toBeGreaterThanOrEqual(0);
     expect(result.metrics.baselineAccuracy).toBeLessThanOrEqual(1);
+  });
+
+  it("lists students and manages access through explicitly confirmed MCP tools", async () => {
+    const student = await server.db.user.create({ data: {
+      email: "student-mcp-management@arctester.test", passwordHash: "test-only", role: "STUDENT",
+      accessStatus: "PENDING", fullName: "MCP Management Student", registrationNumber: "24010-CM-053",
+      collegeName: "Test Polytechnic", branchName: "Computer Engineering",
+    } });
+    const listed = await callTool("list_students", { search: "MCP Management Student", accessStatus: "PENDING", page: 1, limit: 10 });
+    expect(listed.students).toContainEqual(expect.objectContaining({ id: student.id, fullName: "MCP Management Student", accessStatus: "PENDING" }));
+    await expect(callTool("set_student_access_status", { studentId: student.id, accessStatus: "APPROVED" })).rejects.toThrow();
+    const updated = await callTool("set_student_access_status", { studentId: student.id, accessStatus: "APPROVED", confirm: true });
+    expect(updated.student).toMatchObject({ id: student.id, accessStatus: "APPROVED" });
+    const persisted = await server.db.user.findUnique({ where: { id: student.id } });
+    expect(persisted?.sessionVersion).toBe(1);
   });
 
   it("enforces missing tool scopes", async () => {

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import AuthScreen from "./AuthScreen";
 function renderAuth(overrides: Partial<React.ComponentProps<typeof AuthScreen>> = {}) {
@@ -17,4 +17,23 @@ describe("AuthScreen",()=>{
  it("delegates switching to registration",()=>{const props=renderAuth();fireEvent.click(screen.getByRole("button",{name:"New student? Create an account"}));expect(props.onRegisterChange).toHaveBeenCalledWith(true)});
  it("opens the forgot password form",()=>{const props=renderAuth();fireEvent.click(screen.getByRole("button",{name:"Forgot password?"}));expect(screen.getByRole("button",{name:"Send reset link"})).toBeTruthy();expect(props.onRequestPasswordReset).not.toHaveBeenCalled()});
  it("submits a reset token with a replacement password and recovery code",()=>{const props=renderAuth({passwordResetToken:"reset-token-12345678901234567890123456789012"});fireEvent.change(screen.getByLabelText(/New password/),{target:{value:"replacement-password-123"}});fireEvent.change(screen.getByLabelText(/Authenticator \/ recovery code/),{target:{value:"recovery-code"}});fireEvent.submit(screen.getByRole("button",{name:"Reset password"}).closest("form")!);expect(props.onResetPassword).toHaveBeenCalledWith("reset-token-12345678901234567890123456789012","replacement-password-123","recovery-code")});
+ it("submits explicit legal consent versions after all required checks are accepted",async()=>{
+  const props=renderAuth({
+    register:true,
+    academicProfile:{fullName:"Test Student",collegeName:"Unlisted Polytechnic",collegeCode:"999",registrationNumber:"24999-CM-053",branchName:"Computer Engineering (CME)",branchCode:"CM"},
+    onCaptchaLoad:async()=>({svg:"",token:"captcha-token"}),
+  });
+  await waitFor(()=>expect(screen.getByLabelText("CAPTCHA characters")).toBeTruthy());
+  fireEvent.change(screen.getByLabelText("CAPTCHA characters"),{target:{value:"ABCDE"}});
+  fireEvent.click(screen.getByRole("checkbox",{name:"I confirm I am 18 or older"}));
+  fireEvent.click(screen.getByRole("checkbox",{name:"I agree to the Terms and Conditions"}));
+  fireEvent.click(screen.getByRole("checkbox",{name:"I consent to personal data processing described in the Privacy Notice"}));
+  fireEvent.submit(screen.getByRole("button",{name:"Request account"}).closest("form")!);
+  await waitFor(()=>expect(props.onAuthenticate).toHaveBeenCalledWith("captcha-token:ABCDE",{
+    adultAttestation:true,termsAccepted:true,privacyConsent:true,
+    termsVersion:"2026-11-27-v1",privacyNoticeVersion:"2026-11-27-v1",
+    consentNoticeVersion:"2026-11-27-v1",ageGateVersion:"2026-11-27-v1",
+  }));
+ });
+
 });

@@ -10,6 +10,7 @@ import { badRequest, conflict, forbidden, notFound } from "./errors.js";
 import type { PrismaClient } from "@prisma/client";
 import { decryptTotpSecret, encryptTotpSecret, generateRecoveryCodes, generateTotpSecret, hashRecoveryCode, verifyTotp } from "./totp.js";
 import { base64urlEncode, createWebAuthnChallenge, parseNoneAttestation, verifyClientData, verifyPasskeyAssertion } from "./webauthn.js";
+import { sendPasswordResetEmail } from "./passwordResetEmail.js";
 
 const DEVELOPMENT_JWT_SECRET = "dev-secret-change-me-in-production";
 const JWT_SECRET = process.env.JWT_SECRET ?? (process.env.NODE_ENV === "production" ? "" : DEVELOPMENT_JWT_SECRET);
@@ -639,6 +640,98 @@ export function authRouter(db: PrismaClient): Router {
       if (error && typeof error === "object" && "code" in error && error.code === "P2002") return next(conflict("An account with this email already exists."));
       next(error);
     }
+  });
+
+  router.post("/password-reset/request", async (req, res, next) => {
+    try {
+      const input = z.object({ email: z.string().email().trim().toLowerCase() }).parse(req.body);
+      const genericMessage = "If an account with that email exists, a password reset link will be sent.";
+      const user = await db.user.findUnique({ where: { email: input.email }, select: { id: true, email: true } });
+      if (!user) return res.status(202).json({ ok: true, message: genericMessage });
+
+      const recentRequests = await db.authChallenge.count({
+        where: { userId: user.id, purpose: "password-reset", createdAt: { gt: new Date(Date.now() - 15 * 60 * 1000) } },
+      });
+      if (recentRequests >= 3) return res.status(202).json({ ok: true, message: genericMessage });
+
+      const rawToken = randomBytes(32).toString("base64url");
+      await db.authChallenge.create({
+        data: { userId: user.id, challenge: sha256(rawToken), purpose: "password-reset", expiresAt: new Date(Date.now() + 30 * 60 * 1000) },
+      });
+      const baseUrl = (process.env.APP_BASE_URL?.trim() || "https://arctester.vercel.app").replace(/\/+$/, "");
+      const resetUrl = baseUrl + "/?passwordResetToken=" + encodeURIComponent(rawToken);
+      try {
+        await sendPasswordResetEmail(user.email, resetUrl);
+      } catch (deliveryError) {
+        await db.authChallenge.deleteMany({ where: { userId: user.id, challenge: sha256(rawToken), purpose: "password-reset" } });
+        // Never reveal whether the account exists or expose provider diagnostics to callers.
+        console.error("ArcTester password-reset email delivery failed:", deliveryError instanceof Error ? deliveryError.message : "unknown delivery error");
+      }
+      res.status(202).json({ ok: true, message: genericMessage });
+    } catch (error) { next(error); }
+  });
+
+  router.post("/password-reset/complete", async (req, res, next) => {
+    try {
+      const input = z.object({
+        token: z.string().min(32).max(128),
+        newPassword: z.string().min(12, "Password must be at least 12 characters.").max(128),
+        code: z.string().trim().max(32).optional(),
+      }).parse(req.body);
+      const tokenHash = sha256(input.token);
+      const challenge = await db.authChallenge.findUnique({ where: { challenge: tokenHash } });
+      if (!challenge || challenge.purpose !== "password-reset" || challenge.expiresAt <= new Date() || challenge.attempts >= 5) {
+        return next(forbidden("This password reset link is invalid or expired. Request a new link."));
+      }
+      const passwordHash = await hashPasswordAsync(input.newPassword);
+      const outcome = await db.$transaction(async (tx) => {
+        const active = await tx.authChallenge.findUnique({ where: { id: challenge.id } });
+        if (!active || active.purpose !== "password-reset" || active.expiresAt <= new Date() || active.attempts >= 5) return "expired";
+        const attempt = await tx.authChallenge.updateMany({
+          where: { id: active.id, purpose: "password-reset", attempts: { lt: 5 }, expiresAt: { gt: new Date() } },
+          data: { attempts: { increment: 1 } },
+        });
+        if (attempt.count !== 1) return "expired";
+
+        const credential = await tx.totpCredential.findUnique({ where: { userId: active.userId } });
+        if (credential?.enabledAt) {
+          const submitted = input.code ?? "";
+          const counter = /^\d{6}$/.test(submitted)
+            ? verifyTotp(decryptTotpSecret(credential.secretEncrypted), submitted, Date.now(), credential.lastUsedCounter)
+            : null;
+          if (counter !== null) {
+            const used = await tx.totpCredential.updateMany({
+              where: { id: credential.id, lastUsedCounter: { lt: counter } },
+              data: { lastUsedCounter: counter },
+            });
+            if (used.count !== 1) return "invalid-code";
+          } else {
+            const recovery = JSON.parse(credential.recoveryCodesJson) as string[];
+            const recoveryHash = hashRecoveryCode(submitted);
+            const index = recovery.indexOf(recoveryHash);
+            if (!submitted || index < 0) return "invalid-code";
+            recovery.splice(index, 1);
+            const consumed = await tx.totpCredential.updateMany({
+              where: { id: credential.id, recoveryCodesJson: credential.recoveryCodesJson },
+              data: { recoveryCodesJson: JSON.stringify(recovery) },
+            });
+            if (consumed.count !== 1) return "invalid-code";
+          }
+        }
+
+        const consumed = await tx.authChallenge.deleteMany({
+          where: { id: active.id, purpose: "password-reset", expiresAt: { gt: new Date() }, attempts: { lte: 5 } },
+        });
+        if (consumed.count !== 1) return "expired";
+        await tx.user.update({ where: { id: active.userId }, data: { passwordHash, sessionVersion: { increment: 1 } } });
+        await tx.authSession.updateMany({ where: { userId: active.userId, revokedAt: null }, data: { revokedAt: new Date() } });
+        await tx.authChallenge.deleteMany({ where: { userId: active.userId, purpose: { in: ["password-reset", "totp-login", "passkey-login"] } } });
+        return "ok";
+      });
+      if (outcome === "invalid-code") return next(forbidden("Enter your current authenticator code or an unused recovery code."));
+      if (outcome !== "ok") return next(forbidden("This password reset link is invalid or expired. Request a new link."));
+      res.json({ ok: true, message: "Password reset successfully. Sign in with your new password." });
+    } catch (error) { next(error); }
   });
 
   router.post("/login", async (req, res, next) => {

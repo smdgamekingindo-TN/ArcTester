@@ -217,13 +217,16 @@ function validateRegistrationIdentity(registrationNumber: string, collegeCode: s
 const TERMS_VERSION = "2026-11-27-v1";
 const PRIVACY_NOTICE_VERSION = "2026-11-27-v1";
 const CONSENT_NOTICE_VERSION = "2026-11-27-v1";
+const AGE_GATE_VERSION = "2026-11-27-v1";
 
 export const RegisterSchema = z.object({
+  adultAttestation: z.literal(true),
   termsAccepted: z.literal(true),
   privacyConsent: z.literal(true),
   termsVersion: z.literal(TERMS_VERSION),
   privacyNoticeVersion: z.literal(PRIVACY_NOTICE_VERSION),
   consentNoticeVersion: z.literal(CONSENT_NOTICE_VERSION),
+  ageGateVersion: z.literal(AGE_GATE_VERSION),
   email: z.string().email("Enter a valid email address.").trim().toLowerCase(),
   password: z.string().min(8, "Password must be at least 8 characters.").max(128),
   captchaToken: z.string().optional(),
@@ -647,6 +650,8 @@ export function authRouter(db: PrismaClient): Router {
             termsVersion: input.termsVersion,
             privacyNoticeVersion: input.privacyNoticeVersion,
             consentNoticeVersion: input.consentNoticeVersion,
+            ageGateVersion: input.ageGateVersion,
+            ageAttested: input.adultAttestation,
             source: nativeClient ? "mobile" : "web",
           },
         });

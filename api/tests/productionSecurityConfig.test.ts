@@ -28,6 +28,11 @@ describe("production security configuration", () => {
     expect(() => validateProductionSecurityConfig({ ...valid, CORS_ORIGINS: origin })).toThrow(/exact HTTPS origins/);
   });
 
+  it("rejects control characters in configured JWT issuer and audience", () => {
+    expect(() => validateProductionSecurityConfig({ ...valid, JWT_ISSUER: "issuer\\nforged" })).toThrow(/JWT_ISSUER/);
+    expect(() => validateProductionSecurityConfig({ ...valid, JWT_AUDIENCE: "audience\\u0000forged" })).toThrow(/JWT_AUDIENCE/);
+  });
+
   it("rejects unsupported cookie SameSite values", () => {
     expect(() => validateProductionSecurityConfig({ ...valid, COOKIE_SAME_SITE: "strict" })).toThrow(/COOKIE_SAME_SITE/);
   });

@@ -15,11 +15,16 @@ export const MAX_QUESTION_IMPORT_ROWS = 2_000;
 export type QuestionAudienceDefaults = Partial<Pick<QuestionInput, "audienceScope" | "targetCollegeCode" | "targetCollegeName" | "targetBranchCode" | "targetBranchName" | "targetStudentIds">>;
 
 function applyAudienceDefaults(value: unknown, audience?: QuestionAudienceDefaults): unknown {
-  if (!audience || !value || typeof value !== "object" || Array.isArray(value)) return value;
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
   const raw = value as Record<string, unknown>;
   const merged = { ...raw };
-  for (const field of ["audienceScope", "targetCollegeCode", "targetCollegeName", "targetBranchCode", "targetBranchName", "targetStudentIds"] as const) {
-    if ((raw[field] === undefined || raw[field] === null || raw[field] === "") && audience[field] !== undefined) merged[field] = audience[field];
+  if (audience) {
+    for (const field of ["audienceScope", "targetCollegeCode", "targetCollegeName", "targetBranchCode", "targetBranchName", "targetStudentIds"] as const) {
+      if ((raw[field] === undefined || raw[field] === null || raw[field] === "") && audience[field] !== undefined) merged[field] = audience[field];
+    }
+  }
+  if ((merged.audienceScope === undefined || merged.audienceScope === null || merged.audienceScope === "") && (merged.targetBranchCode || merged.targetBranchName)) {
+    merged.audienceScope = audience?.audienceScope ?? "BRANCH";
   }
   return merged;
 }

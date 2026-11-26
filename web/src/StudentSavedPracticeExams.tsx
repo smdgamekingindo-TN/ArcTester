@@ -39,6 +39,7 @@ export default function StudentSavedPracticeExams() {
     finally { setLoading(false); }
   }, []);
   useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => { const timer = window.setInterval(() => void refresh(), 20_000); return () => window.clearInterval(timer); }, [refresh]);
   useEffect(() => {
     if (deadline === null || run) return;
     const tick = () => setSeconds(Math.max(0, Math.ceil((deadline - Date.now()) / 1000)));

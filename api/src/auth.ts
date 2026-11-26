@@ -646,6 +646,25 @@ export function authRouter(db: PrismaClient): Router {
     try {
       const input = z.object({ email: z.string().email().trim().toLowerCase() }).parse(req.body);
       const genericMessage = "If an account with that email exists, a password reset link will be sent.";
+      // Shared IP throttling prevents reset-link abuse across many target accounts.
+      const ipBucket = sha256("password-reset-ip:" + (req.ip ?? "unknown"));
+      const ipRows = await db.$queryRaw<Array<{ count: number; blockedUntil: Date | null }>>`
+        INSERT INTO auth_rate_limit_buckets (bucket_key, failure_count, window_started_at, blocked_until, updated_at)
+        VALUES (${ipBucket}, 1, NOW(), NULL, NOW())
+        ON CONFLICT (bucket_key) DO UPDATE SET
+          failure_count = CASE WHEN auth_rate_limit_buckets.window_started_at <= NOW() - INTERVAL '15 minutes' THEN 1 ELSE auth_rate_limit_buckets.failure_count + 1 END,
+          window_started_at = CASE WHEN auth_rate_limit_buckets.window_started_at <= NOW() - INTERVAL '15 minutes' THEN NOW() ELSE auth_rate_limit_buckets.window_started_at END,
+          blocked_until = CASE
+            WHEN auth_rate_limit_buckets.window_started_at <= NOW() - INTERVAL '15 minutes' THEN NULL
+            WHEN auth_rate_limit_buckets.failure_count + 1 > 10 THEN COALESCE(auth_rate_limit_buckets.blocked_until, NOW() + INTERVAL '15 minutes')
+            ELSE auth_rate_limit_buckets.blocked_until
+          END,
+          updated_at = NOW()
+        RETURNING failure_count AS count, blocked_until AS "blockedUntil"
+      `;
+      if ((ipRows[0]?.count ?? 0) > 10 || (ipRows[0]?.blockedUntil && ipRows[0].blockedUntil > new Date())) {
+        return res.status(202).json({ ok: true, message: genericMessage });
+      }
       const user = await db.user.findUnique({ where: { email: input.email }, select: { id: true, email: true } });
       if (!user) return res.status(202).json({ ok: true, message: genericMessage });
 

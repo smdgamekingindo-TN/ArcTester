@@ -78,7 +78,7 @@ export function useStudentCommunications({
     const response = await request<{ notifications: StudentNotification[]; unreadCount?: number }>(path);
     if (identityRef.current !== requestIdentity || notificationRequestSequence.current !== requestSequence) return;
     const items = (Array.isArray(response.notifications) ? response.notifications : [])
-      .filter((item) => !["EXAM_ASSIGNMENT", "EXAM_RESULT"].includes(item.kind));
+      .filter((item) => item.kind !== "EXAM_ASSIGNMENT");
     setNotifications(items);
     setUnreadNotificationCount(typeof response.unreadCount === "number" ? response.unreadCount : items.filter((item) => !item.readAt).length);
   }, [activePage, identity, request, userRole]);

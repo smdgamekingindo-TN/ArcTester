@@ -17,6 +17,7 @@ import { getLearningConcept, listLearningConcepts } from "./learningConcepts.js"
 import { awardXp } from "./gamificationService.js";
 import { dailyChallengeRewardKey } from "./dailyChallenge.js";
 import { isContentAudienceVisible, type ContentAudience } from "./contentAudience.js";
+import { filterBranchSubjectQuestions, isCommonMpcSubject } from "./branchSubjectVisibility.js";
 
 const AttemptIdSchema = z.object({ id: z.coerce.number().int().positive() });
 
@@ -50,7 +51,8 @@ export function testRouter(db: PrismaClient): Router {
           select: { sourceQuestionId: true },
         }),
       ]);
-      const visible = approvedQuestions.filter((question) => isContentAudienceVisible(question as ContentAudience, account));
+      const subjectNameById = new Map(catalog.map((subject) => [subject.id, subject.name]));
+      const visible = filterBranchSubjectQuestions(approvedQuestions, subjectNameById, account);
       const subjectCounts = new Map<number, number>();
       const topicCounts = new Map<string, number>();
       for (const question of visible) {
@@ -70,16 +72,18 @@ export function testRouter(db: PrismaClient): Router {
           practiceTopicCounts.set(key, (practiceTopicCounts.get(key) ?? 0) + 1);
         }
       }
-      const subjects = catalog.map((subject) => ({
-        subject: subject.name,
-        count: subjectCounts.get(subject.id) ?? 0,
-        practiceCount: practiceSubjectCounts.get(subject.id) ?? 0,
-        topics: subject.topics.map((topic) => ({
-          topic: topic.name,
-          count: topicCounts.get(subject.id + ":" + topic.id) ?? 0,
-          practiceCount: practiceTopicCounts.get(subject.id + ":" + topic.id) ?? 0,
-        })),
-      }));
+      const subjects = catalog
+        .filter((subject) => (subjectCounts.get(subject.id) ?? 0) > 0 || isCommonMpcSubject(subject.name))
+        .map((subject) => ({
+          subject: subject.name,
+          count: subjectCounts.get(subject.id) ?? 0,
+          practiceCount: practiceSubjectCounts.get(subject.id) ?? 0,
+          topics: subject.topics.map((topic) => ({
+            topic: topic.name,
+            count: topicCounts.get(subject.id + ":" + topic.id) ?? 0,
+            practiceCount: practiceTopicCounts.get(subject.id + ":" + topic.id) ?? 0,
+          })),
+        }));
       return res.json({
         subjects,
         total: visible.length,
@@ -139,13 +143,14 @@ export function testRouter(db: PrismaClient): Router {
         where: { reviewStatus: "APPROVED", id: { notIn: publishedExamQuestionIds } },
         orderBy: [{ subject: { name: "asc" } }, { topic: { name: "asc" } }, { id: "asc" }],
         select: {
-          id: true, text: true, options: true, difficulty: true,
+          id: true, subjectId: true, text: true, options: true, difficulty: true,
           audienceScope: true, targetCollegeCode: true, targetCollegeName: true,
           targetBranchCode: true, targetBranchName: true, targetStudentIdsJson: true,
           subject: { select: { name: true } }, topic: { select: { name: true } },
         },
       });
-      const questions = rows.filter((row) => isContentAudienceVisible(row as ContentAudience, account)).map((row) => ({
+      const subjectNames = new Map(rows.map((row) => [row.subjectId, row.subject.name]));
+      const questions = filterBranchSubjectQuestions(rows, subjectNames, account).map((row) => ({
         id: row.id,
         subject: row.subject.name,
         topic: row.topic?.name ?? null,

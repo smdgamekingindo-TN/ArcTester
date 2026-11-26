@@ -25,6 +25,8 @@
 10. **Children safeguards:** review restrictions on tracking/behavioral monitoring/targeted advertising and any exemptions before enabling features for minors.
 11. **Legal release gate:** counsel reviews actual data flows and final policy/terms; no placeholder fields remain; production smoke tests verify consent and privacy controls.
 
+- **Registration abuse:** the API currently trusts the client-controlled `x-arctester-client: mobile` header to bypass the SVG CAPTCHA. Replace this with a server-verifiable native challenge and shared registration rate limits; a client header is not proof of client identity.
+
 ## DPDP phased commencement
 
 The Act and Rules have phased commencement. The principal data-fiduciary obligations and corresponding Rules are scheduled for 18 months after the 13 November 2025 notifications (13 May 2027); some provisions commenced earlier. Re-check the latest Gazette notifications and amendments at release. The project should implement controls early rather than treating the future date as permission to ignore privacy now.

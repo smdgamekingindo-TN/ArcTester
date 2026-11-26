@@ -27,6 +27,7 @@ export default function StudentSavedPracticeExams() {
   const [draftQuestions, setDraftQuestions] = useState<DraftQuestion[]>([emptyQuestion()]);
   const [active, setActive] = useState<PracticeSet | null>(null);
   const [activeQuestionIndex, setActiveQuestionIndex] = useState(0);
+  const [marked, setMarked] = useState<Record<number, boolean>>({});
   const [answers, setAnswers] = useState<Record<number, number | null>>({});
   const [run, setRun] = useState<PracticeRun | null>(null);
   const [deadline, setDeadline] = useState<number | null>(null);
@@ -41,7 +42,7 @@ export default function StudentSavedPracticeExams() {
     finally { setLoading(false); }
   }, []);
   useEffect(() => { void refresh(); }, [refresh]);
-  useEffect(() => { const timer = window.setInterval(() => void refresh(), 20_000); return () => window.clearInterval(timer); }, [refresh]);
+  useEffect(() => { if (active) return; const timer = window.setInterval(() => void refresh(), 20_000); return () => window.clearInterval(timer); }, [active, refresh]);
   useEffect(() => {
     if (deadline === null || run) return;
     const tick = () => setSeconds(Math.max(0, Math.ceil((deadline - Date.now()) / 1000)));
@@ -73,10 +74,23 @@ export default function StudentSavedPracticeExams() {
 
   function start(test: PracticeSet) {
     if (!validSet(test)) { setError("This saved exam has invalid question data. Edit or regenerate it through MCP."); return; }
-    setActive(test); setActiveQuestionIndex(0); setAnswers({}); setRun(null); setError("");
+    setActive(test); setActiveQuestionIndex(0); setAnswers({}); setMarked({}); setRun(null); setError("");
     const end = Date.now() + Math.max(1, test.durationMinutes) * 60_000;
     setDeadline(end); setSeconds(Math.max(1, test.durationMinutes) * 60);
+    window.history.pushState({ ...(window.history.state ?? {}), arcTesterPracticeExam: true }, "", `#practice-exam-${encodeURIComponent(test.id)}`);
   }
+
+  function closeExam() {
+    setActive(null); setRun(null); setDeadline(null); setActiveQuestionIndex(0);
+    if (window.history.state?.arcTesterPracticeExam) window.history.back();
+  }
+
+  useEffect(() => {
+    if (!active) return;
+    const onPopState = () => { setActive(null); setRun(null); setDeadline(null); setActiveQuestionIndex(0); };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [active]);
 
   const finish = useCallback(async () => {
     if (!active || busy || run) return;
@@ -99,22 +113,35 @@ export default function StudentSavedPracticeExams() {
     <header className="section-head"><div><p className="eyebrow">YOUR PRIVATE EXAM LIBRARY</p><h2>My practice exams</h2><p className="muted">Exams you create here and exams saved by your connected MCP appear in this same list.</p></div><button type="button" className="button button-secondary" onClick={() => void refresh()} disabled={loading}>Refresh</button></header>
     {error ? <p className="error" role="alert">{error}</p> : null}
     {active ? <ExamLayout
+      fullscreen
       title={active.title}
       eyebrow="MY PRACTICE EXAM"
       meta={<>{active.questions.length} questions · {active.durationMinutes} min · {deadline !== null && !run ? `${Math.floor(seconds / 60).toString().padStart(2, "0")}:${(seconds % 60).toString().padStart(2, "0")} remaining` : "Practice review"}</>}
-      headerActions={<button type="button" className="button button-secondary" onClick={() => { setActive(null); setRun(null); setDeadline(null); }}>Close</button>}
-      status={<p className="muted">{answered} of {active.questions.length} answered</p>}
+      headerActions={<><div className="exam-layout-timer" aria-live="polite"><small>TIME LEFT</small><strong>{`${Math.floor(seconds / 60).toString().padStart(2, "0")}:${(seconds % 60).toString().padStart(2, "0")}`}</strong></div><button type="button" className="button button-secondary" onClick={closeExam}>Exit exam</button></>}
+      status={<div className="saved-exam-status"><p className="muted">{run ? "Exam submitted · Review your answers below" : `${answered} of ${active.questions.length} answered`}</p>{!run && currentQuestion ? <button type="button" className={`button button-secondary saved-exam-mark-review${marked[activeQuestionIndex] ? " is-marked" : ""}`} aria-pressed={Boolean(marked[activeQuestionIndex])} onClick={() => setMarked(value => ({ ...value, [activeQuestionIndex]: !value[activeQuestionIndex] }))}>{marked[activeQuestionIndex] ? "★ Marked for review" : "☆ Mark for review"}</button> : null}</div>}
       currentIndex={activeQuestionIndex}
       questionCount={active.questions.length}
       answeredCount={answered}
       submitLabel={run ? "Completed" : busy ? "Submitting…" : "Submit practice exam"}
       submitDisabled={busy || Boolean(run)}
-      busy={busy}
+      busy={busy || Boolean(run)}
       onPrevious={() => setActiveQuestionIndex(index => Math.max(0, index - 1))}
       onNext={() => setActiveQuestionIndex(index => Math.min(active.questions.length - 1, index + 1))}
       onSubmit={() => void finish()}
+      questionNavigation={!run ? <div className="exam-question-navigation">
+        <div className="exam-question-navigation-heading"><strong>Question paper</strong><span className="muted">{answered}/{active.questions.length}</span></div>
+        <div className="exam-question-navigation-grid">
+          {active.questions.map((_question, index) => {
+            const isAnswered = answers[index] !== null && answers[index] !== undefined;
+            const isMarked = Boolean(marked[index]);
+            const isCurrent = activeQuestionIndex === index;
+            return <button key={index} type="button" className={`exam-question-number${isCurrent ? " is-current" : ""}${isAnswered ? " is-answered" : ""}${isMarked ? " is-marked" : ""}`} aria-label={`Question ${index + 1}${isAnswered ? ", answered" : ", unanswered"}${isMarked ? ", marked for review" : ""}`} aria-current={isCurrent ? "step" : undefined} onClick={() => setActiveQuestionIndex(index)}>{index + 1}{isMarked ? " ★" : ""}</button>;
+          })}
+        </div>
+        <p className="muted" style={{ margin: 0, fontSize: 11 }}>Current · Answered · Marked for review</p>
+      </div> : null}
     >
-      {run ? <div className="panel stack"><h2>{run.correctCount} / {run.totalQuestions} correct · {run.percentage}%</h2><p className="muted">Result saved to your practice history.</p>{currentQuestion ? <div className="panel stack"><strong>Q{activeQuestionIndex + 1}. {currentQuestion.text}</strong><p className="muted">Your answer: {answers[activeQuestionIndex] == null ? "Unanswered" : currentQuestion.options[answers[activeQuestionIndex]!]}</p><p className="muted">Correct answer: {currentQuestion.options[currentQuestion.correctIndex]}</p>{currentQuestion.explanation ? <p className="muted">{currentQuestion.explanation}</p> : null}</div> : null}</div> : currentQuestion ? <article className="panel stack question-card" key={activeQuestionIndex}>
+      {run ? <div className="panel stack"><h2>{run.correctCount} / {run.totalQuestions} correct · {run.percentage}%</h2><p className="muted">Result saved to your practice history.</p>{active.questions.map((question, index) => <article className="panel stack" key={index}><strong>Q{index + 1}. {question.text}</strong><p className="muted">Your answer: {answers[index] == null ? "Unanswered" : question.options[answers[index]!]}</p><p className="muted">Correct answer: {question.options[question.correctIndex]}</p>{question.explanation ? <p className="muted">{question.explanation}</p> : null}</article>)}<button type="button" className="primary" onClick={closeExam}>Back to practice exams</button></div> : currentQuestion ? <article className="panel stack question-card" key={activeQuestionIndex}>
       <p className="eyebrow">QUESTION {activeQuestionIndex + 1} · {currentQuestion.subject ?? "General"}</p>
       <h2>{currentQuestion.text}</h2>
       {currentQuestion.options.map((option, j) => <label className="row saved-practice-option" key={j}><input type="radio" name={`saved-exam-${activeQuestionIndex}`} checked={answers[activeQuestionIndex] === j} onChange={() => setAnswers(current => ({ ...current, [activeQuestionIndex]: j }))} /><span>{String.fromCharCode(65 + j)}. {option}</span></label>)}

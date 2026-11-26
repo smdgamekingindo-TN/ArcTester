@@ -1877,3 +1877,20 @@ html[data-admin-density="compact"] .bank-question{padding:12px 16px}
 .question-import-audience input,.question-import-audience select{width:100%;min-width:0}
 .question-import-audience small{grid-column:1/-1;color:var(--muted,#64748b);line-height:1.45}
 @media(max-width:720px){.question-import-audience{grid-template-columns:1fr;padding:14px}.question-import-audience-fields{grid-template-columns:1fr}.question-import-audience small{grid-column:auto}}
+
+/* Shared exam navigation: compact, in-flow controls rather than floating overlays */
+.exam-layout-question-navigation{display:grid;gap:10px;border:1px solid var(--border);border-radius:12px;padding:12px;background:var(--surface);min-width:0}
+.exam-question-navigation-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px}
+.exam-question-navigation-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(40px,1fr));gap:8px}
+.exam-question-number{position:relative;min-width:0;min-height:38px;padding:5px;border:1px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text);font-size:12px;font-weight:800;cursor:pointer}
+.exam-question-number.is-current{border:2px solid var(--accent);background:var(--accent-soft)}
+.exam-question-number.is-answered:not(.is-current){border-color:#16a34a;background:rgba(22,163,74,.08)}
+.exam-question-number.is-marked{box-shadow:inset 0 -3px 0 #d97706}
+.exam-question-number:disabled{opacity:.5;cursor:default}
+.exam-layout-fullscreen{position:fixed;inset:0;z-index:1000;overflow-y:auto;min-height:100dvh;align-content:start;box-sizing:border-box;padding:max(12px,env(safe-area-inset-top)) 14px max(18px,env(safe-area-inset-bottom));background:var(--background,var(--bg,#f4f7fb))}
+.exam-layout-fullscreen>.exam-layout-header,.exam-layout-fullscreen>.exam-layout-status,.exam-layout-fullscreen>.exam-layout-progress,.exam-layout-fullscreen>.exam-layout-question,.exam-layout-fullscreen>.exam-layout-question-navigation,.exam-layout-fullscreen>.exam-layout-footer{width:100%;max-width:1080px;margin-left:auto;margin-right:auto}
+.saved-exam-mark-review{min-height:32px;padding:6px 10px;font-size:12px}
+.saved-exam-mark-review.is-marked{border-color:#d97706;color:#d97706}
+.saved-exam-status{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.saved-exam-status p{margin:0}
+@media(max-width:560px){.exam-layout-question-navigation{padding:9px}.exam-question-navigation-grid{grid-template-columns:repeat(auto-fill,minmax(36px,1fr));gap:6px}.exam-question-number{min-height:35px}.exam-layout-fullscreen{padding-left:10px;padding-right:10px}}

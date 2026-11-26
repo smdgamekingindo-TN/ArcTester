@@ -34,7 +34,8 @@
 - [ ] Review password hashing parameters, reset/change flows, refresh/session rotation, logout, account recovery, and admin protection.
 - [x] Review TOTP replay/attempt limits, recovery-code single use (compare-and-swap), passkey challenge attempts/origin/RP validation, and credential removal.
 - [x] MFA removal revokes all sessions; passkey removal revokes all sessions. Password change already increments session version.
-- [ ] Review remaining MFA enrollment and credential-change flows for fresh-auth requirements.
+- [x] Require a session issued within five minutes for TOTP enrollment and passkey enrollment/removal; TOTP disable verifies password and current factor.
+- [ ] Verify client UX handles re-authentication-required responses for these security changes.
 - [x] Add concurrent one-time recovery-code use and MFA-removal session-revocation tests.
 - [ ] Add exhaustive expired-challenge, passkey replay, and attempt-limit tests.
 

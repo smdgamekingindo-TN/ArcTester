@@ -21,9 +21,9 @@ describe("AuthScreen",()=>{
   const props=renderAuth({
     register:true,
     academicProfile:{fullName:"Test Student",collegeName:"Unlisted Polytechnic",collegeCode:"999",registrationNumber:"24999-CM-053",branchName:"Computer Engineering (CME)",branchCode:"CM"},
-    onCaptchaLoad:async()=>({svg:"",token:"captcha-token"}),
+    onCaptchaLoad:vi.fn(async()=>({svg:"",token:"captcha-token"})),
   });
-  await waitFor(()=>expect(screen.getByLabelText("CAPTCHA characters")).toBeTruthy());
+  await waitFor(()=>expect(props.onCaptchaLoad).toHaveBeenCalled());
   fireEvent.change(screen.getByLabelText("CAPTCHA characters"),{target:{value:"ABCDE"}});
   fireEvent.click(screen.getByRole("checkbox",{name:"I confirm I am 18 or older"}));
   fireEvent.click(screen.getByRole("checkbox",{name:"I agree to the Terms and Conditions"}));

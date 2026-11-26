@@ -747,16 +747,18 @@ export default function App() {
               />
             ) : null}
             <StudentQuestionBankStats bank={bank} visible={activePage === "dashboard"} />
-            <section hidden={activePage !== "practice"} id="practice">
-              <div className="section-head">
+            <section className="student-practice-area" hidden={activePage !== "practice"} id="practice">
+              <div className="section-head practice-area-heading">
                 <div>
-                  <p className="eyebrow">GET STARTED</p>
-                  <h2>Choose your practice</h2>
+                  <p className="eyebrow">PRACTICE WORKSPACE</p>
+                  <h2>Build your next practice session</h2>
+                  <p className="muted">Choose a subject, shape your paper, and jump into focused practice.</p>
                 </div>
+                <span className="practice-area-pill">PERSONALIZED PRACTICE</span>
               </div>
               <div className="practice-builder-grid">
                 <article className="panel practice-builder">
-                  <div className="practice-builder-title"><div><span className="action-icon">◎</span><h3>Create your question paper</h3><p className="muted">Choose subjects first. Topic selection is optional and only filters the subjects you choose.</p></div><span className="status status-used">CUSTOM PAPER</span></div>
+                  <div className="practice-builder-title"><div><span className="action-icon">◎</span><p className="practice-builder-kicker">BUILD A PAPER</p><h3>Create your question paper</h3><p className="muted">Choose subjects first. Topic selection is optional and only filters the subjects you choose.</p></div><span className="status status-used">CUSTOM PAPER</span></div>
                   <StudentPracticeSubjectTopicFilters
                     subjects={bank?.subjects ?? []}
                     showEmptyMessage={!bank || bank.subjects.length === 0}

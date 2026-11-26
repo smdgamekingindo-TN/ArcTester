@@ -55,7 +55,7 @@
 - [x] Verify JWT/TOTP secret validation and document production environment checklist in docs/security/PRODUCTION_SECURITY_CONFIGURATION.md.
 - [ ] Confirm actual production secrets, DB least-privilege, object-storage policies and host configuration without exposing secret values.
 - [ ] Review database least-privilege/backup access and sensitive fields.
-- [ ] Review every admin MCP tool's required scope and current-admin checks; verify student MCP remains user-owned and scoped.
+- [x] Review admin MCP per-tool scope gates and current-admin/key revocation checks; student MCP is owner- and scope-bound (regression tests added).
 - [x] Add tests for missing admin MCP scopes, revoked/demoted admin keys, and student MCP cross-user access/role/revocation.
 
 ### 4.6 Privacy and incident readiness (India)

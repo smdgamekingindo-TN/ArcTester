@@ -66,7 +66,8 @@ export default function StudentExamCenter({ api, darkMode, disabled }: Props) {
       for (const question of packageResponse.package.questions) restored[question.id] = null;
       for (const answer of saved.answers) if (answer.examQuestionId in restored) restored[answer.examQuestionId] = answer.selectedIndex;
       setPaper(packageResponse.package); setAnswers(restored); setIndex(0);
-      setStartedAt(started.session.startedAt); setDeadline(new Date(started.session.deadline).getTime());
+      const startedDeadline = new Date(started.session.deadline).getTime();
+      setStartedAt(started.session.startedAt); setDeadline(startedDeadline); setSeconds(Math.max(0, Math.ceil((startedDeadline - Date.now()) / 1000)));
       revisionRef.current = saved.revision; attemptUuid.current = uuid(); autoSubmitTriggered.current = false;
     } catch (cause) { setError((cause as Error).message || "Could not start this exam."); }
     finally { setBusy(false); }
@@ -122,7 +123,7 @@ export default function StudentExamCenter({ api, darkMode, disabled }: Props) {
     if (!paper || deadline === null || seconds > 0 || busy || autoSubmitTriggered.current) return;
     autoSubmitTriggered.current = true;
     void doSubmit(true);
-  }, [paper, deadline, seconds, busy]);
+  }, [paper, deadline, seconds, busy, doSubmit]);
 
   if (paper) {
     const question = paper.questions[index];

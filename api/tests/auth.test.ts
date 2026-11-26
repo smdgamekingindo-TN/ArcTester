@@ -177,6 +177,27 @@ describe("auth", () => {
     expect(acceptance?.acceptedAt).toBeInstanceOf(Date);
   });
 
+  it("rejects false adult attestation and false privacy consent", async () => {
+    const response = await fetch(`${server.baseUrl}/auth/register`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        ...STUDENT_PROFILE,
+        email: "false-consent@example.com",
+        password: "secret1234",
+        adultAttestation: false,
+        termsAccepted: true,
+        privacyConsent: false,
+        termsVersion: "2026-11-27-v1",
+        privacyNoticeVersion: "2026-11-27-v1",
+        consentNoticeVersion: "2026-11-27-v1",
+        ageGateVersion: "2026-11-27-v1",
+      }),
+    });
+    expect(response.status).toBe(400);
+    expect(await server.db.user.findUnique({ where: { email: "false-consent@example.com" } })).toBeNull();
+  });
+
   it("rejects registration when explicit terms and privacy consent are missing", async () => {
     const response = await fetch(`${server.baseUrl}/auth/register`, {
       method: "POST",

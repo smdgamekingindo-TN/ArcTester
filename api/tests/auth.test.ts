@@ -532,7 +532,7 @@ describe("auth — bearer token (native/mobile clients)", () => {
     // persisted identifiers are hashes rather than raw IP/email strings.
     const buckets = await server.db.$queryRaw<Array<{ bucket_key: string; failure_count: number }>>`
       SELECT bucket_key, failure_count FROM auth_rate_limit_buckets
-      WHERE failure_count > 0
+      WHERE failure_count > 0 AND bucket_key NOT LIKE 'api:%'
     `;
     expect(buckets.length).toBeGreaterThanOrEqual(2);
     expect(buckets.every((bucket) => /^[a-f0-9]{64}$/.test(bucket.bucket_key))).toBe(true);

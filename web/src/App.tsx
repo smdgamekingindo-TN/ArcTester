@@ -588,6 +588,7 @@ export default function App() {
         onPasswordChange={setPassword}
         onRegisterChange={(value) => { setRegister(value); setTwoFactorChallenge(""); }}
         onAuthenticate={(captchaToken) => void authenticate(captchaToken)}
+        onCaptchaLoad={() => request<{ svg: string; token: string }>("/auth/captcha/challenge")}
         twoFactorChallenge={twoFactorChallenge}
         onCompleteTwoFactor={(challengeId, code) => void completeTwoFactor(challengeId, code)}
         onPasskeyAuthenticate={() => void authenticateWithPasskey()}

@@ -120,6 +120,16 @@ test.describe("Student Practice Flow", () => {
     // Confirm the practice engine actually opened a question, not just that
     // generic navigation controls remain on screen.
     await expect(page.locator(".question-card").first()).toBeVisible({ timeout: 15000 });
+    // Shared exam controls must stay in document flow and remain comfortably tappable.
+    const examFooter = page.locator(".exam-layout-footer");
+    await expect(examFooter).toBeVisible();
+    expect(await examFooter.evaluate((element) => getComputedStyle(element).position)).toBe("static");
+    expect(await page.locator(".exam-layout-submit").evaluate((element) => element.getBoundingClientRect().height)).toBeGreaterThanOrEqual(40);
+    const questionPalette = page.locator(".exam-question-navigation");
+    await expect(questionPalette.locator("summary")).toBeVisible();
+    await questionPalette.locator("summary").click();
+    expect(await page.locator(".exam-question-number").first().evaluate((element) => element.getBoundingClientRect().height)).toBeGreaterThanOrEqual(36);
+
 
     // Answer the first question and submit; missing controls must fail the test.
     const options = page.locator(".question-card .option");

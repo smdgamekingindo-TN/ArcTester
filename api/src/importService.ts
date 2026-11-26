@@ -311,7 +311,8 @@ export type ImportPreview = {
 export async function previewImport(
   db: PrismaClient,
   format: "csv" | "json",
-  payload: unknown
+  payload: unknown,
+  options: { audience?: QuestionAudienceDefaults } = {}
 ): Promise<ImportPreview> {
   const invalid: InvalidRow[] = [];
   const valid: QuestionInput[] = [];
@@ -342,6 +343,7 @@ export async function previewImport(
         const [subject, text, options, correctIndex, explanation] = parsed.data;
         normalized = { subject, text, options, correctIndex, explanation: explanation ?? "", source: "json" };
       }
+      normalized = applyAudienceDefaults(normalized, options.audience);
       const checked = QuestionInputSchema.safeParse(normalized);
 
       if (!checked.success) {
@@ -406,6 +408,12 @@ export async function previewImport(
         questionType: get("questiontype") || "mcq",
         promptData: get("promptdata") ? JSON.parse(get("promptdata")) : {},
         answerData: get("answerdata") ? JSON.parse(get("answerdata")) : {},
+        audienceScope: get("audiencescope") || options.audience?.audienceScope || (options.audience?.targetBranchCode || options.audience?.targetBranchName ? "BRANCH" : "ALL"),
+        targetCollegeCode: get("targetcollegecode") || options.audience?.targetCollegeCode || "",
+        targetCollegeName: get("targetcollegename") || options.audience?.targetCollegeName || "",
+        targetBranchCode: get("targetbranchcode") || options.audience?.targetBranchCode || "",
+        targetBranchName: get("targetbranchname") || options.audience?.targetBranchName || "",
+        targetStudentIds: (() => { const raw = get("targetstudentids"); if (!raw) return options.audience?.targetStudentIds ?? []; const parsed: unknown = JSON.parse(raw); if (!Array.isArray(parsed) || !parsed.every((id) => Number.isSafeInteger(id) && Number(id) > 0)) throw new Error("targetStudentIds must be a JSON array of positive student IDs."); return parsed as number[]; })(),
       });
 
       if (!checked.success) {

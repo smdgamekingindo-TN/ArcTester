@@ -33,7 +33,7 @@ export default function StudentPracticeSession({test,answers,remainingSeconds,bu
   </article>;
  }
  return <ExamLayout
-  title={isFullMock?"Full mock test":"Practice session"}
+  title={isFullMock?"Full mock test":"Stay focused."}
   eyebrow={isFullMock?"AP ECET FULL MOCK":"PRACTICE SESSION"}
   meta={<>{test.questions.length} questions · {answeredCount} answered{timer}</>}
   headerActions={<button type="button" className="ghost" disabled={busy} onClick={onLeave}>Leave session</button>}
@@ -44,7 +44,7 @@ export default function StudentPracticeSession({test,answers,remainingSeconds,bu
   currentIndex={activeQuestionIndex}
   questionCount={test.questions.length}
   answeredCount={answeredCount}
-  submitLabel={isFullMock?"Review & submit mock":"Submit practice"}
+  submitLabel={isFullMock?"Review and submit full mock":"Submit practice"}
   submitDisabled={busy}
   busy={busy}
   onPrevious={()=>goToQuestion(activeQuestionIndex-1)}

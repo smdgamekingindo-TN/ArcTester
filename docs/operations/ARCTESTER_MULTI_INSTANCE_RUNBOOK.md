@@ -14,7 +14,7 @@ Build identity uses `RENDER_GIT_COMMIT`, `GIT_SHA`, or `SOURCE_VERSION`; otherwi
 
 Admin → System → Server monitor is administrator-only. A heartbeat up to 30 seconds old is healthy; 31–120 seconds is stale; over 120 seconds is offline. A heartbeat means the process has reported a snapshot, not that every downstream dependency is healthy. Database readiness and probe latency are shown separately.
 
-The monitor stores aggregate metrics only: no request paths, student IDs, raw client IP addresses, credentials, or environment values. Inactive instance records are pruned after 30 days.
+The monitor stores aggregate metrics only: no request paths, student IDs, raw client IP addresses, credentials, or environment values. The live monitor removes instance records with no heartbeat for 10 minutes; older deployment instances are not retained in this live fleet table.
 
 ## Safe scale-out procedure
 

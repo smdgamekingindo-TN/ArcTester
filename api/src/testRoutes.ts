@@ -1,270 +1,769 @@
-import { Router } from "express";
-import { z } from "zod";
-import {
-  CreateTestSchema,
-  createTest,
-  getAttemptView,
-  getResult,
-  saveTestAnswers,
-  submitTest,
-  SubmitTestSchema,
-} from "./testService.js";
-import type { PrismaClient } from "@prisma/client";
-import { analyticsRouter } from "./analyticsRoutes.js";
-import { requireAuth, type AuthedRequest } from "./auth.js";
-import { notFound } from "./errors.js";
-import { getLearningConcept, listLearningConcepts } from "./learningConcepts.js";
-import { awardXp } from "./gamificationService.js";
-import { dailyChallengeRewardKey } from "./dailyChallenge.js";
-import { isContentAudienceVisible, type ContentAudience } from "./contentAudience.js";
+// Mock-test engine service: DB access + Phase 2 selection glued together.
+import { getLearningConceptsForTopic } from "./intelligence/conceptKnowledge.js";
+import { dailyChallengeQuestionIds, utcDayKey } from "./dailyChallenge.js";
+// Routes stay thin (parse/validate/respond); this file owns the workflow.
 
-function isCommonMpcSubject(name: string): boolean {
-  const normalized = name.normalize("NFKC").toLowerCase().replace(/[^a-z0-9]/g, "");
-  return /^(mpc|maths?|mathematics|physics|chemistry)(?:[ivx]+|[123])?$/.test(normalized);
+import { Prisma, type PrismaClient } from "@prisma/client";
+import { z } from "zod";
+import { badRequest, conflict, forbidden, notFound } from "./errors.js";
+import { decodeOptions } from "./questions.js";
+import { isContentAudienceVisible, type ContentAudience } from "./contentAudience.js";
+import { filterBranchSubjectQuestions } from "./branchSubjectVisibility.js";
+import { gradeQuestion, normalizeResponse, type QuestionType } from "./questionTypes.js";
+import {
+  nextStat,
+  MOCK_TOTAL,
+  selectMockTest,
+  selectQuestions,
+  type QuestionStat,
+  type Shortfall,
+  type StatsById,
+} from "./selection.js";
+
+export const MODES = ["mock", "practice", "speedRound", "mistakes", "dailyChallenge"] as const;
+export type TestMode = (typeof MODES)[number];
+
+export const CreateTestSchema = z
+  .object({
+    mode: z.enum(MODES),
+    subject: z.string().trim().min(1).optional(),
+    subjects: z.array(z.string().trim().min(1)).min(1).max(30).optional(),
+    topics: z.array(z.string().trim().min(1)).max(100).optional(),
+    topicFilters: z.array(z.object({
+      subject: z.string().trim().min(1).max(80),
+      topic: z.string().trim().min(1).max(100),
+    })).max(300).optional(),
+    difficulty: z.enum(["any", "easy", "medium", "hard"]).default("any"),
+    count: z.number().int().min(1).max(200).optional(),
+    durationMinutes: z.number().int().min(5).max(180).optional(),
+    questionTypes: z.array(z.enum(["mcq", "multi_select", "true_false", "fill_blank", "numeric", "matching"])).max(6).optional(),
+  })
+  .superRefine((value, ctx) => {
+    if ((value.mode === "practice" || value.mode === "speedRound") && !(value.subjects?.length || value.subject)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["subjects"],
+        message: "Select at least one subject for practice mode.",
+      });
+    }
+    if (value.mode === "dailyChallenge" && (value.count ?? 10) > 10) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["count"], message: "Daily challenges are limited to 10 questions." });
+    }
+    if (value.mode === "speedRound" && (value.count ?? 10) > 10) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["count"], message: "Speed rounds are limited to 10 questions." });
+    }
+    if (value.questionTypes && new Set(value.questionTypes).size !== value.questionTypes.length) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["questionTypes"], message: "Question types must be unique." });
+    }
+    if (value.subjects && new Set(value.subjects).size !== value.subjects.length) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["subjects"], message: "Subjects must be unique." });
+    }
+
+    if (value.topicFilters?.length) {
+      const selectedSubjects = new Set(value.subjects ?? (value.subject ? [value.subject] : []));
+      const seenFilters = new Set<string>();
+      for (const [index, filter] of value.topicFilters.entries()) {
+        if (!selectedSubjects.has(filter.subject)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["topicFilters", index, "subject"],
+            message: "Topic filters must belong to a selected subject.",
+          });
+        }
+        const identity = JSON.stringify([filter.subject, filter.topic]);
+        if (seenFilters.has(identity)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["topicFilters", index],
+            message: "Duplicate topic filters are not allowed.",
+          });
+        }
+        seenFilters.add(identity);
+      }
+    }
+  });
+
+export const SubmitTestSchema = z.object({
+  answers: z
+    .array(
+      z.object({
+        questionId: z.number().int().positive(),
+        selectedIndex: z.number().int().min(0).max(3).nullable().optional(),
+        response: z.unknown().optional(),
+      })
+    )
+    .min(1, "at least one answer is required")
+    .max(200),
+});
+
+export interface PublicQuestion {
+  id: number;
+  subject: string;
+  topic: string | null;
+  text: string;
+  options: string[];
+  questionType: QuestionType;
+  promptData: Record<string, unknown>;
 }
 
+export interface CreatedTest {
+  attemptId: number;
+  mode: TestMode;
+  deadline: string | null;
+  serverNow: string;
+  questions: PublicQuestion[];
+  warnings: string[];
+}
 
-const AttemptIdSchema = z.object({ id: z.coerce.number().int().positive() });
+export interface AttemptRow {
+  id: number;
+  subject: string;
+  topic: string | null;
+  difficulty: string;
+  questionType?: string;
+}
 
-export function testRouter(db: PrismaClient): Router {
-  const router = Router();
+export interface SubmitSummary {
+  attemptId: number;
+  score: number;
+  total: number;
+  expired: boolean;
+}
 
-  router.get("/bank", requireAuth, async (req: AuthedRequest, res, next) => {
-    try {
-      const account = await db.user.findUnique({
-        where: { id: req.user!.id },
-        select: { id: true, role: true, accessStatus: true, collegeCode: true, collegeName: true, branchCode: true, branchName: true },
-      });
-      if (!account || account.role !== "STUDENT" || account.accessStatus !== "APPROVED") {
-        return res.status(403).json({ error: "Approved student account required." });
-      }
-      const [catalog, approvedQuestions, publishedExamRows] = await Promise.all([
-        db.subject.findMany({
-          select: { id: true, name: true, topics: { orderBy: { name: "asc" }, select: { id: true, name: true } } },
-          orderBy: { name: "asc" },
-        }),
-        db.question.findMany({
-          where: { reviewStatus: "APPROVED" },
-          select: {
-            id: true, subjectId: true, topicId: true, audienceScope: true,
-            targetCollegeCode: true, targetCollegeName: true, targetBranchCode: true,
-            targetBranchName: true, targetStudentIdsJson: true,
-          },
-        }),
-        db.examVersionQuestion.findMany({
-          where: { sourceQuestionId: { not: null }, examVersion: { is: { publishedAt: { not: null } } } },
-          select: { sourceQuestionId: true },
-        }),
-      ]);
-      const subjectNameById = new Map(catalog.map((subject) => [subject.id, subject.name]));
-      // If a subject has branch-targeted content, treat the whole subject as
-      // branch-owned. This prevents legacy ALL-scoped rows in the same subject
-      // from leaking another department's core subject into a student's catalog.
-      const branchScopedSubjectIds = new Set(approvedQuestions
-        .filter((question) => question.audienceScope === "BRANCH" && (question.targetBranchCode || question.targetBranchName))
-        .filter((question) => !isCommonMpcSubject(subjectNameById.get(question.subjectId) ?? ""))
-        .map((question) => question.subjectId));
-      const branchVisibleSubjectIds = new Set(approvedQuestions
-        .filter((question) => question.audienceScope === "BRANCH" && isContentAudienceVisible(question as ContentAudience, account))
-        .map((question) => question.subjectId));
-      const visible = approvedQuestions.filter((question) => {
-        const subjectName = subjectNameById.get(question.subjectId) ?? "";
-        if (!isCommonMpcSubject(subjectName) && branchScopedSubjectIds.has(question.subjectId) && !branchVisibleSubjectIds.has(question.subjectId)) return false;
-        return isContentAudienceVisible(question as ContentAudience, account);
-      });
-      const subjectCounts = new Map<number, number>();
-      const topicCounts = new Map<string, number>();
-      for (const question of visible) {
-        subjectCounts.set(question.subjectId, (subjectCounts.get(question.subjectId) ?? 0) + 1);
-        if (question.topicId !== null) {
-          const key = question.subjectId + ":" + question.topicId;
-          topicCounts.set(key, (topicCounts.get(key) ?? 0) + 1);
-        }
-      }
-      const examIds = new Set(publishedExamRows.flatMap((row) => row.sourceQuestionId === null ? [] : [row.sourceQuestionId]));
-      const practiceSubjectCounts = new Map<number, number>();
-      const practiceTopicCounts = new Map<string, number>();
-      for (const question of visible.filter((item) => !examIds.has(item.id))) {
-        practiceSubjectCounts.set(question.subjectId, (practiceSubjectCounts.get(question.subjectId) ?? 0) + 1);
-        if (question.topicId !== null) {
-          const key = question.subjectId + ":" + question.topicId;
-          practiceTopicCounts.set(key, (practiceTopicCounts.get(key) ?? 0) + 1);
-        }
-      }
-      const subjects = catalog
-        .filter((subject) => (subjectCounts.get(subject.id) ?? 0) > 0 || isCommonMpcSubject(subject.name))
-        .map((subject) => ({
-          subject: subject.name,
-          count: subjectCounts.get(subject.id) ?? 0,
-          practiceCount: practiceSubjectCounts.get(subject.id) ?? 0,
-          topics: subject.topics.map((topic) => ({
-            topic: topic.name,
-            count: topicCounts.get(subject.id + ":" + topic.id) ?? 0,
-            practiceCount: practiceTopicCounts.get(subject.id + ":" + topic.id) ?? 0,
-          })),
-        }));
-      return res.json({
-        subjects,
-        total: visible.length,
-        practiceTotal: subjects.reduce((sum, subject) => sum + subject.practiceCount, 0),
-        serverNow: new Date().toISOString(),
-      });
-    } catch (error) { next(error); }
+const MOCK_MINUTES = 180;
+const MINUTES_PER_QUESTION = 0.9;
+
+export function minutesFor(mode: TestMode, questionCount: number, durationMinutes?: number): number {
+  if (mode === "mock") return MOCK_MINUTES;
+  if (mode === "speedRound") return 5;
+  if (mode === "dailyChallenge") return 10;
+  if (durationMinutes !== undefined) return Math.max(5, Math.min(180, Math.floor(durationMinutes)));
+  return Math.max(5, Math.round(questionCount * MINUTES_PER_QUESTION));
+}
+
+/** Full AP ECET mock attempts must match the complete official blueprint.
+ * Returning a message (rather than creating a partial attempt) keeps shortage
+ * handling deterministic and straightforward to unit-test. */
+function shortfallWarning(shortfalls: Shortfall[]): string[] {
+  return shortfalls.map(
+    (item) =>
+      `${item.subject}: only ${item.available} of ${item.requested} questions available. ` +
+      `The test uses what exists.`
+  );
+}
+
+export function selectEcetMockCandidates<T extends { questionType?: string }>(candidates: readonly T[]): T[] {
+  return candidates.filter((question) => question.questionType === "mcq");
+}
+
+export function fullMockReadinessIssue(selectedCount: number, shortfalls: Shortfall[]): string | null {
+  if (selectedCount === MOCK_TOTAL && shortfalls.length === 0) return null;
+  const details = shortfalls.length
+    ? shortfalls.map((item) => item.subject + ': ' + item.available + '/' + item.requested).join('; ')
+    : selectedCount + '/' + MOCK_TOTAL + ' questions selected';
+  return 'A full AP ECET mock requires all ' + MOCK_TOTAL + ' questions. Your approved question bank is short: ' + details + '. Add and approve the missing questions, then try again.';
+}
+
+function toPublicQuestion(row: {
+  id: number;
+  subject: string;
+  topic: string | null;
+  text: string;
+  options: string;
+  questionType: string;
+  promptData: string;
+}): PublicQuestion {
+  return {
+    id: row.id,
+    subject: row.subject,
+    topic: row.topic,
+    text: row.text,
+    options: decodeOptions(row.options),
+    questionType: row.questionType as QuestionType,
+    promptData: JSON.parse(row.promptData) as Record<string, unknown>,
+  };
+}
+
+async function loadStats(
+  db: PrismaClient,
+  userId: number,
+  questionIds: number[]
+): Promise<StatsById> {
+  if (questionIds.length === 0) return {};
+  const rows = await db.stat.findMany({
+    where: { userId, questionId: { in: questionIds } },
   });
+  const stats: StatsById = {};
+  for (const row of rows) {
+    const stat: QuestionStat = { seen: row.seen, wrong: row.wrong };
+    if (row.lastSeen) stat.lastSeen = row.lastSeen;
+    stats[String(row.questionId)] = stat;
+  }
+  return stats;
+}
 
-  router.get("/learning/concepts", requireAuth, async (req, res, next) => {
-    try {
-      const query = z.object({
-        q: z.string().trim().max(100).optional(),
-        subject: z.string().trim().min(1).max(80).optional(),
-        limit: z.coerce.number().int().min(1).max(50).default(50),
-      }).parse(req.query);
-      const concepts = listLearningConcepts({ query: query.q, subject: query.subject, limit: query.limit });
-      res.json({ total: concepts.length, concepts });
-    } catch (error) {
-      next(error);
-    }
+/** Build a test, persist the Attempt + its question links, return sanitized set. */
+export async function createTest(
+  db: PrismaClient,
+  userId: number,
+  input: z.infer<typeof CreateTestSchema>,
+  now: Date = new Date()
+): Promise<CreatedTest> {
+  const account = await db.user.findUnique({
+    where: { id: userId },
+    select: { id: true, role: true, accessStatus: true, collegeCode: true, collegeName: true, branchCode: true, branchName: true },
   });
-
-  router.get("/learning/concepts/:slug", requireAuth, async (req, res, next) => {
-    try {
-      const params = z.object({ slug: z.string().regex(/^[a-z0-9-]{1,80}$/) }).parse(req.params);
-      const concept = getLearningConcept(params.slug);
-      if (!concept) return next(notFound("That learning concept does not exist."));
-      res.json(concept);
-    } catch (error) {
-      next(error);
-    }
-  });
-
-  router.get("/learning/package", requireAuth, async (req: AuthedRequest, res, next) => {
-    try {
-      const account = await db.user.findUnique({
-        where: { id: req.user!.id },
-        select: { id: true, role: true, accessStatus: true, collegeCode: true, collegeName: true, branchCode: true, branchName: true },
-      });
-      if (!account || account.role !== "STUDENT" || account.accessStatus !== "APPROVED") {
-        return res.status(403).json({ error: "Approved student account required." });
-      }
-      // Downloadable learning content is practice-only. Published exam snapshots
-      // remain in the exam delivery path and are not preloaded here.
-      const publishedExamRows = await db.examVersionQuestion.findMany({
-        where: {
-          sourceQuestionId: { not: null },
-          examVersion: { is: { publishedAt: { not: null } } },
-        },
-        select: { sourceQuestionId: true },
-      });
-      const publishedExamQuestionIds = publishedExamRows.flatMap((row) =>
-        row.sourceQuestionId === null ? [] : [row.sourceQuestionId],
-      );
-      const rows = await db.question.findMany({
-        where: { reviewStatus: "APPROVED", id: { notIn: publishedExamQuestionIds } },
-        orderBy: [{ subject: { name: "asc" } }, { topic: { name: "asc" } }, { id: "asc" }],
-        select: {
-          id: true, text: true, options: true, difficulty: true,
-          audienceScope: true, targetCollegeCode: true, targetCollegeName: true,
-          targetBranchCode: true, targetBranchName: true, targetStudentIdsJson: true,
-          subject: { select: { name: true } }, topic: { select: { name: true } },
-        },
-      });
-      const questions = rows.filter((row) => isContentAudienceVisible(row as ContentAudience, account)).map((row) => ({
-        id: row.id,
-        subject: row.subject.name,
-        topic: row.topic?.name ?? null,
-        text: row.text,
-        options: JSON.parse(row.options) as string[],
-        difficulty: row.difficulty,
-      }));
-      return res.json({
-        schemaVersion: 3,
-        practiceOnly: true,
-        exportedAt: new Date().toISOString(),
-        total: questions.length,
-        subjects: [...new Set(questions.map((question) => question.subject))],
-        questions,
-      });
-    } catch (error) {
-      next(error);
-    }
-  });
-
-  router.post(
-    "/tests",
-    requireAuth,
-    async (req, res, next) => {
-    try {
-      const input = CreateTestSchema.parse(req.body);
-      const created = await createTest(db, (req as AuthedRequest).user!.id, input);
-      res.status(201).json(created);
-    } catch (error) {
-      next(error);
-    }
-  });
-
-  router.put(
-    "/tests/:id/answers",
-    requireAuth,
-    async (req, res, next) => {
-      try {
-        const { id } = AttemptIdSchema.parse(req.params);
-        const input = SubmitTestSchema.parse(req.body);
-        const saved = await saveTestAnswers(db, (req as AuthedRequest).user!.id, id, input);
-        res.json(saved);
-      } catch (error) { next(error); }
+  if (!account || account.role !== "STUDENT" || account.accessStatus !== "APPROVED") throw forbidden("Approved student account required.");
+  const all = await db.question.findMany({
+    where: { reviewStatus: "APPROVED" },
+    select: {
+      id: true,
+      difficulty: true,
+      questionType: true,
+      subject: { select: { name: true } },
+      topic: { select: { name: true } },
+      audienceScope: true,
+      targetCollegeCode: true,
+      targetCollegeName: true,
+      targetBranchCode: true,
+      targetBranchName: true,
+      targetStudentIdsJson: true,
     },
+  });
+  const subjectNames = new Map<number, string>();
+  for (const row of all) subjectNames.set(row.subjectId, row.subject.name);
+  const branchVisible = filterBranchSubjectQuestions(all, subjectNames, account);
+  const candidates: AttemptRow[] = branchVisible.map((row) => ({
+    id: row.id,
+    subject: row.subject.name,
+    topic: row.topic?.name ?? null,
+    difficulty: row.difficulty,
+    questionType: row.questionType,
+  }));
+  // Keep student-created practice papers distinct from published exam papers.
+  // A question can still be reused when the practice-only pool is exhausted.
+  let practiceCandidates = candidates;
+  let reusedExamPool = false;
+  if (input.mode === "practice" || input.mode === "speedRound" || input.mode === "dailyChallenge") {
+    const publishedExamQuestions = await db.examVersionQuestion.findMany({
+      where: {
+        sourceQuestionId: { not: null },
+        examVersion: { is: { publishedAt: { not: null } } },
+      },
+      select: { sourceQuestionId: true },
+    });
+    const examQuestionIds = new Set(
+      publishedExamQuestions.flatMap((row) => row.sourceQuestionId === null ? [] : [row.sourceQuestionId]),
+    );
+    const practiceOnly = candidates.filter((question) => !examQuestionIds.has(question.id));
+    if (practiceOnly.length > 0) practiceCandidates = practiceOnly;
+    else if (examQuestionIds.size > 0) reusedExamPool = true;
+  }
+  const stats = await loadStats(
+    db,
+    userId,
+    candidates.map((c) => c.id)
   );
 
-  router.post(
-    "/tests/:id/submit",
-    requireAuth,
-    async (req, res, next) => {
-    try {
-      const { id } = AttemptIdSchema.parse(req.params);
-      const input = SubmitTestSchema.parse(req.body);
-      const userId = (req as AuthedRequest).user!.id;
-      const attempt = await db.attempt.findFirst({ where: { id, userId }, select: { mode: true, startedAt: true } });
-      if (!attempt) throw notFound("Test not found.");
-      const summary = await submitTest(db, userId, id, input);
-      // Daily challenge reward is one idempotent XP event per UTC day, even if
-      // the student retries the same challenge attempt or submits another run.
-      const rewardKey = attempt.mode === "dailyChallenge" ? dailyChallengeRewardKey(attempt.startedAt) : "practice-test:" + id;
-      await db.$transaction((tx) => awardXp(tx, userId, rewardKey, "practice"));
-      // Return the detailed result with the submit response so the client avoids a second HTTP round trip.
-      const result = await getResult(db, userId, id);
-      res.json({ ...summary, result });
-    } catch (error) {
-      next(error);
+  let selected: AttemptRow[];
+  let warnings: string[] = [];
+
+  if (input.mode === "mock") {
+    const { questions, shortfalls } = selectMockTest(selectEcetMockCandidates(candidates), stats);
+    const readinessIssue = fullMockReadinessIssue(questions.length, shortfalls);
+    if (readinessIssue) throw badRequest(readinessIssue);
+    selected = questions;
+    warnings = [];
+  } else if (input.mode === "practice" || input.mode === "speedRound") {
+    const chosenSubjects = input.subjects ?? (input.subject ? [input.subject] : []);
+    const topicFilter = new Set(input.topics ?? []);
+    const topicsBySubject = new Map<string, Set<string>>();
+    for (const item of input.topicFilters ?? []) {
+      const topics = topicsBySubject.get(item.subject) ?? new Set<string>();
+      topics.add(item.topic);
+      topicsBySubject.set(item.subject, topics);
     }
+    const matchesPracticeFilters = (question: AttemptRow, subject: string): boolean => {
+      if (question.subject !== subject) return false;
+      if (input.difficulty !== "any" && question.difficulty !== input.difficulty) return false;
+      if (input.questionTypes?.length && !input.questionTypes.includes(question.questionType as "mcq" | "multi_select" | "true_false" | "fill_blank" | "numeric" | "matching")) return false;
+      const selectedTopicsForSubject = topicsBySubject.get(subject);
+      if (selectedTopicsForSubject) {
+        return selectedTopicsForSubject.size === 0 || (question.topic !== null && selectedTopicsForSubject.has(question.topic));
+      }
+      return topicFilter.size === 0 || (question.topic !== null && topicFilter.has(question.topic));
+    };
+    const requested = input.mode === "speedRound" ? Math.min(input.count ?? 10, 10) : input.count ?? 20;
+    const baseQuota = Math.floor(requested / chosenSubjects.length);
+    const remainderQuota = requested % chosenSubjects.length;
+    const requestedBySubject = new Map(chosenSubjects.map((name, index) => [name, baseQuota + (index < remainderQuota ? 1 : 0)]));
+    const pool = chosenSubjects.flatMap((subject) => {
+      const practiceOnly = practiceCandidates.filter((question) => matchesPracticeFilters(question, subject));
+      const target = requestedBySubject.get(subject) ?? 0;
+      if (practiceOnly.length >= target) return practiceOnly;
+      // Top up from the exam pool only when the dedicated practice pool cannot
+      // satisfy this subject's requested quota.
+      const practiceIds = new Set(practiceOnly.map((question) => question.id));
+      const overlapFallback = candidates.filter((question) =>
+        !practiceIds.has(question.id) && matchesPracticeFilters(question, subject),
+      );
+      if (overlapFallback.length > 0) reusedExamPool = true;
+      return [...practiceOnly, ...overlapFallback];
+    });
+    const selectedById = new Set<number>();
+    selected = [];
+    const subjectPools = chosenSubjects.map((name) => ({ name, pool: pool.filter((question) => question.subject === name) }));
+    let remaining = requested;
+    let active = subjectPools.filter((entry) => entry.pool.length > 0);
+    while (remaining > 0 && active.length > 0) {
+      const quota = Math.max(1, Math.floor(remaining / active.length));
+      let added = 0;
+      for (const entry of active) {
+        const available = entry.pool.filter((question) => !selectedById.has(question.id));
+        const target = Math.min(quota, available.length, remaining - added);
+        // Simple topic-level revision: prioritize the topic with the weakest
+        // historical accuracy, then its total missed answers. This is rule-based
+        // and deliberately does not depend on an ML model or persisted model log.
+        const topicPerformance = new Map<string, { seen: number; wrong: number }>();
+        for (const question of available) {
+          const stat = stats[String(question.id)];
+          if (!stat || stat.seen <= 0) continue;
+          const topic = question.topic ?? "General";
+          const aggregate = topicPerformance.get(topic) ?? { seen: 0, wrong: 0 };
+          aggregate.seen += stat.seen;
+          aggregate.wrong += stat.wrong;
+          topicPerformance.set(topic, aggregate);
+        }
+        const missed = available.filter((question) => (stats[String(question.id)]?.wrong ?? 0) > 0);
+        const missedPicked = [...missed].sort((a, b) => {
+          const aTopic = topicPerformance.get(a.topic ?? "General") ?? { seen: 0, wrong: 0 };
+          const bTopic = topicPerformance.get(b.topic ?? "General") ?? { seen: 0, wrong: 0 };
+          const aAccuracy = aTopic.seen ? aTopic.wrong / aTopic.seen : 0;
+          const bAccuracy = bTopic.seen ? bTopic.wrong / bTopic.seen : 0;
+          return bAccuracy - aAccuracy
+            || bTopic.wrong - aTopic.wrong
+            || (stats[String(b.id)]?.wrong ?? 0) - (stats[String(a.id)]?.wrong ?? 0)
+            || a.id - b.id;
+        }).slice(0, target);
+        const pickedIds = new Set(missedPicked.map((question) => question.id));
+        const picked = [
+          ...missedPicked,
+          ...selectQuestions(available.filter((question) => !pickedIds.has(question.id)), stats, target - missedPicked.length),
+        ];
+        for (const question of picked) {
+          selected.push(question);
+          selectedById.add(question.id);
+        }
+        added += picked.length;
+      }
+      if (added === 0) break;
+      remaining -= added;
+      active = active.filter((entry) => entry.pool.some((question) => !selectedById.has(question.id)));
+    }
+    warnings = reusedExamPool
+      ? ["The question bank is currently used by published exams, so some exam questions may also appear in this practice paper."]
+      : [];
+    warnings.push(...subjectPools.flatMap((entry) => {
+      const target = requestedBySubject.get(entry.name) ?? 0;
+      const selectedCount = selected.filter((question) => question.subject === entry.name).length;
+      return selectedCount < target
+        ? [`${entry.name}: requested ${target} questions, but only ${selectedCount} matched the selected topic and difficulty filters.`]
+        : [];
+    }));
+    if (selected.length < requested && warnings.length === 0) {
+      warnings.push(`Requested ${requested} questions overall, but only ${selected.length} are available across the selected subjects and filters.`);
+    }
+  } else if (input.mode === "mistakes") {
+    // "mistakes" only surfaces questions THIS user has got wrong before.
+    const wrongIds = new Set(
+      (
+        await db.stat.findMany({
+          where: { userId, seen: { gt: 0 }, wrong: { gt: 0 } },
+        })
+      ).map((s) => s.questionId)
+    );
+    let pool = candidates.filter((c) => wrongIds.has(c.id));
+    if (input.subject) pool = pool.filter((c) => c.subject === input.subject);
+    const count = input.count ?? 30;
+    selected = selectQuestions(pool, stats, count);
+    if (pool.length < count) {
+      warnings = shortfallWarning([
+        { subject: input.subject ?? "mistakes", requested: count, available: pool.length },
+      ]);
+    }
+  } else {
+    // UTC date seed makes the approved question set identical for all students that day.
+    const count = Math.min(input.count ?? 10, 10);
+    const challengePool = practiceCandidates.length > 0 ? practiceCandidates : candidates;
+    const ids = dailyChallengeQuestionIds(challengePool.map((question) => question.id), utcDayKey(now), count);
+    const byId = new Map(challengePool.map((question) => [question.id, question]));
+    selected = ids.map((id) => byId.get(id)).filter((question): question is AttemptRow => question !== undefined);
+    if (selected.length < count) {
+      warnings = [`Daily challenge: only ${selected.length} approved questions are available; the challenge uses the available questions.`];
+    }
+  }
+
+  if (selected.length === 0) throw badRequest("No questions available for this choice yet.");
+
+  // Capture the exact question version before creating the attempt. Later bank edits
+  // must not change what the student saw or which answer is considered correct.
+  const details = await db.question.findMany({
+    where: { id: { in: selected.map((question) => question.id) } },
+    select: {
+      id: true,
+      text: true,
+      options: true,
+      correctIndex: true,
+      explanation: true,
+      questionType: true,
+      promptData: true,
+      answerData: true,
+      difficulty: true,
+      subject: { select: { name: true } },
+      topic: { select: { name: true } },
+    },
+  });
+  const byId = new Map(details.map((question) => [question.id, question]));
+  if (byId.size !== selected.length) {
+    throw conflict("The question bank changed while this test was being created. Please try again.");
+  }
+
+  const attempt = await db.$transaction(async (tx) => {
+    const created = await tx.attempt.create({
+      data: {
+        mode: input.mode,
+        userId,
+        startedAt: now,
+        deadline: new Date(now.getTime() + minutesFor(input.mode, selected.length, input.durationMinutes) * 60000),
+      },
+    });
+    await tx.attemptAnswer.createMany({
+      data: selected.map((question) => {
+        const snapshot = byId.get(question.id)!;
+        return {
+          attemptId: created.id,
+          questionId: question.id,
+          chosen: null,
+          isCorrect: false,
+          subjectSnapshot: snapshot.subject.name,
+          topicSnapshot: snapshot.topic?.name ?? null,
+          difficultySnapshot: snapshot.difficulty,
+          textSnapshot: snapshot.text,
+          optionsSnapshot: snapshot.options,
+          correctIndexSnapshot: snapshot.correctIndex,
+          explanationSnapshot: snapshot.explanation,
+          questionTypeSnapshot: snapshot.questionType,
+          promptDataSnapshot: snapshot.promptData,
+          answerDataSnapshot: snapshot.answerData,
+          responseSnapshot: "null",
+        };
+      }),
+    });
+    return created;
   });
 
-  router.get(
-    "/tests/:id/result",
-    requireAuth,
-    async (req, res, next) => {
-    try {
-      const { id } = AttemptIdSchema.parse(req.params);
-      const result = await getResult(db, (req as AuthedRequest).user!.id, id);
-      res.json(result);
-    } catch (error) {
-      next(error);
+  return {
+    attemptId: attempt.id,
+    mode: input.mode,
+    deadline: attempt.deadline ? attempt.deadline.toISOString() : null,
+    serverNow: now.toISOString(),
+    questions: selected
+      .map((s) => byId.get(s.id))
+      .filter((d) => d !== undefined)
+      .map((d) =>
+        toPublicQuestion({
+          id: d.id,
+          subject: d.subject.name,
+          topic: d.topic?.name ?? null,
+          text: d.text,
+          options: d.options,
+          questionType: d.questionType,
+          promptData: d.promptData,
+        })
+      ),
+    warnings,
+  };
+}
+
+/** Score server-side, persist answers + stats in ONE transaction. */
+export async function submitTest(
+  db: PrismaClient,
+  userId: number,
+  attemptId: number,
+  input: z.infer<typeof SubmitTestSchema>,
+  now: Date = new Date()
+): Promise<SubmitSummary> {
+  const attempt = await db.attempt.findFirst({
+    where: { id: attemptId, userId },
+    include: { answers: { select: { id: true, questionId: true, correctIndexSnapshot: true, questionTypeSnapshot: true, answerDataSnapshot: true } } },
+  });
+  if (!attempt) throw notFound("Test not found.");
+  if (attempt.finishedAt) throw conflict("This test was already submitted.");
+
+  const memberIds = new Set(attempt.answers.map((a) => a.questionId));
+  const seen = new Set<number>();
+  for (const answer of input.answers) {
+    if (seen.has(answer.questionId)) throw badRequest("Duplicate answer for a question.");
+    seen.add(answer.questionId);
+    if (!memberIds.has(answer.questionId)) {
+      throw badRequest("An answer is for a question not in this test.");
     }
+  }
+
+  const answerById = new Map(attempt.answers.map((answer) => [answer.questionId, answer]));
+  const responseById = new Map(input.answers.map((a) => [a.questionId, normalizeResponse(a.response !== undefined ? a.response : a.selectedIndex ?? null)]));
+
+  let score = 0;
+  const rows = [...memberIds].map((questionId) => {
+    const response = responseById.has(questionId) ? responseById.get(questionId) : null;
+    const snapshot = answerById.get(questionId)!;
+    const chosen = typeof response === "number" ? response : null;
+    const correct = gradeQuestion(snapshot.questionTypeSnapshot as QuestionType, snapshot.correctIndexSnapshot, JSON.parse(snapshot.answerDataSnapshot), response);
+    if (correct) score += 1;
+    return { questionId, chosen, response, isCorrect: correct };
   });
 
-  router.get(
-    "/tests/:id",
-    requireAuth,
-    async (req, res, next) => {
-    try {
-      const { id } = AttemptIdSchema.parse(req.params);
-      const view = await getAttemptView(db, (req as AuthedRequest).user!.id, id);
-      res.json(view);
-    } catch (error) {
-      next(error);
+  const expired = attempt.deadline ? now.getTime() > attempt.deadline.getTime() : false;
+
+  await db.$transaction(async (tx) => {
+    // Claim the attempt inside the same transaction as stat updates. A second
+    // concurrent submit sees finishedAt already set and cannot double-count progress.
+    const claimed = await tx.attempt.updateMany({
+      where: { id: attemptId, userId, finishedAt: null },
+      data: { finishedAt: now, expired },
+    });
+    if (claimed.count !== 1) throw conflict("This test was already submitted.");
+
+    if (rows.length > 0) {
+      // Persist all submitted answers in one statement instead of 200 individual updates.
+      const answerValues = rows.map((row) => Prisma.sql`(
+        ${row.questionId}::int,
+        ${row.chosen}::int,
+        ${row.isCorrect}::boolean,
+        ${JSON.stringify(row.response)}::text
+      )`);
+      await tx.$executeRaw(Prisma.sql`
+        UPDATE "AttemptAnswer" AS aa
+        SET "chosen" = v."chosen",
+            "isCorrect" = v."isCorrect",
+            "responseSnapshot" = v."responseSnapshot"
+        FROM (VALUES ${Prisma.join(answerValues)}) AS v("questionId", "chosen", "isCorrect", "responseSnapshot")
+        WHERE aa."attemptId" = ${attemptId}
+          AND aa."questionId" = v."questionId"
+      `);
+
+      // Load the previous mastery stats once, then batch the upserts.
+      const previousStats = await tx.stat.findMany({
+        where: { userId, questionId: { in: rows.map((row) => row.questionId) } },
+        select: { questionId: true, seen: true, wrong: true, lastSeen: true },
+      });
+      const previousByQuestion = new Map(previousStats.map((stat) => [stat.questionId, stat]));
+      const nextStats = rows.map((row) => {
+        const previous = previousByQuestion.get(row.questionId);
+        return {
+          questionId: row.questionId,
+          ...nextStat(
+            previous ? { seen: previous.seen, wrong: previous.wrong, lastSeen: previous.lastSeen } : undefined,
+            row.isCorrect ? "correct" : row.response === null ? "unanswered" : "wrong",
+            now,
+          ),
+        };
+      });
+      const statValues = nextStats.map((stat) => Prisma.sql`(
+        ${userId}::int,
+        ${stat.questionId}::int,
+        ${stat.seen}::int,
+        ${stat.wrong}::int,
+        ${stat.lastSeen}::timestamp
+      )`);
+      await tx.$executeRaw(Prisma.sql`
+        INSERT INTO "Stat" ("userId", "questionId", "seen", "wrong", "lastSeen")
+        VALUES ${Prisma.join(statValues)}
+        ON CONFLICT ("userId", "questionId") DO UPDATE
+        SET "seen" = EXCLUDED."seen",
+            "wrong" = EXCLUDED."wrong",
+            "lastSeen" = EXCLUDED."lastSeen"
+      `);
     }
+
   });
 
-  router.use("/analytics", analyticsRouter(db));
+  return { attemptId, score, total: memberIds.size, expired };
+}
 
-  return router;
+/** Persist a practice answer snapshot without grading it; replaying is idempotent. */
+export async function saveTestAnswers(
+  db: PrismaClient, userId: number, attemptId: number, input: z.infer<typeof SubmitTestSchema>,
+): Promise<{ attemptId: number; saved: number; serverNow: string }> {
+  const seen = new Set<number>();
+  for (const answer of input.answers) {
+    if (seen.has(answer.questionId)) throw badRequest("Duplicate answer for a question.");
+    seen.add(answer.questionId);
+  }
+  await db.$transaction(async (tx) => {
+    const attempt = await tx.attempt.findFirst({
+      where: { id: attemptId, userId },
+      select: { id: true, finishedAt: true, answers: { select: { questionId: true } } },
+    });
+    if (!attempt) throw notFound("Test not found.");
+    if (attempt.finishedAt) throw conflict("This test was already submitted.");
+    const memberIds = new Set(attempt.answers.map((answer) => answer.questionId));
+    for (const answer of input.answers) {
+      if (!memberIds.has(answer.questionId)) throw badRequest("An answer is for a question not in this test.");
+    }
+    for (const answer of input.answers) {
+      await tx.attemptAnswer.updateMany({
+        where: { attemptId, questionId: answer.questionId },
+        data: { chosen: answer.selectedIndex ?? (typeof answer.response === "number" ? answer.response : null), responseSnapshot: JSON.stringify(normalizeResponse(answer.response !== undefined ? answer.response : answer.selectedIndex ?? null)) },
+      });
+    }
+  });
+  return { attemptId, saved: input.answers.length, serverNow: new Date().toISOString() };
+}
+
+export interface ResultBreakdown {
+  subject: string;
+  correct: number;
+  incorrect: number;
+  unanswered: number;
+  total: number;
+}
+
+export interface ResultQuestion {
+  questionId: number;
+  subject: string;
+  topic: string | null;
+  relatedConcepts: { slug: string; title: string }[];
+  text: string;
+  options: string[];
+  questionType: QuestionType;
+  promptData: Record<string, unknown>;
+  answerData: Record<string, unknown>;
+  response: unknown;
+  selectedIndex: number | null;
+  correctIndex: number;
+  isCorrect: boolean;
+  explanation: string;
+}
+
+export interface TestResult {
+  attemptId: number;
+  mode: string;
+  score: number;
+  incorrect: number;
+  unanswered: number;
+  total: number;
+  expired: boolean;
+  breakdown: ResultBreakdown[];
+  questions: ResultQuestion[];
+}
+
+/** Full review (answers + explanations) only AFTER submission. */
+export async function getResult(
+  db: PrismaClient,
+  userId: number,
+  attemptId: number
+): Promise<TestResult> {
+  const attempt = await db.attempt.findFirst({
+    where: { id: attemptId, userId },
+    include: { answers: true },
+  });
+  if (!attempt) throw notFound("Test not found.");
+  if (!attempt.finishedAt) throw forbidden("Submit the test before viewing the result.");
+
+  const breakdown = new Map<string, { correct: number; incorrect: number; unanswered: number; total: number }>();
+  let score = 0;
+  let incorrect = 0;
+  let unanswered = 0;
+  const questions: ResultQuestion[] = attempt.answers.map((a) => {
+    if (a.isCorrect) score += 1;
+    else if (JSON.parse(a.responseSnapshot) === null && a.chosen === null) unanswered += 1;
+    else incorrect += 1;
+    const subject = a.subjectSnapshot;
+    const entry = breakdown.get(subject) ?? { correct: 0, incorrect: 0, unanswered: 0, total: 0 };
+    entry.total += 1;
+    if (a.isCorrect) entry.correct += 1;
+    else if (JSON.parse(a.responseSnapshot) === null && a.chosen === null) entry.unanswered += 1;
+    else entry.incorrect += 1;
+    breakdown.set(subject, entry);
+    return {
+      questionId: a.questionId,
+      subject,
+      topic: a.topicSnapshot,
+      relatedConcepts: getLearningConceptsForTopic(a.topicSnapshot),
+      text: a.textSnapshot,
+      options: decodeOptions(a.optionsSnapshot),
+      questionType: a.questionTypeSnapshot as QuestionType,
+      promptData: JSON.parse(a.promptDataSnapshot) as Record<string, unknown>,
+      answerData: JSON.parse(a.answerDataSnapshot) as Record<string, unknown>,
+      response: JSON.parse(a.responseSnapshot) ?? a.chosen,
+      selectedIndex: a.chosen,
+      correctIndex: a.correctIndexSnapshot,
+      isCorrect: a.isCorrect,
+      explanation: a.explanationSnapshot,
+    };
+  });
+
+  return {
+    attemptId: attempt.id,
+    mode: attempt.mode,
+    score,
+    incorrect,
+    unanswered,
+    total: attempt.answers.length,
+    expired: attempt.expired,
+    breakdown: [...breakdown.entries()].map(([subject, v]) => ({ subject, ...v })),
+    questions,
+  };
+}
+
+export interface AttemptView {
+  attemptId: number;
+  mode: TestMode;
+  deadline: string;
+  serverNow: string;
+  questions: PublicQuestion[];
+  /** Saved selections so a refresh can restore the paper. */
+  saved: { questionId: number; selectedIndex: number | null; response: unknown }[];
+}
+
+/** In-progress attempt for restore-on-refresh. 404 if missing, 409 if submitted. */
+export async function getAttemptView(
+  db: PrismaClient,
+  userId: number,
+  attemptId: number,
+  now: Date = new Date()
+): Promise<AttemptView> {
+  const attempt = await db.attempt.findFirst({
+    where: { id: attemptId, userId },
+    include: { answers: true },
+  });
+  if (!attempt) throw notFound("Test not found.");
+  if (attempt.finishedAt) {
+    throw conflict("This test was already submitted. View the result instead.");
+  }
+  if (!attempt.deadline) throw conflict("This test has no deadline. Please start a new test.");
+
+  return {
+    attemptId: attempt.id,
+    mode: attempt.mode as TestMode,
+    deadline: attempt.deadline.toISOString(),
+    serverNow: now.toISOString(),
+    questions: attempt.answers.map((answer) =>
+      toPublicQuestion({
+        id: answer.questionId,
+        subject: answer.subjectSnapshot,
+        topic: answer.topicSnapshot,
+        text: answer.textSnapshot,
+        options: answer.optionsSnapshot,
+        questionType: answer.questionTypeSnapshot,
+        promptData: answer.promptDataSnapshot,
+      })
+    ),
+    saved: attempt.answers.map((a) => ({
+      questionId: a.questionId,
+      selectedIndex: a.chosen,
+      response: JSON.parse(a.responseSnapshot),
+    })),
+  };
 }

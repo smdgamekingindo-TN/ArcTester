@@ -15,8 +15,8 @@
 - [x] Explicit HS256 algorithm/type allowlist and constant-time signature comparison.
 - [x] Require JWT issuer and audience; validate issued-at, expiry, optional not-before, and maximum seven-day lifetime.
 - [x] Keep session-version and database-backed session revocation checks.
-- [ ] Add negative tests for missing, malformed, expired, revoked, and mismatched session claims on protected routes.
-- [ ] Document the production issuer/audience configuration and planned forced re-login when strict claims are deployed.
+- [x] Add coverage for invalid/expired JWTs, wrong issuer/audience, future issued-at, excessive lifetime, and revoked sessions in auth tests.\n- [ ] Add dedicated malformed/missing-claim protected-route tests.
+- [x] Document production issuer/audience configuration and forced re-login impact.
 
 ### 4.2 Authorization and tenant/resource boundaries
 - [ ] Inventory all API route registrations and classify public, authenticated-student, owner-only, academic-scope, and administrator endpoints.
@@ -27,15 +27,15 @@
 
 ### 4.3 Authentication lifecycle and MFA
 - [ ] Review password hashing parameters, reset/change flows, refresh/session rotation, logout, account recovery, and admin protection.
-- [ ] Review TOTP replay/attempt limits, recovery-code single use, passkey challenge lifecycle, origin/RP validation, and credential removal.
-- [ ] Ensure MFA enrollment/removal and credential changes revoke sessions or require fresh authentication where appropriate.
-- [ ] Add security tests for replay, expired challenges, excessive attempts, and revoked credentials.
+- [x] Review TOTP replay/attempt limits, recovery-code single use (compare-and-swap), passkey challenge attempts/origin/RP validation, and credential removal.
+- [x] MFA removal revokes all sessions; passkey removal revokes all sessions. Password change already increments session version.\n- [ ] Review remaining MFA enrollment and credential-change flows for fresh-auth requirements.
+- [x] Add concurrent one-time recovery-code use and MFA-removal session-revocation tests.\n- [ ] Add exhaustive expired-challenge, passkey replay, and attempt-limit tests.
 
 ### 4.4 Abuse protection and perimeter
-- [ ] Replace process-local login/API throttles with a shared, atomic limiter suitable for multiple API instances.
-- [ ] Verify lockout/backoff behavior does not allow easy account denial-of-service.
+- [x] Replace process-local password-login/token failure counters with atomic PostgreSQL buckets shared across API instances; bucket keys are hashed and raw email/IP are not stored.\n- [ ] Replace the general API request limiter's process-local store with a shared store.
+- [x] Preserve per-IP+account and per-IP failure ceilings; success clears the corresponding hashed buckets.\n- [ ] Review shared IP lockout behavior against denial-of-service tradeoffs.
 - [ ] Review CORS allowlist, cookie flags, CSRF behavior, HTTPS enforcement, Helmet/security headers, body limits, schema validation, upload handling, and safe errors.
-- [ ] Add tests for rate-limit boundaries and trusted/untrusted cookie mutation origins.
+- [x] Add login throttle tests and assert hashed PostgreSQL bucket identifiers.\n- [ ] Add rate-limit boundary and trusted/untrusted cookie mutation-origin tests.
 
 ### 4.5 Secrets, data, admin MCP/model controls
 - [ ] Verify production secret validation and deployment configuration; ensure no secret values are committed.
@@ -52,4 +52,4 @@
 - JWTs now carry `iss=arctester-api` and `aud=arctester-client` by default. Override with `JWT_ISSUER` and `JWT_AUDIENCE` consistently across all API instances/environments.
 - Verifier rejects missing/wrong issuer or audience, missing/future `iat`, expired tokens, invalid `nbf`, and lifetimes over seven days.
 - Existing tokens minted before this change do not contain the required claims and will be rejected after deployment. Users will need to sign in again. This is intentional; schedule deployment with a user-facing re-login notice.
-- Login throttling is currently process-local. It is not considered multi-instance safe and remains an explicit Part 4 item until a shared limiter is implemented and tested.
+- Password login and bearer-token endpoint throttling now use atomic PostgreSQL upserts in `auth_rate_limit_buckets`, shared across instances. The migration is `20261126070000_add_shared_auth_rate_limits`; bucket keys are SHA-256 digests and stale rows are cleaned during failed-login processing. The global API limiter remains process-local.

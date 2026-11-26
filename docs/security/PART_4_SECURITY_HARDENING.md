@@ -54,6 +54,7 @@
 
 ### 4.5 Secrets, data, admin MCP/model controls
 - [x] Verify JWT/TOTP secret validation and document production environment checklist in docs/security/PRODUCTION_SECURITY_CONFIGURATION.md.
+- [x] Add fail-closed production CORS/cookie validation and a deployment security preflight for JWT/TOTP/Turnstile/contact configuration and PostgreSQL runtime-role privileges; document host-only checks that require operator sign-off.
 - [ ] Set/verify production secrets, database least-privilege, object-storage policies, and host configuration in the secret manager before rollout.
 - [ ] Confirm production database least-privilege/backup access and host-side sensitive-field protections with the hosting operator.
 - [x] Review admin MCP per-tool scope gates and current-admin/key revocation checks; student MCP is owner- and scope-bound (regression tests added).

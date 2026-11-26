@@ -218,6 +218,7 @@ export async function createTest(
     where: { reviewStatus: "APPROVED" },
     select: {
       id: true,
+      subjectId: true,
       difficulty: true,
       questionType: true,
       subject: { select: { name: true } },

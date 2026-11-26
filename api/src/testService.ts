@@ -8,6 +8,7 @@ import { z } from "zod";
 import { badRequest, conflict, forbidden, notFound } from "./errors.js";
 import { decodeOptions } from "./questions.js";
 import { isContentAudienceVisible, type ContentAudience } from "./contentAudience.js";
+import { filterBranchSubjectQuestions } from "./branchSubjectVisibility.js";
 import { gradeQuestion, normalizeResponse, type QuestionType } from "./questionTypes.js";
 import {
   nextStat,
@@ -229,7 +230,10 @@ export async function createTest(
       targetStudentIdsJson: true,
     },
   });
-  const candidates: AttemptRow[] = all.filter((row) => isContentAudienceVisible(row as ContentAudience, account)).map((row) => ({
+  const subjectNames = new Map<number, string>();
+  for (const row of all) subjectNames.set(row.subjectId, row.subject.name);
+  const branchVisible = filterBranchSubjectQuestions(all, subjectNames, account);
+  const candidates: AttemptRow[] = branchVisible.map((row) => ({
     id: row.id,
     subject: row.subject.name,
     topic: row.topic?.name ?? null,

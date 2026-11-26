@@ -31,6 +31,7 @@ export default function StudentExamCenter({ api, darkMode, disabled }: Props) {
   const revisionRef = useRef(0);
   const saveQueue = useRef<Promise<void>>(Promise.resolve());
   const attemptUuid = useRef(uuid());
+  const autoSubmitTriggered = useRef(false);
   const [saving, setSaving] = useState(false);
   const dark = darkMode;
   const colors = dark ? { card: "#172235", border: "#334155", text: "#f1f5f9", muted: "#a7b4c8", surface: "#1e293b" } : { card: "#fff", border: "#e4e8ef", text: "#172033", muted: "#748096", surface: "#f8fafc" };
@@ -66,7 +67,7 @@ export default function StudentExamCenter({ api, darkMode, disabled }: Props) {
       for (const answer of saved.answers) if (answer.examQuestionId in restored) restored[answer.examQuestionId] = answer.selectedIndex;
       setPaper(packageResponse.package); setAnswers(restored); setIndex(0);
       setStartedAt(started.session.startedAt); setDeadline(new Date(started.session.deadline).getTime());
-      revisionRef.current = saved.revision; attemptUuid.current = uuid();
+      revisionRef.current = saved.revision; attemptUuid.current = uuid(); autoSubmitTriggered.current = false;
     } catch (cause) { setError((cause as Error).message || "Could not start this exam."); }
     finally { setBusy(false); }
   };
@@ -97,8 +98,8 @@ export default function StudentExamCenter({ api, darkMode, disabled }: Props) {
       { text: "Submit exam", style: "destructive", onPress: () => void doSubmit() },
     ]);
   };
-  const doSubmit = async () => {
-    if (!paper || !startedAt) return;
+  const doSubmit = async (automatic = false) => {
+    if (!paper || !startedAt || busy) return;
     setBusy(true); setError("");
     try {
       await saveQueue.current.catch(() => undefined);
@@ -110,12 +111,18 @@ export default function StudentExamCenter({ api, darkMode, disabled }: Props) {
           answers: paper.questions.map(question => ({ examQuestionId: question.id, selectedIndex: answers[question.id] ?? null })),
         }),
       });
-      Alert.alert("Exam submitted", result.submission.status === "REVIEW_REQUIRED" ? "Your attempt was received and is waiting for review." : "Your exam was submitted successfully.");
+      Alert.alert(automatic ? "Time is up — exam submitted" : "Exam submitted", result.submission.status === "REVIEW_REQUIRED" ? "Your attempt was received and is waiting for review." : automatic ? "Your answers were submitted automatically when the timer ended." : "Your exam was submitted successfully.");
       setPaper(null); setDeadline(null); setStartedAt(null); setAnswers({}); setIndex(0);
       await refresh();
     } catch (cause) { setError((cause as Error).message || "Submission failed. Your answers remain saved."); }
     finally { setBusy(false); }
   };
+
+  useEffect(() => {
+    if (!paper || deadline === null || seconds > 0 || busy || autoSubmitTriggered.current) return;
+    autoSubmitTriggered.current = true;
+    void doSubmit(true);
+  }, [paper, deadline, seconds, busy]);
 
   if (paper) {
     const question = paper.questions[index];

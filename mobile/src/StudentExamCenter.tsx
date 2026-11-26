@@ -130,6 +130,15 @@ export default function StudentExamCenter({ api, darkMode, disabled }: Props) {
     return <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
       <View style={styles.top}><View style={{ flex: 1 }}><Text style={[styles.title, { color: colors.text }]}>{paper.title}</Text><Text style={[styles.muted, { color: colors.muted }]}>Question {index + 1} / {paper.questions.length}</Text></View><View style={[styles.timer, seconds < 60 && { backgroundColor: "#fee2e2" }]}><MaterialCommunityIcons name="timer-outline" size={17} color={seconds < 60 ? palette.red : palette.blue}/><Text style={{ color: seconds < 60 ? palette.red : palette.blue, fontWeight: "900" }}>{formatTime(seconds)}</Text></View></View>
       <View style={[styles.progress, { backgroundColor: colors.border }]}><View style={[styles.progressFill, { width: `${100 * answered / paper.questions.length}%` }]} /></View>
+      <View style={styles.questionGrid} accessibilityLabel="Question navigator">
+        {paper.questions.map((item, questionIndex) => {
+          const selected = index === questionIndex;
+          const completed = answers[item.id] !== null && answers[item.id] !== undefined;
+          return <TouchableOpacity key={item.id} accessibilityRole="button" accessibilityLabel={`Question ${questionIndex + 1}`} accessibilityState={{ selected }} onPress={() => setIndex(questionIndex)} style={[styles.questionGridItem, { borderColor: selected ? palette.blue : completed ? palette.green : colors.border, backgroundColor: selected ? (dark ? "#1d3b68" : "#eff6ff") : completed ? (dark ? "#17352a" : "#f0fdf4") : colors.surface, borderWidth: selected ? 2.5 : 1.5 }]}>
+            <Text style={{ color: selected ? palette.blue : completed ? palette.green : colors.text, fontWeight: "900", fontSize: 12 }}>{questionIndex + 1}</Text>
+          </TouchableOpacity>;
+        })}
+      </View>
       {paper.instructions ? <Text style={[styles.muted, { color: colors.muted, marginTop: 12 }]}>{paper.instructions}</Text> : null}
       <Text style={[styles.meta, { color: colors.muted }]}>{question.subject}{question.topic ? " · " + question.topic : ""} · {question.marks} mark(s)</Text>
       <Text style={[styles.question, { color: colors.text }]}>{question.text}</Text>
@@ -174,6 +183,8 @@ const styles = StyleSheet.create({
   timer: { flexDirection: "row", alignItems: "center", gap: 5, borderRadius: 20, backgroundColor: "#eff6ff", paddingHorizontal: 10, paddingVertical: 8 },
   progress: { height: 6, borderRadius: 8, overflow: "hidden", marginTop: 4 },
   progressFill: { height: "100%", backgroundColor: palette.blue, borderRadius: 8 },
+  questionGrid: { flexDirection: "row", flexWrap: "wrap", gap: 7, marginTop: 8 },
+  questionGridItem: { width: 36, height: 36, borderRadius: 9, alignItems: "center", justifyContent: "center" },
   meta: { fontSize: 11, fontWeight: "700", marginTop: 8 },
   question: { fontSize: 17, lineHeight: 25, fontWeight: "800", marginTop: 10, marginBottom: 4 },
   option: { borderWidth: 1.5, borderRadius: 12, padding: 14, marginTop: 8 },

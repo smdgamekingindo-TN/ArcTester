@@ -1,6 +1,6 @@
 # ArcTester Platform Consolidation, Security and Scale Plan
 
-**Status:** Parts 1–3 merged and verified. Part 4 engineering implementation is complete in draft PR #198; exact-head CI run #3352 passed. Production configuration, privacy notice, hosting retention/scheduler, and qualified legal/security review remain rollout gates; no merge or production deployment has been performed.  
+**Status:** Parts 1–3 merged and verified. Part 4 engineering implementation is complete in PR #198 (ready for review); exact-head CI run #3373 passed. Production configuration, privacy notice, hosting retention/scheduler, and qualified legal/security review remain rollout gates; no merge or production deployment has been performed.  
 **Implementation rule:** Deliver one part at a time on a feature branch/PR. Keep CI green before merge; do not deploy unmerged changes to production.
 
 This roadmap consolidates the requested admin UX, academic content targeting, account security, auditability, infrastructure monitoring, and Android parity.

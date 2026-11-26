@@ -28,7 +28,7 @@ describe("API route authentication coverage", () => {
       for (const match of starts) {
         const index = match.index ?? 0;
         const snippet = source.slice(index, index + 1200);
-        const pathMatch = snippet.match(/["'`]\s*(\/[^"'`]+)["'`]/);
+        const pathMatch = snippet.match(/["']\s*(\/[^"']+)["']/);
         if (!pathMatch) continue;
         const routePath = pathMatch[1]!.split(",")[0]!.trim();
         if (file === "auth.ts" && selfAuthenticatingPublicAuthPaths.has(routePath)) continue;

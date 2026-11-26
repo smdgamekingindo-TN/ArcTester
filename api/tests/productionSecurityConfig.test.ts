@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { validateProductionSecurityConfig } from "../src/index.js";
+import { validateProductionSecurityConfig } from "../src/securityConfig.js";
 
 describe("production security configuration", () => {
   const valid = {

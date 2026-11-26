@@ -25,7 +25,7 @@
 - [x] Document and test student MCP owner-only reads/edits, per-key scopes, role re-check, and immediate key revocation.
 - [ ] Finish handler-by-handler role/account-approval verification on every privileged path; reviewed router-level guards are recorded in the inventory.
 - [x] Admin MCP tests verify missing tool scopes, current administrator role, and key revocation.
-- [x] Add static regression test requiring explicit/router-level auth on admin route registrations.
+- [x] Add static regression tests requiring auth/admin/MCP key middleware on all non-public API route registrations and admin route registrations.
 - [ ] Verify ownership predicates are included in reads, updates, and deletes for student-owned resources.
 - [ ] Verify college/branch content eligibility is enforced in server queries, not only in the UI.
 - [x] Add IDOR regression test proving a student MCP key cannot read or edit another student's private question.

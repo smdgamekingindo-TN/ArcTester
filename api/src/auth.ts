@@ -220,7 +220,7 @@ export const RegisterSchema = z.object({
   registrationNumber: z.string().trim().regex(/^\d{5}-[A-Z]{1,3}-\d{3}$/i, "Enter your diploma registration number, e.g. 24010-CM-053.").optional(),
 }).merge(StudentAcademicProfileSchema);
 
-type SvgCaptchaPayload = { answer: string; expiresAt: number; nonce: string };
+type SvgCaptchaPayload = { answerDigest: string; expiresAt: number; nonce: string };
 const usedSvgCaptchaNonces = new Map<string, number>();
 const SVG_CAPTCHA_TTL_MS = 5 * 60 * 1000;
 const SVG_CAPTCHA_ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
@@ -232,7 +232,9 @@ function signSvgCaptchaPayload(encoded: string): string {
 
 function createSvgCaptcha(): { svg: string; token: string } {
   const answer = Array.from(randomBytes(5), byte => SVG_CAPTCHA_ALPHABET[byte % SVG_CAPTCHA_ALPHABET.length]).join("");
-  const payload: SvgCaptchaPayload = { answer, expiresAt: Date.now() + SVG_CAPTCHA_TTL_MS, nonce: randomBytes(18).toString("base64url") };
+  const nonce = randomBytes(18).toString("base64url");
+  const answerDigest = createHmac("sha256", JWT_SECRET).update("svg-captcha-answer:" + nonce + ":" + answer).digest("base64url");
+  const payload: SvgCaptchaPayload = { answerDigest, expiresAt: Date.now() + SVG_CAPTCHA_TTL_MS, nonce };
   const encoded = Buffer.from(JSON.stringify(payload)).toString("base64url");
   const token = encoded + "." + signSvgCaptchaPayload(encoded);
   const chars = Array.from(answer, (char, index) => {
@@ -269,11 +271,14 @@ function verifySvgCaptcha(token: string | undefined): void {
   let payload: SvgCaptchaPayload;
   try { payload = JSON.parse(Buffer.from(encoded, "base64url").toString("utf8")) as SvgCaptchaPayload; }
   catch { throw badRequest("Security image is invalid. Refresh it and try again."); }
-  if (!payload || typeof payload.answer !== "string" || typeof payload.nonce !== "string" || !Number.isFinite(payload.expiresAt)) {
+  if (!payload || typeof payload.answerDigest !== "string" || typeof payload.nonce !== "string" || !Number.isFinite(payload.expiresAt)) {
     throw badRequest("Security image is invalid. Refresh it and try again.");
   }
   if (payload.expiresAt < Date.now()) throw badRequest("Security image expired. Refresh it and try again.");
-  if (answer !== payload.answer) throw badRequest("The security image characters don't match. Try again.");
+  const submittedDigest = createHmac("sha256", JWT_SECRET).update("svg-captcha-answer:" + payload.nonce + ":" + answer).digest("base64url");
+  const submittedDigestBytes = Buffer.from(submittedDigest);
+  const expectedDigestBytes = Buffer.from(payload.answerDigest);
+  if (submittedDigestBytes.length !== expectedDigestBytes.length || !timingSafeEqual(submittedDigestBytes, expectedDigestBytes)) throw badRequest("The security image characters do not match. Try again.");
   if (usedSvgCaptchaNonces.has(payload.nonce)) throw badRequest("Security image was already used. Refresh it and try again.");
   usedSvgCaptchaNonces.set(payload.nonce, payload.expiresAt);
   for (const [nonce, expiry] of usedSvgCaptchaNonces) if (expiry < Date.now()) usedSvgCaptchaNonces.delete(nonce);

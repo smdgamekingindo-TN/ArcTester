@@ -4,7 +4,7 @@ import { z } from "zod";
 import type { PrismaClient } from "@prisma/client";
 import { forbidden, badRequest, notFound } from "./errors.js";
 import { requireAuth, requireAdmin, type AuthedRequest } from "./auth.js";
-import { importFromJson } from "./importService.js";
+import { importFromCsv, importFromJson } from "./importService.js";
 import { QuestionInputSchema, hashQuestion, encodeOptions } from "./questions.js";
 import { evaluateModelArtifacts, predictActiveModel } from "./modelInference.js";
 import { getPerformanceOverview } from "./analytics.js";
@@ -90,8 +90,9 @@ export function adminMcpRouter(db: PrismaClient): Router {
         { name: "set_student_access_status", description: "Approve, reject, or return a student account to pending. Requires confirm=true; status changes invalidate existing sessions.", inputSchema: { type: "object", required: ["studentId","accessStatus","confirm"], properties: { studentId: { type: "integer", minimum: 1 }, accessStatus: { type: "string", enum: ["PENDING","APPROVED","REJECTED"] }, confirm: { type: "boolean" } } } },
         { name: "update_student_profile", description: "Update validated student profile fields. Requires confirm=true and students:manage scope.", inputSchema: { type: "object", required: ["studentId","patch","confirm"], properties: { studentId: { type: "integer", minimum: 1 }, patch: { type: "object", properties: { fullName: { type: "string", minLength: 2, maxLength: 100 }, email: { type: "string", format: "email", maxLength: 254 }, collegeName: { type: "string", maxLength: 180 }, collegeCode: { type: "string", maxLength: 20 }, postalPin: { type: "string", maxLength: 20 }, branchName: { type: "string", maxLength: 120 }, branchCode: { type: "string", maxLength: 20 }, registrationNumber: { type: ["string","null"], maxLength: 12 } } }, confirm: { type: "boolean" } } } },
         { name: "remove_student_account", description: "Anonymize and revoke a student account while retaining linked academic records. Destructive; requires confirm=true and students:manage.", inputSchema: { type: "object", required: ["studentId","confirm"], properties: { studentId: { type: "integer", minimum: 1 }, confirm: { type: "boolean" } } } },
-        { name: "search_question_bank", description: "Search official ArcTester question bank by subject/topic/review status.", inputSchema: { type: "object", properties: { search: { type: "string" }, subject: { type: "string" }, topic: { type: "string" }, reviewStatus: { type: "string", enum: ["DRAFT","APPROVED","REJECTED"] }, limit: { type: "integer", minimum: 1, maximum: 100 } } } },
-        { name: "create_questions", description: "Import new official question drafts. These are not automatically approved.", inputSchema: { type: "object", required: ["questions"], properties: { questions: { type: "array", minItems: 1, maxItems: 100, items: { type: "object" } } } } },
+        { name: "search_question_bank", description: "Search official ArcTester question bank by subject/topic/review status and branch audience. Returns audienceScope and target branch metadata.", inputSchema: { type: "object", properties: { search: { type: "string" }, subject: { type: "string" }, topic: { type: "string" }, reviewStatus: { type: "string", enum: ["DRAFT","APPROVED","REJECTED"] }, audienceScope: { type: "string", enum: ["ALL","COLLEGE","BRANCH","STUDENTS"] }, targetBranchCode: { type: "string" }, targetBranchName: { type: "string" }, limit: { type: "integer", minimum: 1, maximum: 100 } } } },
+        { name: "create_questions", description: "Create up to 100 official question drafts. Each question may include audienceScope, targetBranchCode and targetBranchName. Optional audience defaults apply to questions that omit audience fields. Use ALL for common MPC questions and BRANCH for branch-only questions. Drafts are not automatically approved.", inputSchema: { type: "object", required: ["questions"], properties: { questions: { type: "array", minItems: 1, maxItems: 100, items: { type: "object", properties: { subject: { type: "string" }, topic: { type: "string" }, text: { type: "string" }, options: { type: "array", items: { type: "string" } }, correctIndex: { type: "integer" }, explanation: { type: "string" }, source: { type: "string" }, difficulty: { type: "string", enum: ["easy","medium","hard"] }, questionType: { type: "string", enum: ["mcq","multi_select","true_false","fill_blank","numeric","matching"] }, audienceScope: { type: "string", enum: ["ALL","COLLEGE","BRANCH","STUDENTS"] }, targetCollegeCode: { type: "string" }, targetCollegeName: { type: "string" }, targetBranchCode: { type: "string" }, targetBranchName: { type: "string" }, targetStudentIds: { type: "array", items: { type: "integer", minimum: 1 } } } } }, audience: { type: "object", properties: { audienceScope: { type: "string", enum: ["ALL","COLLEGE","BRANCH","STUDENTS"], description: "Set BRANCH for branch-specific content; ALL is shared across branches, including MPC." }, targetCollegeCode: { type: "string" }, targetCollegeName: { type: "string" }, targetBranchCode: { type: "string", description: "Branch code, e.g. CSE or MEC." }, targetBranchName: { type: "string", description: "Branch name, e.g. Computer Engineering or Mechanical Engineering." }, targetStudentIds: { type: "array", items: { type: "integer", minimum: 1 } } } } } } },
+        { name: "import_questions", description: "Bulk-import a CSV or JSON question file as official drafts. Use audience defaults to tag the whole upload to a branch (BRANCH + targetBranchCode/name), a college, or ALL for shared MPC. Per-row audience fields in the file override defaults. Up to 2,000 questions; never auto-approves.", inputSchema: { type: "object", required: ["format","content"], properties: { format: { type: "string", enum: ["csv","json"] }, content: { type: "string", description: "Raw CSV text or JSON array of question objects/tuples." }, audience: { type: "object", properties: { audienceScope: { type: "string", enum: ["ALL","COLLEGE","BRANCH","STUDENTS"], description: "Set BRANCH for branch-specific content; ALL is shared across branches, including MPC." }, targetCollegeCode: { type: "string" }, targetCollegeName: { type: "string" }, targetBranchCode: { type: "string", description: "Branch code, e.g. CSE or MEC." }, targetBranchName: { type: "string", description: "Branch name, e.g. Computer Engineering or Mechanical Engineering." }, targetStudentIds: { type: "array", items: { type: "integer", minimum: 1 } } } } } } },
         { name: "approve_questions", description: "Approve selected draft questions only after explicit confirm=true. Requires source information.", inputSchema: { type: "object", required: ["ids","confirm"], properties: { ids: { type: "array", minItems: 1, maxItems: 200 }, confirm: { type: "boolean" } } } },
         { name: "edit_question", description: "Edit one official question by ID. Only existing fields supplied in patch are changed.", inputSchema: { type: "object", required: ["id","patch"], properties: { id: { type: "integer" }, patch: { type: "object" } } } },
         { name: "reject_questions", description: "Reject selected draft questions only after explicit confirm=true.", inputSchema: { type: "object", required: ["ids","confirm"], properties: { ids: { type: "array", minItems: 1, maxItems: 200 }, confirm: { type: "boolean" } } } },
@@ -244,14 +245,42 @@ export function adminMcpRouter(db: PrismaClient): Router {
         }
         case "search_question_bank": {
           if (!scope(key,"questions:read")) return res.json(rpcError(id,-32003,"Missing questions:read scope."));
-          const input=z.object({search:z.string().max(200).optional(),subject:z.string().max(100).optional(),topic:z.string().max(100).optional(),reviewStatus:z.enum(["DRAFT","APPROVED","REJECTED"]).optional(),limit:z.number().int().min(1).max(100).default(50)}).parse(args);
-          const questions=await db.question.findMany({where:{...(input.subject?{subject:{name:input.subject}}:{}),...(input.topic?{topic:{name:input.topic}}:{}),...(input.reviewStatus?{reviewStatus:input.reviewStatus}:{}),...(input.search?{text:{contains:input.search,mode:"insensitive"}}:{})},take:input.limit,orderBy:{createdAt:"desc"},include:{subject:{select:{name:true}},topic:{select:{name:true}}}});
-          output={questions:questions.map(q=>({id:q.id,subject:q.subject.name,topic:q.topic?.name??"General",text:q.text,options:JSON.parse(q.options),correctIndex:q.correctIndex,explanation:q.explanation,source:q.source,difficulty:q.difficulty,reviewStatus:q.reviewStatus}))};summary="searched questions";break;
+          const input=z.object({search:z.string().max(200).optional(),subject:z.string().max(100).optional(),topic:z.string().max(100).optional(),reviewStatus:z.enum(["DRAFT","APPROVED","REJECTED"]).optional(),audienceScope:z.enum(["ALL","COLLEGE","BRANCH","STUDENTS"]).optional(),targetBranchCode:z.string().max(40).optional(),targetBranchName:z.string().max(160).optional(),limit:z.number().int().min(1).max(100).default(50)}).parse(args);
+          const questions=await db.question.findMany({where:{...(input.subject?{subject:{name:input.subject}}:{}),...(input.topic?{topic:{name:input.topic}}:{}),...(input.reviewStatus?{reviewStatus:input.reviewStatus}:{}),...(input.audienceScope?{audienceScope:input.audienceScope}:{}),...(input.targetBranchCode?{targetBranchCode:input.targetBranchCode}:{}),...(input.targetBranchName?{targetBranchName:input.targetBranchName}:{}),...(input.search?{text:{contains:input.search,mode:"insensitive"}}:{})},take:input.limit,orderBy:{createdAt:"desc"},include:{subject:{select:{name:true}},topic:{select:{name:true}}}});
+          output={questions:questions.map(q=>({id:q.id,subject:q.subject.name,topic:q.topic?.name??"General",text:q.text,options:JSON.parse(q.options),correctIndex:q.correctIndex,explanation:q.explanation,source:q.source,difficulty:q.difficulty,reviewStatus:q.reviewStatus,audienceScope:q.audienceScope,targetBranchCode:q.targetBranchCode,targetBranchName:q.targetBranchName}))};summary="searched questions";break;
         }
         case "create_questions": {
           if(!scope(key,"questions:create"))return res.json(rpcError(id,-32003,"Missing questions:create scope."));
+          const audience=z.object({
+            audienceScope:z.enum(["ALL","COLLEGE","BRANCH","STUDENTS"]).optional(),
+            targetCollegeCode:z.string().trim().max(40).optional(),targetCollegeName:z.string().trim().max(160).optional(),
+            targetBranchCode:z.string().trim().max(40).optional(),targetBranchName:z.string().trim().max(160).optional(),
+            targetStudentIds:z.array(z.number().int().positive()).max(500).optional(),
+          }).optional().parse(args.audience);
           const input=z.object({questions:z.array(QuestionInputSchema).min(1).max(100)}).parse(args);
-          output=await importFromJson(db,input.questions);summary="created question drafts";break;
+          output=await importFromJson(db,input.questions,{audience});summary="created question drafts";break;
+        }
+        case "import_questions": {
+          if(!scope(key,"questions:create"))return res.json(rpcError(id,-32003,"Missing questions:create scope."));
+          const input=z.object({
+            format:z.enum(["csv","json"]),content:z.string().min(1).max(8_000_000),
+            audience:z.object({
+              audienceScope:z.enum(["ALL","COLLEGE","BRANCH","STUDENTS"]).optional(),
+              targetCollegeCode:z.string().trim().max(40).optional(),targetCollegeName:z.string().trim().max(160).optional(),
+              targetBranchCode:z.string().trim().max(40).optional(),targetBranchName:z.string().trim().max(160).optional(),
+              targetStudentIds:z.array(z.number().int().positive()).max(500).optional(),
+            }).optional(),
+          }).parse(args);
+          const audience={...input.audience,
+            ...(input.audience?.targetBranchCode||input.audience?.targetBranchName?{audienceScope:input.audience.audienceScope??"BRANCH"}:{}),
+          };
+          if(input.format==="csv") output=await importFromCsv(db,input.content,{audience});
+          else {
+            let payload:unknown;
+            try{payload=JSON.parse(input.content);}catch{return res.json(rpcError(id,-32602,"Question JSON content must be a valid JSON array."));}
+            output=await importFromJson(db,payload,{audience});
+          }
+          summary="imported branch-aware question drafts";break;
         }
         case "approve_questions": {
           if(!scope(key,"questions:review"))return res.json(rpcError(id,-32003,"Missing questions:review scope."));

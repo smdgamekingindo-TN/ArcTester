@@ -616,6 +616,7 @@ describe("student branch subject catalog", () => {
     const imported = await importFromJson(server.db, [
       ["CME Core Test", "CME branch-scoped catalog fixture question", ["a", "b", "c", "d"], 0, "branch-catalog"],
       ["CME Core Test", "CME legacy global catalog fixture question", ["a", "b", "c", "d"], 1, "global-catalog"],
+      ["Physics", "Physics common branch-tagged fixture question", ["a", "b", "c", "d"], 2, "mpc-common"],
     ]);
     expect(imported.added).toBe(2);
     const subject = await server.db.subject.findUniqueOrThrow({ where: { name: "CME Core Test" } });
@@ -629,7 +630,7 @@ describe("student branch subject catalog", () => {
     const mecBank = await api.get("/bank");
     const mecSubjects = (mecBank.json as { subjects: { subject: string; count: number }[] }).subjects;
     expect(mecSubjects.some(item => item.subject === "CME Core Test")).toBe(false);
-    expect(mecSubjects.some(item => item.subject === "Physics")).toBe(true);
+    expect(mecSubjects.some(item => item.subject === "Physics" && item.count >= 2)).toBe(true);
     expect(mecSubjects.some(item => item.subject === "Maths")).toBe(true);
 
     await server.db.user.update({ where: { id: userId }, data: { branchCode: "CME", branchName: "Computer Engineering" } });
@@ -653,6 +654,10 @@ describe("student branch subject catalog", () => {
     const { hashQuestion } = await import("../src/questions.js");
     await server.db.question.update({
       where: { questionHash: hashQuestion("CME branch-scoped catalog fixture question") },
+      data: { audienceScope: "BRANCH", targetBranchCode: "CME", targetBranchName: "Computer Engineering" },
+    });
+    await server.db.question.update({
+      where: { questionHash: hashQuestion("Physics common branch-tagged fixture question") },
       data: { audienceScope: "BRANCH", targetBranchCode: "CME", targetBranchName: "Computer Engineering" },
     });
 

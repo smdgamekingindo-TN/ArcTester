@@ -69,7 +69,7 @@ export default function StudentAiPracticeTests({ api, darkMode, disabled = false
     if (!active || run || deadline === null || secondsRemaining > 0 || busy || autoFinishTriggered.current) return;
     autoFinishTriggered.current = true;
     void finish();
-  }, [active, run, deadline, secondsRemaining, busy, answers]);
+  }, [active, run, deadline, secondsRemaining, busy, answers, finish]);
 
   if (active) {
     return <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>

@@ -29,6 +29,7 @@ import { adminStudentRouter } from "./adminStudentRoutes.js";
 import { auditRequestMiddleware } from "./audit.js";
 import { studentAuditRouter } from "./studentAuditRoutes.js";
 import { validateProductionSecurityConfig } from "./securityConfig.js";
+import { opsMetricsMiddleware, opsMetricsRouter } from "./opsMetrics.js";
 
 
 const db = new PrismaClient();
@@ -182,6 +183,8 @@ export function buildApp(database: PrismaClient = db): express.Express {
   });
   app.use(cookieCsrfGuard);
   app.use(auditRequestMiddleware(database));
+  app.use(opsMetricsMiddleware(database));
+  app.use(opsMetricsRouter(database));
 
   app.get("/health", (_req, res) => {
     res.json({ ok: true, service: "ecet-api", time: new Date().toISOString() });

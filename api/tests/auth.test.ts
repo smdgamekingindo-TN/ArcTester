@@ -637,6 +637,25 @@ describe("auth — bearer token (native/mobile clients)", () => {
     const revokedSession = await fetch(`${server.baseUrl}/auth/me`, { headers: { cookie: `ecet_session=${cookieJar.get("ecet_session")}` } });
     expect(revokedSession.status).toBe(403);
   });
+  it("requires a recent session and revokes all sessions when removing a passkey", async () => {
+    const email = "passkey-removal@example.com";
+    await postJsonWithCookie(`${server.baseUrl}/auth/register`, { ...STUDENT_PROFILE, email, password: "passkey-removal-password" });
+    const user = await server.db.user.update({ where: { email }, data: { accessStatus: "APPROVED" } });
+    cookieJar.delete("ecet_session");
+    const login = await postJsonWithCookie(`${server.baseUrl}/auth/login`, { email, password: "passkey-removal-password" });
+    expect(login.status).toBe(200);
+    const credential = await server.db.passkeyCredential.create({
+      data: { userId: user.id, credentialId: "test-credential-id-12345678", publicKey: "test-public-key", name: "Fixture passkey" },
+    });
+    const removed = await fetch(`${server.baseUrl}/auth/passkeys/${credential.id}`, {
+      method: "DELETE",
+      headers: { cookie: `ecet_session=${cookieJar.get("ecet_session")}` },
+    });
+    expect(removed.status).toBe(200);
+    const replay = await fetch(`${server.baseUrl}/auth/me`, { headers: { cookie: `ecet_session=${cookieJar.get("ecet_session")}` } });
+    expect(replay.status).toBe(403);
+  });
+
   it("lists and revokes a legacy session issued before session tracking", async () => {
     const user = await server.db.user.findUnique({ where: { email: "mobile@example.com" }, select: { id: true, email: true, sessionVersion: true } });
     expect(user).toBeTruthy();

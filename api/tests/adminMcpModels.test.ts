@@ -52,12 +52,36 @@ describe("administrator MCP model control", () => {
       userId: admin.id,
       name: "model-control-test",
       keyHash: digest(bearer),
-      scopes: ["models:read", "models:dataset:create", "models:verification:read", "models:train", "models:register", "models:evaluate", "models:activate", "students:read", "students:manage"],
+      scopes: ["models:read", "models:dataset:create", "models:verification:read", "models:train", "models:register", "models:evaluate", "models:activate", "students:read", "students:manage", "students:review"],
     } });
     adminKeyId = key.id;
   });
 
   afterAll(async () => { await server.close(); });
+
+  it("retrieves student performance evidence and sends a review notification", async () => {
+    const student = await server.db.user.create({ data: {
+      email: "student-performance-review@arctester.test",
+      passwordHash: "test-only",
+      fullName: "Performance Review Student",
+      role: "STUDENT",
+      accessStatus: "APPROVED",
+    } });
+    const evidence = await callTool("get_student_performance_for_review", { studentId: student.id });
+    expect(evidence.student).toMatchObject({ id: student.id, fullName: "Performance Review Student" });
+    expect(evidence.performance.practice.completedAttempts).toBe(0);
+    expect(evidence.reviewGuidance.doNotTreatUnansweredAsIncorrect).toBe(true);
+
+    const sent = await callTool("send_student_performance_review", {
+      studentId: student.id,
+      title: "Your performance review",
+      message: "Your current practice evidence is limited. Complete a few practice sets so we can identify reliable topic-level strengths and revision areas.",
+      confirm: true,
+    });
+    expect(sent).toMatchObject({ sent: true, notification: { userId: student.id, kind: "PERFORMANCE_REVIEW", title: "Your performance review" } });
+    const notification = await server.db.studentNotification.findUnique({ where: { id: sent.notification.id } });
+    expect(notification).toMatchObject({ userId: student.id, kind: "PERFORMANCE_REVIEW", href: "/analytics" });
+  });
 
   it("creates fingerprinted datasets, queues training, verifies and activates a candidate", async () => {
     const training = await callTool("create_model_dataset", {

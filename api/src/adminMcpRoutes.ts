@@ -251,12 +251,15 @@ export function adminMcpRouter(db: PrismaClient): Router {
         }
         case "create_questions": {
           if(!scope(key,"questions:create"))return res.json(rpcError(id,-32003,"Missing questions:create scope."));
-          const audience=z.object({
+          const audienceInput=z.object({
             audienceScope:z.enum(["ALL","COLLEGE","BRANCH","STUDENTS"]).optional(),
             targetCollegeCode:z.string().trim().max(40).optional(),targetCollegeName:z.string().trim().max(160).optional(),
             targetBranchCode:z.string().trim().max(40).optional(),targetBranchName:z.string().trim().max(160).optional(),
             targetStudentIds:z.array(z.number().int().positive()).max(500).optional(),
           }).optional().parse(args.audience);
+          const audience={...audienceInput,
+            ...(audienceInput?.targetBranchCode||audienceInput?.targetBranchName?{audienceScope:audienceInput.audienceScope??"BRANCH"}:{}),
+          };
           const input=z.object({questions:z.array(QuestionInputSchema).min(1).max(100)}).parse(args);
           output=await importFromJson(db,input.questions,{audience});summary="created question drafts";break;
         }

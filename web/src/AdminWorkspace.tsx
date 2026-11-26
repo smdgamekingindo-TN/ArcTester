@@ -18,8 +18,7 @@ import AdminLiveMonitor, { type LiveSession } from "./AdminLiveMonitor";
 import AdminAttendanceRegister, { type AttendanceRow, type AssignmentAudit } from "./AdminAttendanceRegister";
 import AdminReviewQueue, { type ReviewQueueItem } from "./AdminReviewQueue";
 import AdminStudents from "./AdminStudents";
-import AdminSettings from "./AdminSettings";
-import AccountSecurityPanel from "./AccountSecurityPanel";
+import AdminAccountPage from "./AdminAccountPage";
 import ArcTesterMascot from "./components/ArcTesterMascot";
 import AdminSystemMonitor from "./AdminSystemMonitor";
 import Toast from "./components/Toast";
@@ -208,7 +207,7 @@ export default function AdminWorkspace(p:Props){
   <div className="admin-content">
    {notice&&<div role="status" aria-live="polite" className="admin-alert success">{notice}<button onClick={()=>setNotice("")}>×</button></div>}
     {tab==="students"&&<AdminStudents onError={setError} onNotice={setNotice} />}
-   {tab==="account-security"&&<section className="admin-account-page"><AccountSecurityPanel email={p.email} onSignOut={p.signOut} /><AdminSettings theme={p.theme} onThemeChange={p.setTheme} /></section>}
+   {tab==="account-security"&&<AdminAccountPage email={p.email} theme={p.theme} onThemeChange={p.setTheme} onSignOut={p.signOut} />}
    {tab==="system-monitor"&&<AdminSystemMonitor />}
    {tab==="live-monitor"&&<AdminLiveMonitor
     sessions={liveSessions}

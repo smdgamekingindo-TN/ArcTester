@@ -457,6 +457,7 @@ async function createAuthSession(db: PrismaClient, req: Request, user: { id: num
       deviceName: device.deviceName,
       platform: device.platform,
       userAgent: device.userAgent,
+      ipAddress: device.ipAddress,
       createdAt: { gte: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000) },
     },
     select: { id: true },

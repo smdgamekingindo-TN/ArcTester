@@ -319,4 +319,41 @@ describe("question administration route contracts", () => {
     expect((await postJson(`${server.baseUrl}/admin/questions/import/csv`, { content: csv }, studentCookie)).status).toBe(403);
     expect((await postJson(`${server.baseUrl}/admin/questions/import/json`, { questions: [] }, studentCookie)).status).toBe(403);
   });
+  it("imports and previews branch-specific JSON questions using upload audience defaults", async () => {
+    const text = "Branch audience defaults route test question?";
+    const imported = await postJson(`${server.baseUrl}/admin/questions/import`, {
+      format: "json",
+      content: JSON.stringify([{
+        subject: "MEC Upload Audience Subject",
+        topic: "Engineering Mechanics",
+        text,
+        options: ["A", "B", "C", "D"],
+        correctIndex: 0,
+        source: "MEC syllabus unit 1",
+      }]),
+      audience: { audienceScope: "BRANCH", targetBranchCode: "MEC", targetBranchName: "Mechanical Engineering" },
+    }, adminCookie);
+    expect(imported.status).toBe(200);
+    expect(imported.json).toMatchObject({ report: { added: 1, duplicates: 0, invalid: [] } });
+    const saved = await server.db.question.findFirst({ where: { text } });
+    expect(saved).toMatchObject({ audienceScope: "BRANCH", targetBranchCode: "MEC", targetBranchName: "Mechanical Engineering" });
+
+    const previewText = "Branch audience preview route test question?";
+    const preview = await postJson(`${server.baseUrl}/admin/questions/import/preview`, {
+      format: "json",
+      content: JSON.stringify([{
+        subject: "CSE Upload Audience Subject",
+        topic: "Networks",
+        text: previewText,
+        options: ["A", "B", "C", "D"],
+        correctIndex: 1,
+      }]),
+      audience: { audienceScope: "BRANCH", targetBranchCode: "CSE", targetBranchName: "Computer Engineering" },
+    }, adminCookie);
+    expect(preview.status).toBe(200);
+    expect(preview.json).toMatchObject({ report: { added: 1, duplicates: 0, invalid: [] } });
+    expect(await server.db.question.findFirst({ where: { text: previewText } })).toBeNull();
+  });
+
+
 });

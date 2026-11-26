@@ -914,5 +914,47 @@ describe("auth — bearer token (native/mobile clients)", () => {
     expect(revoke.status).toBe(200);
     expect((await getJsonWithCookie(`${server.baseUrl}/auth/me`)).status).toBe(403);
   });
+ 
+  it("emails a one-time password reset link and requires TOTP before resetting", async () => {
+    const email = "password-reset-totp@example.com";
+    const oldKey = process.env.RESEND_API_KEY;
+    const oldFrom = process.env.RESEND_FROM_EMAIL;
+    const oldBase = process.env.APP_BASE_URL;
+    const originalFetch = globalThis.fetch;
+    try {
+      process.env.RESEND_API_KEY = "unit-test-key";
+      process.env.RESEND_FROM_EMAIL = "ArcTester <verified@example.test>";
+      process.env.APP_BASE_URL = "https://arctester.vercel.app";
+      await postJsonWithCookie(`${server.baseUrl}/auth/register`, { ...STUDENT_PROFILE, email, password: "old-password-1234" });
+      const user = await server.db.user.update({ where: { email }, data: { accessStatus: "APPROVED" } });
+      const secret = generateTotpSecret();
+      await server.db.totpCredential.create({ data: { userId: user.id, secretEncrypted: encryptTotpSecret(secret), enabledAt: new Date(), lastUsedCounter: -1, recoveryCodesJson: "[]" } });
+      const providerFetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        if (String(input).startsWith("https://api.resend.com")) return new Response("{}", { status: 200 });
+        return originalFetch(input, init);
+      });
+      vi.stubGlobal("fetch", providerFetch);
+      const requested = await postJson(`${server.baseUrl}/auth/password-reset/request`, { email });
+      expect(requested.status).toBe(202);
+      const mail = JSON.parse(String(providerFetch.mock.calls[0]?.[1]?.body));
+      const tokenMatch = String(mail.text).match(/passwordResetToken=([A-Za-z0-9_-]+)/);
+      expect(tokenMatch?.[1]).toBeTruthy();
+      const token = tokenMatch![1];
+      const noCode = await postJson(`${server.baseUrl}/auth/password-reset/complete`, { token, newPassword: "new-password-12345" });
+      expect(noCode.status).toBe(403);
+      const counter = Math.floor(Date.now() / 30000);
+      const reset = await postJson(`${server.baseUrl}/auth/password-reset/complete`, { token, newPassword: "new-password-12345", code: totpAt(secret, counter) });
+      expect(reset.status).toBe(200);
+      expect((await postJson(`${server.baseUrl}/auth/login`, { email, password: "old-password-1234" })).status).toBe(400);
+      expect((await postJson(`${server.baseUrl}/auth/login`, { email, password: "new-password-12345" })).status).toBe(200);
+      const replay = await postJson(`${server.baseUrl}/auth/password-reset/complete`, { token, newPassword: "another-password-12345", code: totpAt(secret, counter + 1) });
+      expect(replay.status).toBe(403);
+    } finally {
+      vi.unstubAllGlobals();
+      if (oldKey === undefined) delete process.env.RESEND_API_KEY; else process.env.RESEND_API_KEY = oldKey;
+      if (oldFrom === undefined) delete process.env.RESEND_FROM_EMAIL; else process.env.RESEND_FROM_EMAIL = oldFrom;
+      if (oldBase === undefined) delete process.env.APP_BASE_URL; else process.env.APP_BASE_URL = oldBase;
+    }
+  });
 
 });

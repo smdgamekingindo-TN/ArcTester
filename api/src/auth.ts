@@ -280,6 +280,7 @@ async function loginRetryAfter(db: PrismaClient, key: string): Promise<number> {
 async function recordLoginFailure(db: PrismaClient, key: string): Promise<number> {
  const hash = sha256(key), limit = key.startsWith("ip-only::") ? IP_FAILURE_LIMIT : LOGIN_FAILURE_LIMIT;
  await db.$executeRaw`INSERT INTO auth_rate_limit_buckets (bucket_key,failure_count,window_started_at,blocked_until,updated_at) VALUES (${hash},1,NOW(),NULL,NOW()) ON CONFLICT (bucket_key) DO UPDATE SET failure_count=CASE WHEN auth_rate_limit_buckets.window_started_at <= NOW()-INTERVAL '15 minutes' THEN 1 ELSE auth_rate_limit_buckets.failure_count+1 END, window_started_at=CASE WHEN auth_rate_limit_buckets.window_started_at <= NOW()-INTERVAL '15 minutes' THEN NOW() ELSE auth_rate_limit_buckets.window_started_at END, blocked_until=CASE WHEN (CASE WHEN auth_rate_limit_buckets.window_started_at <= NOW()-INTERVAL '15 minutes' THEN 1 ELSE auth_rate_limit_buckets.failure_count+1 END) >= ${limit} THEN NOW()+INTERVAL '15 minutes' ELSE NULL END, updated_at=NOW()`;
+ await db.$executeRaw`DELETE FROM auth_rate_limit_buckets WHERE updated_at < NOW() - INTERVAL '1 day'`;
  return loginRetryAfter(db,key);
 }
 async function clearLoginFailures(db: PrismaClient, ip: string, email?: string): Promise<void> {

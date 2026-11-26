@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { getSessionActionLabel } from "./securitySessionActions";
 
 export type SecuritySession = {
   id: string; deviceName: string; platform: string; loginMethod: string;
@@ -9,10 +10,6 @@ type LoginEvent = { id: string; result: string; method: string; ipAddress: strin
 type SecurityStatus = { authenticatorEnabled: boolean; recoveryCodesRemaining: number; passkeyCount: number };
 type SecurityApi = <T>(path: string, init?: RequestInit) => Promise<T>;
 type Props = { api: SecurityApi; darkMode: boolean; onBack: () => void; onSignOut: () => void };
-
-export function getSessionActionLabel(session: Pick<SecuritySession, "current">): string {
-  return session.current ? "Sign out this device" : "Revoke session";
-}
 
 export default function StudentSecurityCenter({ api, darkMode, onBack, onSignOut }: Props) {
   const [sessions, setSessions] = useState<SecuritySession[]>([]);

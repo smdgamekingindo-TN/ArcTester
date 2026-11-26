@@ -1488,8 +1488,10 @@ export default function App() {
               {offlineLearningPackage ? <OfflinePracticeLibrary questions={offlineLearningPackage.questions} darkMode={darkMode} /> : null}
            </Animated.View>
 ) : activeTab === "exams" ? (
-            <StudentExamCenter api={api} darkMode={darkMode} disabled={busy || checkingPracticeRecovery || hasSavedPracticeAttempt} />
-            <StudentAiPracticeTests api={api} darkMode={darkMode} disabled={busy || checkingPracticeRecovery || hasSavedPracticeAttempt} />
+            <>
+              <StudentExamCenter api={api} darkMode={darkMode} disabled={busy || checkingPracticeRecovery || hasSavedPracticeAttempt} />
+              <StudentAiPracticeTests api={api} darkMode={darkMode} disabled={busy || checkingPracticeRecovery || hasSavedPracticeAttempt} />
+            </>
  ) : activeTab === "learn" ? (
           <Animated.View style={animatedEntrance(entrance)}><StudentConceptLibrary api={api} darkMode={darkMode} /></Animated.View>
  ) : activeTab === "settings" ? (

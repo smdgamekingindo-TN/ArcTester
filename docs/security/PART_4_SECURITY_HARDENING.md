@@ -16,7 +16,7 @@
 - [x] Require JWT issuer and audience; validate issued-at, expiry, optional not-before, and maximum seven-day lifetime.
 - [x] Keep session-version and database-backed session revocation checks.
 - [x] Add coverage for invalid/expired JWTs, wrong issuer/audience, future issued-at, excessive lifetime, and revoked sessions in auth tests.
-- [ ] Add dedicated malformed/missing-claim protected-route tests.
+- [x] Add protected-route tests for malformed tokens, missing bearer, signed tokens missing required identity claims, expired tokens, and revoked sessions.
 - [x] Document production issuer/audience configuration and forced re-login impact.
 
 ### 4.2 Authorization and tenant/resource boundaries

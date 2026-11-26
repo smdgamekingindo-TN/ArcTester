@@ -524,6 +524,12 @@ describe("auth — bearer token (native/mobile clients)", () => {
     expect(res.status).toBe(403);
   });
 
+  it("rejects a correctly signed token missing required identity claims on a protected route", async () => {
+    const token = signJwt({ sub: "1", sv: 0 });
+    const response = await fetch(`${server.baseUrl}/auth/me`, { headers: { authorization: `Bearer ${token}` } });
+    expect(response.status).toBe(403);
+  });
+
   it("/auth/me works with a bearer token", async () => {
     const token = await signInForToken("mobile@example.com", "secret1234");
     const res = await fetch(`${server.baseUrl}/auth/me`, {

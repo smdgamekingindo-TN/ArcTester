@@ -575,8 +575,12 @@ describe("auth — bearer token (native/mobile clients)", () => {
     const login = await postJsonWithCookie(`${server.baseUrl}/auth/login`, { email, password: "totp-test-password" });
     const challenge = (login.json as { twoFactorRequired: boolean; challengeId: string });
     expect(challenge.twoFactorRequired).toBe(true);
-    const verified = await postJsonWithCookie(`${server.baseUrl}/auth/login/2fa`, { challengeId: challenge.challengeId, code: recovery });
-    expect(verified.status).toBe(200);
+    const recoveryAttempts = await Promise.all([
+      postJsonWithCookie(`${server.baseUrl}/auth/login/2fa`, { challengeId: challenge.challengeId, code: recovery }),
+      postJsonWithCookie(`${server.baseUrl}/auth/login/2fa`, { challengeId: challenge.challengeId, code: recovery }),
+    ]);
+    expect(recoveryAttempts.filter((attempt) => attempt.status === 200)).toHaveLength(1);
+    const verified = recoveryAttempts.find((attempt) => attempt.status === 200)!;
     expect((verified.json as { user: { email: string } }).user.email).toBe(email);
 
     // Removing an MFA factor revokes every session, including the current one.

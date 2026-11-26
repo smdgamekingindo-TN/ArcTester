@@ -153,7 +153,7 @@ export function verifyPassword(password: string, stored: string): boolean {
   if (!saltHex || !hashHex || !/^[a-f0-9]{32}$/i.test(saltHex) || !/^[a-f0-9]{128}$/i.test(hashHex)) return false;
   const salt = Buffer.from(saltHex, "hex");
   const expected = Buffer.from(hashHex, "hex");
-  const derived = scryptSync(password, salt, 64);
+  const derived = scryptSync(password, salt, 64, SCRYPT_OPTIONS);
   return derived.length === expected.length && timingSafeEqual(derived, expected);
 }
 

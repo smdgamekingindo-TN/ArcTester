@@ -154,7 +154,7 @@ export function validateProductionSecurityConfig(env: NodeJS.ProcessEnv = proces
   for (const origin of origins) {
     let parsed: URL;
     try { parsed = new URL(origin); } catch { throw new Error("CORS_ORIGINS contains an invalid origin."); }
-    if (parsed.protocol !== "https:" || parsed.origin !== origin || parsed.username || parsed.password || parsed.pathname !== "/" || parsed.search || parsed.hash) {
+    if (parsed.protocol !== "https:" || parsed.hostname.includes("*") || parsed.origin !== origin || parsed.username || parsed.password || parsed.pathname !== "/" || parsed.search || parsed.hash) {
       throw new Error("CORS_ORIGINS must contain exact HTTPS origins only (no wildcard, path, credentials, query, or fragment).");
     }
   }

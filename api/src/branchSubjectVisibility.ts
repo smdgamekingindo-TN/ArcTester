@@ -8,6 +8,24 @@ export function isCommonMpcSubject(name: string): boolean {
   return /^(mpc|maths?|mathematics|physics|chemistry)(?:[ivx]+|[123])?$/.test(normalized);
 }
 
+const CME_CORE_SUBJECTS = new Set([
+  "computernetworks", "datastructures", "dbms", "javaprogramming",
+  "operatingsystems", "programminginc", "webtechnologies",
+  "computerorganization", "softwareengineering", "pythonprogramming",
+  "androidprogramming", "bigdatacloudcomputing", "internetofthings",
+]);
+
+function isCmeBranch(profile: AcademicAudienceProfile): boolean {
+  const code = (profile.branchCode ?? "").normalize("NFKC").trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+  const name = (profile.branchName ?? "").normalize("NFKC").trim().toLowerCase();
+  return ["CM", "CME", "CSE", "CS"].includes(code) || /computer engineering|computer science/.test(name);
+}
+
+function isKnownCmeCoreSubject(name: string): boolean {
+  const normalized = name.normalize("NFKC").toLowerCase().replace(/[^a-z0-9]/g, "");
+  return CME_CORE_SUBJECTS.has(normalized);
+}
+
 /**
  * If a subject contains branch-targeted rows, consider the subject branch-owned.
  * This also hides legacy ALL-scoped rows in that same subject from other branches.
@@ -29,6 +47,10 @@ export function filterBranchSubjectQuestions<T extends BranchTaggedQuestion>(
   return questions.filter((question) => {
     const subjectName = subjectNames.get(question.subjectId) ?? "";
     const commonMpc = isCommonMpcSubject(subjectName);
+    // The current live catalog's CME core subjects were imported as ALL. Keep
+    // those known subjects limited to Computer Engineering even before their
+    // older question rows are backfilled with BRANCH audience tags.
+    if (!commonMpc && isKnownCmeCoreSubject(subjectName) && !isCmeBranch(profile)) return false;
     if (!commonMpc && branchScopedSubjectIds.has(question.subjectId) && !branchVisibleSubjectIds.has(question.subjectId)) return false;
     // Branch tags do not split the common MPC subjects. College/student scope
     // restrictions still apply when a branch-scoped row also has a college target.

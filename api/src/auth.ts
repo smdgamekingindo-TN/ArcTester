@@ -1053,12 +1053,14 @@ export function authRouter(db: PrismaClient): Router {
 
   router.delete("/passkeys/:id", requireAuth, requireRecentAuth(), async (req: AuthedRequest, res, next) => {
     try {
-      const result = await db.passkeyCredential.deleteMany({ where: { id: req.params.id, userId: req.user!.id } });
-      if (!result.count) return next(notFound("Passkey not found."));
-      await db.$transaction([
-        db.user.update({ where: { id: req.user!.id }, data: { sessionVersion: { increment: 1 } } }),
-        db.authSession.updateMany({ where: { userId: req.user!.id, revokedAt: null }, data: { revokedAt: new Date() } }),
-      ]);
+      const removed = await db.$transaction(async (tx) => {
+        const result = await tx.passkeyCredential.deleteMany({ where: { id: req.params.id, userId: req.user!.id } });
+        if (!result.count) return 0;
+        await tx.user.update({ where: { id: req.user!.id }, data: { sessionVersion: { increment: 1 } } });
+        await tx.authSession.updateMany({ where: { userId: req.user!.id, revokedAt: null }, data: { revokedAt: new Date() } });
+        return result.count;
+      });
+      if (!removed) return next(notFound("Passkey not found."));
       res.json({ ok: true, message: "Passkey removed. Sign in again on your devices." });
     } catch (error) { next(error); }
   });

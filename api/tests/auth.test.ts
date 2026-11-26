@@ -922,7 +922,6 @@ describe("auth — bearer token (native/mobile clients)", () => {
     const oldUser = process.env.GMAIL_USER;
     const oldPassword = process.env.GMAIL_APP_PASSWORD;
     const oldBase = process.env.APP_BASE_URL;
-    const originalFetch = globalThis.fetch;
     try {
       process.env.GMAIL_USER = "arctester@example.com";
       process.env.GMAIL_APP_PASSWORD = "test-app-password";
@@ -932,7 +931,7 @@ describe("auth — bearer token (native/mobile clients)", () => {
       const user = await server.db.user.update({ where: { email }, data: { accessStatus: "APPROVED" } });
       const secret = generateTotpSecret();
       await server.db.totpCredential.create({ data: { userId: user.id, secretEncrypted: encryptTotpSecret(secret), enabledAt: new Date(), lastUsedCounter: -1, recoveryCodesJson: "[]" } });
-            const requested = await postJson(`${server.baseUrl}/auth/password-reset/request`, { email });
+      const requested = await postJson(`${server.baseUrl}/auth/password-reset/request`, { email });
       expect(requested.status).toBe(202);
       const resetUrl = String(mockSendPasswordResetEmail.mock.calls[0]?.[1]);
       const tokenMatch = resetUrl.match(/passwordResetToken=([A-Za-z0-9_-]+)/);

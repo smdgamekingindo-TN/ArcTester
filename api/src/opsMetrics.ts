@@ -69,6 +69,13 @@ async function persistSnapshot(db: PrismaClient, dbLatencyMs: number | null = nu
   `;
 }
 
+export function startOpsMetricsHeartbeat(db: PrismaClient): () => void {
+  void persistSnapshot(db).catch(() => undefined);
+  const timer = setInterval(() => { void persistSnapshot(db).catch(() => undefined); }, 15_000);
+  timer.unref?.();
+  return () => clearInterval(timer);
+}
+
 export function opsMetricsMiddleware(db: PrismaClient): RequestHandler {
   return (_req, res, next) => {
     const started = process.hrtime.bigint();

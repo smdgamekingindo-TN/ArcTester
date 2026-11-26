@@ -1,0 +1,3 @@
+export const TERMS_VERSION = "2026-11-27-v1";
+export const PRIVACY_NOTICE_VERSION = "2026-11-27-v1";
+export const CONSENT_NOTICE_VERSION = "2026-11-27-v1";

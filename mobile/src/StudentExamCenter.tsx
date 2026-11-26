@@ -31,6 +31,7 @@ export default function StudentExamCenter({ api, darkMode, disabled }: Props) {
   const revisionRef = useRef(0);
   const saveQueue = useRef<Promise<void>>(Promise.resolve());
   const attemptUuid = useRef(uuid());
+  const autoSubmitTriggered = useRef(false);
   const [saving, setSaving] = useState(false);
   const dark = darkMode;
   const colors = dark ? { card: "#172235", border: "#334155", text: "#f1f5f9", muted: "#a7b4c8", surface: "#1e293b" } : { card: "#fff", border: "#e4e8ef", text: "#172033", muted: "#748096", surface: "#f8fafc" };
@@ -65,8 +66,9 @@ export default function StudentExamCenter({ api, darkMode, disabled }: Props) {
       for (const question of packageResponse.package.questions) restored[question.id] = null;
       for (const answer of saved.answers) if (answer.examQuestionId in restored) restored[answer.examQuestionId] = answer.selectedIndex;
       setPaper(packageResponse.package); setAnswers(restored); setIndex(0);
-      setStartedAt(started.session.startedAt); setDeadline(new Date(started.session.deadline).getTime());
-      revisionRef.current = saved.revision; attemptUuid.current = uuid();
+      const startedDeadline = new Date(started.session.deadline).getTime();
+      setStartedAt(started.session.startedAt); setDeadline(startedDeadline); setSeconds(Math.max(0, Math.ceil((startedDeadline - Date.now()) / 1000)));
+      revisionRef.current = saved.revision; attemptUuid.current = uuid(); autoSubmitTriggered.current = false;
     } catch (cause) { setError((cause as Error).message || "Could not start this exam."); }
     finally { setBusy(false); }
   };
@@ -97,8 +99,8 @@ export default function StudentExamCenter({ api, darkMode, disabled }: Props) {
       { text: "Submit exam", style: "destructive", onPress: () => void doSubmit() },
     ]);
   };
-  const doSubmit = async () => {
-    if (!paper || !startedAt) return;
+  const doSubmit = async (automatic = false) => {
+    if (!paper || !startedAt || busy) return;
     setBusy(true); setError("");
     try {
       await saveQueue.current.catch(() => undefined);
@@ -110,12 +112,18 @@ export default function StudentExamCenter({ api, darkMode, disabled }: Props) {
           answers: paper.questions.map(question => ({ examQuestionId: question.id, selectedIndex: answers[question.id] ?? null })),
         }),
       });
-      Alert.alert("Exam submitted", result.submission.status === "REVIEW_REQUIRED" ? "Your attempt was received and is waiting for review." : "Your exam was submitted successfully.");
+      Alert.alert(automatic ? "Time is up — exam submitted" : "Exam submitted", result.submission.status === "REVIEW_REQUIRED" ? "Your attempt was received and is waiting for review." : automatic ? "Your answers were submitted automatically when the timer ended." : "Your exam was submitted successfully.");
       setPaper(null); setDeadline(null); setStartedAt(null); setAnswers({}); setIndex(0);
       await refresh();
     } catch (cause) { setError((cause as Error).message || "Submission failed. Your answers remain saved."); }
     finally { setBusy(false); }
   };
+
+  useEffect(() => {
+    if (!paper || deadline === null || seconds > 0 || busy || autoSubmitTriggered.current) return;
+    autoSubmitTriggered.current = true;
+    void doSubmit(true);
+  }, [paper, deadline, seconds, busy, doSubmit]);
 
   if (paper) {
     const question = paper.questions[index];
@@ -123,6 +131,15 @@ export default function StudentExamCenter({ api, darkMode, disabled }: Props) {
     return <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
       <View style={styles.top}><View style={{ flex: 1 }}><Text style={[styles.title, { color: colors.text }]}>{paper.title}</Text><Text style={[styles.muted, { color: colors.muted }]}>Question {index + 1} / {paper.questions.length}</Text></View><View style={[styles.timer, seconds < 60 && { backgroundColor: "#fee2e2" }]}><MaterialCommunityIcons name="timer-outline" size={17} color={seconds < 60 ? palette.red : palette.blue}/><Text style={{ color: seconds < 60 ? palette.red : palette.blue, fontWeight: "900" }}>{formatTime(seconds)}</Text></View></View>
       <View style={[styles.progress, { backgroundColor: colors.border }]}><View style={[styles.progressFill, { width: `${100 * answered / paper.questions.length}%` }]} /></View>
+      <View style={styles.questionGrid} accessibilityLabel="Question navigator">
+        {paper.questions.map((item, questionIndex) => {
+          const selected = index === questionIndex;
+          const completed = answers[item.id] !== null && answers[item.id] !== undefined;
+          return <TouchableOpacity key={item.id} accessibilityRole="button" accessibilityLabel={`Question ${questionIndex + 1}`} accessibilityState={{ selected }} onPress={() => setIndex(questionIndex)} style={[styles.questionGridItem, { borderColor: selected ? palette.blue : completed ? palette.green : colors.border, backgroundColor: selected ? (dark ? "#1d3b68" : "#eff6ff") : completed ? (dark ? "#17352a" : "#f0fdf4") : colors.surface, borderWidth: selected ? 2.5 : 1.5 }]}>
+            <Text style={{ color: selected ? palette.blue : completed ? palette.green : colors.text, fontWeight: "900", fontSize: 12 }}>{questionIndex + 1}</Text>
+          </TouchableOpacity>;
+        })}
+      </View>
       {paper.instructions ? <Text style={[styles.muted, { color: colors.muted, marginTop: 12 }]}>{paper.instructions}</Text> : null}
       <Text style={[styles.meta, { color: colors.muted }]}>{question.subject}{question.topic ? " · " + question.topic : ""} · {question.marks} mark(s)</Text>
       <Text style={[styles.question, { color: colors.text }]}>{question.text}</Text>
@@ -167,6 +184,8 @@ const styles = StyleSheet.create({
   timer: { flexDirection: "row", alignItems: "center", gap: 5, borderRadius: 20, backgroundColor: "#eff6ff", paddingHorizontal: 10, paddingVertical: 8 },
   progress: { height: 6, borderRadius: 8, overflow: "hidden", marginTop: 4 },
   progressFill: { height: "100%", backgroundColor: palette.blue, borderRadius: 8 },
+  questionGrid: { flexDirection: "row", flexWrap: "wrap", gap: 7, marginTop: 8 },
+  questionGridItem: { width: 36, height: 36, borderRadius: 9, alignItems: "center", justifyContent: "center" },
   meta: { fontSize: 11, fontWeight: "700", marginTop: 8 },
   question: { fontSize: 17, lineHeight: 25, fontWeight: "800", marginTop: 10, marginBottom: 4 },
   option: { borderWidth: 1.5, borderRadius: 12, padding: 14, marginTop: 8 },

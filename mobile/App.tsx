@@ -22,6 +22,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { deleteLocalValue, getLocalValue, setLocalValue } from "./src/localSettings";
 import StudentPracticeBuilder, { type PracticePaperConfig } from "./src/StudentPracticeBuilder";
 import StudentExamCenter from "./src/StudentExamCenter";
+import StudentAiPracticeTests from "./src/StudentAiPracticeTests";
 import StudentSecurityCenter from "./src/StudentSecurityCenter";
 import StudentConceptLibrary from "./src/StudentConceptLibrary";
 import { clearOfflineLearningPackage, getOfflineLearningPackage, saveOfflineLearningPackage, type OfflineLearningPackage } from "./src/learningStore";
@@ -1487,7 +1488,10 @@ export default function App() {
               {offlineLearningPackage ? <OfflinePracticeLibrary questions={offlineLearningPackage.questions} darkMode={darkMode} /> : null}
            </Animated.View>
 ) : activeTab === "exams" ? (
-            <StudentExamCenter api={api} darkMode={darkMode} disabled={busy || checkingPracticeRecovery || hasSavedPracticeAttempt} />
+            <>
+              <StudentExamCenter api={api} darkMode={darkMode} disabled={busy || checkingPracticeRecovery || hasSavedPracticeAttempt} />
+              <StudentAiPracticeTests api={api} darkMode={darkMode} disabled={busy || checkingPracticeRecovery || hasSavedPracticeAttempt} />
+            </>
  ) : activeTab === "learn" ? (
           <Animated.View style={animatedEntrance(entrance)}><StudentConceptLibrary api={api} darkMode={darkMode} /></Animated.View>
  ) : activeTab === "settings" ? (

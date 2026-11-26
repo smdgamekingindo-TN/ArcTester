@@ -1541,3 +1541,40 @@ html[data-admin-density="compact"] .bank-question{padding:12px 16px}
 .admin-security-panel .security-secret-actions{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px;min-width:0;}
 .admin-security-panel .security-secret-actions .security-secret-key{min-width:0;overflow-wrap:anywhere;}
 @media(max-width:620px){.admin-security-panel .account-device-row{grid-template-columns:minmax(0,1fr)!important;}.admin-security-panel .account-device-row>div:first-child{grid-column:1;grid-row:1;}.admin-security-panel .account-device-row>button{grid-column:1;grid-row:2;justify-self:start;}.admin-security-panel .security-secret-actions{grid-template-columns:minmax(0,1fr);}}
+
+
+/* Strong, stable borders for the exam question palette. */
+.exam-palette-item{box-sizing:border-box;border:1.5px solid var(--border);outline:none;transition:border-color .12s ease,background-color .12s ease,box-shadow .12s ease}
+.exam-palette-item.answered{border:1.5px solid var(--accent)}
+.exam-palette-item.marked-for-review{border:1.5px solid var(--warning,#d99a28)}
+.exam-palette-item[aria-current="step"]{border:2px solid var(--accent);outline:2px solid color-mix(in srgb,var(--accent) 38%,transparent);outline-offset:2px;box-shadow:0 0 0 1px var(--surface) inset}
+.exam-palette-item:focus-visible{outline:3px solid color-mix(in srgb,var(--accent) 65%,transparent);outline-offset:3px}
+.exam-palette-item:disabled{opacity:.55;cursor:not-allowed}
+@media(prefers-reduced-motion:reduce){.exam-palette-item{transition:none}}
+
+/* Registration password feedback */
+.auth-password-strength{display:grid;gap:8px;margin-top:9px;padding:12px;border:1px solid var(--border);border-radius:12px;background:var(--surface)}
+.auth-password-strength-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px}
+.auth-password-strength-heading strong{font-weight:800}
+.auth-password-strength-heading .strength-1{color:var(--error,#d95c5c)}
+.auth-password-strength-heading .strength-2{color:var(--warning,#b7791f)}
+.auth-password-strength-heading .strength-3{color:var(--accent)}
+.auth-password-strength-heading .strength-4{color:var(--success,#15803d)}
+.auth-password-strength-meter{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
+.auth-password-strength-meter span{height:5px;border-radius:99px;background:var(--border)}
+.auth-password-strength-meter span.filled{background:var(--error,#d95c5c)}
+.auth-password-strength-meter span.filled:nth-child(2){background:var(--warning,#b7791f)}
+.auth-password-strength-meter span.filled:nth-child(3){background:var(--accent)}
+.auth-password-strength-meter span.filled:nth-child(4){background:var(--success,#15803d)}
+.auth-password-checks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px 12px;list-style:none;margin:0;padding:0;font-size:11px}
+.auth-password-checks li{display:flex;align-items:center;gap:6px;color:var(--muted)}
+.auth-password-checks li.passed{color:var(--success,#15803d)}
+.auth-password-checks li span{font-weight:900}
+.auth-password-strength .auth-field-hint{margin:0}
+@media(max-width:520px){.auth-password-checks{grid-template-columns:1fr}}
+
+
+/* Active web exam integrity notice */
+.exam-guard-notice{border-color:var(--warning,#b7791f);background:color-mix(in srgb,var(--warning,#b7791f) 9%,var(--surface));padding:12px 16px;margin-bottom:12px}
+.exam-guard-notice strong{display:block;color:var(--warning,#b7791f);font-size:13px}
+.exam-guard-notice p{margin:5px 0 0;font-size:13px;color:var(--text)}

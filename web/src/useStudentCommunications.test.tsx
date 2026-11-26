@@ -12,7 +12,11 @@ describe("useStudentCommunications", () => {
     const request = vi.fn(async (path: string) => {
       if (path === "/announcements/active") return { announcements: [{ id: "active-1", title: "Exam update", message: "Starts at 10.", createdAt: "2026-11-10T08:00:00.000Z", publishedAt: "2026-11-10T08:00:00.000Z", expiresAt: null }] };
       if (path === "/announcements") return { announcements: [{ id: "history-1", title: "Old update", message: "Read me.", createdAt: "2026-11-10T07:00:00.000Z", publishedAt: "2026-11-10T07:00:00.000Z", expiresAt: null, seenAt: null, acknowledgedAt: null }] };
-      if (path === "/notifications?unread=true") return { notifications: [{ id: "notice-1", kind: "STUDY_UPDATE", title: "New exam", message: "Assigned.", href: "/assignments", createdAt: "2026-11-10T08:30:00.000Z", readAt: null, expiresAt: null }] };
+      if (path === "/notifications?unread=true") return { notifications: [
+        { id: "notice-1", kind: "STUDY_UPDATE", title: "New exam", message: "Assigned.", href: "/assignments", createdAt: "2026-11-10T08:30:00.000Z", readAt: null, expiresAt: null },
+        { id: "result-1", kind: "EXAM_RESULT", title: "Exam result published", message: "Your score is ready.", href: "/results/1", createdAt: "2026-11-10T08:35:00.000Z", readAt: null, expiresAt: null },
+        { id: "assignment-1", kind: "EXAM_ASSIGNMENT", title: "New assigned exam", message: "Start now.", href: "/assignments/1", createdAt: "2026-11-10T08:36:00.000Z", readAt: null, expiresAt: null },
+      ] };
       return { notifications: [] };
     });
     const setError = vi.fn();
@@ -29,6 +33,8 @@ describe("useStudentCommunications", () => {
     await waitFor(() => expect(result.current.announcements).toHaveLength(1));
     expect(result.current.activeAnnouncements[0].id).toBe("active-1");
     expect(result.current.notifications[0].id).toBe("notice-1");
+    expect(result.current.notifications.some((item) => item.kind === "EXAM_RESULT")).toBe(true);
+    expect(result.current.notifications.some((item) => item.kind === "EXAM_ASSIGNMENT")).toBe(false);
     expect(request).toHaveBeenCalledWith("/announcements/active");
     expect(request).toHaveBeenCalledWith("/announcements");
     expect(request).toHaveBeenCalledWith("/notifications?unread=true");

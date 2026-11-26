@@ -52,12 +52,37 @@ describe("administrator MCP model control", () => {
       userId: admin.id,
       name: "model-control-test",
       keyHash: digest(bearer),
-      scopes: ["models:read", "models:dataset:create", "models:verification:read", "models:train", "models:register", "models:evaluate", "models:activate"],
+      scopes: ["models:read", "models:dataset:create", "models:verification:read", "models:train", "models:register", "models:evaluate", "models:activate", "students:read", "students:manage", "students:review"],
     } });
     adminKeyId = key.id;
   });
 
   afterAll(async () => { await server.close(); });
+
+  it("retrieves student performance evidence and sends a review notification", async () => {
+    const student = await server.db.user.create({ data: {
+      email: "student-performance-review@arctester.test",
+      passwordHash: "test-only",
+      fullName: "Performance Review Student",
+      role: "STUDENT",
+      accessStatus: "APPROVED",
+    } });
+    const evidence = await callTool("get_student_performance_for_review", { studentId: student.id });
+    expect(evidence.student).toMatchObject({ id: student.id, fullName: "Performance Review Student" });
+    expect(evidence.performance.practice.completedAttempts).toBe(0);
+    expect(evidence.reviewGuidance.doNotTreatUnansweredAsIncorrect).toBe(true);
+    expect(evidence.modelInference).toMatchObject({ status: "NOT_CONFIGURED", modelId: "student_readiness" });
+
+    const sent = await callTool("send_student_performance_review", {
+      studentId: student.id,
+      title: "Your performance review",
+      message: "Your current practice evidence is limited. Complete a few practice sets so we can identify reliable topic-level strengths and revision areas.",
+      confirm: true,
+    });
+    expect(sent).toMatchObject({ sent: true, notification: { userId: student.id, kind: "PERFORMANCE_REVIEW", title: "Your performance review" } });
+    const notification = await server.db.studentNotification.findUnique({ where: { id: sent.notification.id } });
+    expect(notification).toMatchObject({ userId: student.id, kind: "PERFORMANCE_REVIEW", href: "/analytics" });
+  });
 
   it("creates fingerprinted datasets, queues training, verifies and activates a candidate", async () => {
     const training = await callTool("create_model_dataset", {
@@ -93,6 +118,82 @@ describe("administrator MCP model control", () => {
     const registered = await server.db.registeredModel.findMany({ where: { modelId: "readiness_classifier" }, orderBy: { version: "asc" } });
     expect(registered.map(model => model.isActive)).toEqual([false, true]);
     expect(await server.db.modelRegistryAudit.count({ where: { modelId: "readiness_classifier" } })).toBeGreaterThanOrEqual(4);
+  });
+
+  it("reports unsupported active Model Lab artifacts without fabricating a prediction", async () => {
+    const student = await server.db.user.create({ data: {
+      email: "student-unsupported-model-review@arctester.test",
+      passwordHash: "test-only",
+      fullName: "Unsupported Model Review Student",
+      role: "STUDENT",
+      accessStatus: "APPROVED",
+    } });
+    const unsupportedArtifact = {
+      format: "unsupported-model-fixture-v1",
+      task: "classification",
+      inputSchema: { features: [{ name: "unknownFeature", type: "number" }] },
+    };
+    await server.db.registeredModel.create({ data: {
+      id: randomBytes(16).toString("hex"),
+      modelId: "student_readiness",
+      version: 2,
+      algorithm: "custom_classifier",
+      task: "classification",
+      dataset: "unit-test-fixture",
+      artifactJson: JSON.stringify({ sha256: digest(stableModelJson(unsupportedArtifact)), modelArtifact: unsupportedArtifact }),
+      isActive: true,
+      activatedAt: new Date(),
+    } });
+    const review = await callTool("get_student_performance_for_review", { studentId: student.id });
+    expect(review.modelInference).toMatchObject({
+      status: "FEATURE_SCHEMA_UNSUPPORTED",
+      modelId: "student_readiness",
+    });
+    expect(review.modelInference).not.toHaveProperty("prediction");
+    expect(review.reviewGuidance.modelPredictionIsSupplementaryNotAGrade).toBe(true);
+    await server.db.registeredModel.updateMany({
+      where: { modelId: "student_readiness", isActive: true },
+      data: { isActive: false },
+    });
+  });
+
+  it("uses a compatible active Model Lab artifact in student performance reviews", async () => {
+    const student = await server.db.user.create({ data: {
+      email: "student-active-model-review@arctester.test",
+      passwordHash: "test-only",
+      fullName: "Active Model Review Student",
+      role: "STUDENT",
+      accessStatus: "APPROVED",
+    } });
+    const modelArtifact = {
+      format: "arctester-linear-v1",
+      task: "classification",
+      encoders: [
+        { name: "practiceAccuracy", type: "number", mean: 0, scale: 1 },
+        { name: "completedTests", type: "number", mean: 0, scale: 1 },
+      ],
+      weights: [[0, 0, 1], [0, 0, -1]],
+      classes: ["not_ready", "ready"],
+    };
+    await server.db.registeredModel.create({ data: {
+      id: randomBytes(16).toString("hex"),
+      modelId: "student_readiness",
+      version: 1,
+      algorithm: "logistic_regression",
+      task: "classification",
+      dataset: "unit-test-fixture",
+      artifactJson: JSON.stringify({ sha256: digest(stableModelJson(modelArtifact)), modelArtifact }),
+      isActive: true,
+      activatedAt: new Date(),
+    } });
+    const review = await callTool("get_student_performance_for_review", { studentId: student.id });
+    expect(review.modelInference).toMatchObject({
+      status: "PREDICTED",
+      modelId: "student_readiness",
+      version: 1,
+      prediction: { type: "classification", label: "not_ready" },
+    });
+    expect(review.reviewGuidance.modelPredictionIsSupplementaryNotAGrade).toBe(true);
   });
 
   it("rejects verification data as a training source", async () => {
@@ -179,6 +280,21 @@ describe("administrator MCP model control", () => {
     expect(result.metrics.accuracy).toBeLessThanOrEqual(1);
     expect(result.metrics.baselineAccuracy).toBeGreaterThanOrEqual(0);
     expect(result.metrics.baselineAccuracy).toBeLessThanOrEqual(1);
+  });
+
+  it("lists students and manages access through explicitly confirmed MCP tools", async () => {
+    const student = await server.db.user.create({ data: {
+      email: "student-mcp-management@arctester.test", passwordHash: "test-only", role: "STUDENT",
+      accessStatus: "PENDING", fullName: "MCP Management Student", registrationNumber: "24010-CM-053",
+      collegeName: "Test Polytechnic", branchName: "Computer Engineering",
+    } });
+    const listed = await callTool("list_students", { search: "MCP Management Student", accessStatus: "PENDING", page: 1, limit: 10 });
+    expect(listed.students).toContainEqual(expect.objectContaining({ id: student.id, fullName: "MCP Management Student", accessStatus: "PENDING" }));
+    await expect(callTool("set_student_access_status", { studentId: student.id, accessStatus: "APPROVED" })).rejects.toThrow();
+    const updated = await callTool("set_student_access_status", { studentId: student.id, accessStatus: "APPROVED", confirm: true });
+    expect(updated.student).toMatchObject({ id: student.id, accessStatus: "APPROVED" });
+    const persisted = await server.db.user.findUnique({ where: { id: student.id } });
+    expect(persisted?.sessionVersion).toBe(1);
   });
 
   it("enforces missing tool scopes", async () => {

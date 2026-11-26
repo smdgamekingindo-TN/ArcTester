@@ -9,6 +9,7 @@ const FilterSchema = z.object({
   from: z.string().datetime({ offset: true }).optional(),
   to: z.string().datetime({ offset: true }).optional(),
   action: z.string().trim().min(1).max(80).optional(),
+  q: z.string().trim().max(120).optional(),
   outcome: z.enum(["SUCCESS", "FAILURE"]).optional(),
   collegeCode: z.string().trim().max(16).optional(),
   branchCode: z.string().trim().max(24).optional(),
@@ -21,6 +22,7 @@ function eventWhere(studentId: number, filters: AuditFilters): Prisma.AuditEvent
   return {
     subjectUserId: studentId,
     ...(filters.action ? { action: filters.action } : {}),
+    ...(filters.q ? { OR: [{ action: { contains: filters.q, mode: "insensitive" } }, { route: { contains: filters.q, mode: "insensitive" } }, { resourceType: { contains: filters.q, mode: "insensitive" } }, { resourceId: { contains: filters.q, mode: "insensitive" } }, { requestId: { contains: filters.q, mode: "insensitive" } }, { contextJson: { contains: filters.q, mode: "insensitive" } }] } : {}),
     ...(filters.outcome ? { outcome: filters.outcome } : {}),
     ...(filters.collegeCode ? { collegeCode: filters.collegeCode } : {}),
     ...(filters.branchCode ? { branchCode: filters.branchCode } : {}),

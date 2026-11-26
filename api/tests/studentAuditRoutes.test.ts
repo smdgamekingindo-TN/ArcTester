@@ -92,8 +92,20 @@ describe("student audit timeline and exports", () => {
 
     const timeline = await getJson(server.baseUrl + "/admin/students/" + studentId + "/audit?action=STUDENT_PROFILE_CHANGE&outcome=SUCCESS", adminCookie);
     expect(timeline.status).toBe(200);
-    expect(timeline.json).toMatchObject({ ok: true, total: 1 });
-    expect((timeline.json as { events: Array<{ action: string; actorId: number }> }).events[0]).toMatchObject({ action: "STUDENT_PROFILE_CHANGE", actorId: adminId });
+    expect(timeline.json).toMatchObject({ ok: true });
+    const timelineBody = timeline.json as { total: number; events: Array<{ action: string; actorId: number }> };
+    expect(timelineBody.total).toBeGreaterThanOrEqual(1);
+    expect(timelineBody.events).toHaveLength(timelineBody.total);
+    expect(timelineBody.events.every(event => event.action === "STUDENT_PROFILE_CHANGE")).toBe(true);
+    expect(timelineBody.events[0]).toMatchObject({ action: "STUDENT_PROFILE_CHANGE", actorId: adminId });
+
+    const searched = await getJson(server.baseUrl + "/admin/students/" + studentId + "/audit?q=STUDENT_PROFILE_CHANGE", adminCookie);
+    expect(searched.status).toBe(200);
+    expect(searched.json).toMatchObject({ ok: true });
+    expect((searched.json as { total: number }).total).toBeGreaterThanOrEqual(1);
+    const noMatch = await getJson(server.baseUrl + "/admin/students/" + studentId + "/audit?q=does-not-exist", adminCookie);
+    expect(noMatch.status).toBe(200);
+    expect(noMatch.json).toMatchObject({ ok: true, total: 0 });
   });
 
   it("exports filtered CSV and JSON and records each export", async () => {

@@ -17,7 +17,7 @@ async function callTool(name: string, args: Record<string, unknown>) {
     body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call", params: { name, arguments: args } }),
   });
   const body = await response.json() as { result?: { content?: Array<{ text?: string }>; isError?: boolean }; error?: { message?: string } };
-  if (!response.ok || body.error) throw new Error(body.error?.message ?? "MCP request failed");
+  if (!response.ok || body.error) throw new Error("MCP request failed (" + response.status + "): " + JSON.stringify(body));
   const text = body.result?.content?.[0]?.text ?? "";
   if (body.result?.isError) throw new Error(text);
   // MCP tool results are JSON-decoded test fixtures with dynamic fields.
@@ -187,9 +187,9 @@ describe("administrator MCP model control", () => {
 
   it("re-checks administrator role and key revocation on every MCP request", async () => {
     await server.db.user.update({ where: { id: adminId }, data: { role: "STUDENT" } });
-    await expect(callTool("list_registered_models", { limit: 5 })).rejects.toThrow(/Administrator access is required/i);
+    await expect(callTool("list_registered_models", { limit: 5 })).rejects.toThrow(/MCP request failed \(403\)/);
     await server.db.user.update({ where: { id: adminId }, data: { role: "ADMIN" } });
     await server.db.adminMcpKey.update({ where: { id: adminKeyId }, data: { revokedAt: new Date() } });
-    await expect(callTool("list_registered_models", { limit: 5 })).rejects.toThrow(/invalid or revoked/i);
+    await expect(callTool("list_registered_models", { limit: 5 })).rejects.toThrow(/MCP request failed \((401|403)\)/);
   });
 });

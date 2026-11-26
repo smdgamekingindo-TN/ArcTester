@@ -39,7 +39,7 @@ let apiLimiterCleanupCounter = 0;
 function sharedApiRateLimit(database: PrismaClient): express.RequestHandler {
   return async (req, res, next) => {
     // Keep liveness/readiness semantics independent of the rate-limit table.
-    if (req.path === "/health" || req.path === "/ready") return next();
+    if (req.path === "/health" || req.path === "/ready" || req.method === "OPTIONS") return next();
     try {
       const bucketKey = apiBucketHash(req.ip ?? "unknown");
       const rows = await database.$queryRaw<Array<{ count: number; blockedUntil: Date | null; retryAfterSeconds: number }>>`

@@ -52,7 +52,7 @@ describe("administrator MCP model control", () => {
       userId: admin.id,
       name: "model-control-test",
       keyHash: digest(bearer),
-      scopes: ["models:read", "models:dataset:create", "models:verification:read", "models:train", "models:register", "models:evaluate", "models:activate", "students:read", "students:manage", "students:review"],
+      scopes: ["questions:read", "questions:create", "models:read", "models:dataset:create", "models:verification:read", "models:train", "models:register", "models:evaluate", "models:activate", "students:read", "students:manage", "students:review"],
     } });
     adminKeyId = key.id;
   });
@@ -295,6 +295,40 @@ describe("administrator MCP model control", () => {
     expect(updated.student).toMatchObject({ id: student.id, accessStatus: "APPROVED" });
     const persisted = await server.db.user.findUnique({ where: { id: student.id } });
     expect(persisted?.sessionVersion).toBe(1);
+  });
+
+  it("creates and bulk-imports branch-scoped question drafts through Admin MCP", async () => {
+    const createdText = "MCP branch create test question for Mechanical Engineering?";
+    const created = await callTool("create_questions", {
+      audience: { audienceScope: "BRANCH", targetBranchCode: "MEC", targetBranchName: "Mechanical Engineering" },
+      questions: [{
+        subject: "MCP Mechanical Engineering",
+        topic: "Engineering Mechanics",
+        text: createdText,
+        options: ["A", "B", "C", "D"],
+        correctIndex: 1,
+        source: "MEC syllabus unit 1",
+      }],
+    });
+    expect(created).toMatchObject({ added: 1, duplicates: 0, invalid: [] });
+    const createdRow = await server.db.question.findFirst({ where: { text: createdText } });
+    expect(createdRow).toMatchObject({ audienceScope: "BRANCH", targetBranchCode: "MEC", targetBranchName: "Mechanical Engineering" });
+
+    const csv = [
+      "subject,topic,text,optionA,optionB,optionC,optionD,correctIndex,source",
+      "MCP Computer Engineering,Networks,MCP branch CSV import question?,A,B,C,D,2,CSE syllabus unit 2",
+    ].join("\n");
+    const imported = await callTool("import_questions", {
+      format: "csv",
+      content: csv,
+      audience: { targetBranchCode: "CSE", targetBranchName: "Computer Engineering" },
+    });
+    expect(imported).toMatchObject({ added: 1, duplicates: 0, invalid: [] });
+    const importedRow = await server.db.question.findFirst({ where: { text: "MCP branch CSV import question?" } });
+    expect(importedRow).toMatchObject({ audienceScope: "BRANCH", targetBranchCode: "CSE", targetBranchName: "Computer Engineering" });
+
+    const searched = await callTool("search_question_bank", { targetBranchCode: "CSE", audienceScope: "BRANCH", limit: 10 });
+    expect(searched.questions).toContainEqual(expect.objectContaining({ text: "MCP branch CSV import question?", audienceScope: "BRANCH", targetBranchCode: "CSE" }));
   });
 
   it("enforces missing tool scopes", async () => {

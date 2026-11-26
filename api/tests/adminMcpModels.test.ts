@@ -120,6 +120,39 @@ describe("administrator MCP model control", () => {
     expect(await server.db.modelRegistryAudit.count({ where: { modelId: "readiness_classifier" } })).toBeGreaterThanOrEqual(4);
   });
 
+  it("reports unsupported active Model Lab artifacts without fabricating a prediction", async () => {
+    const student = await server.db.user.create({ data: {
+      email: "student-unsupported-model-review@arctester.test",
+      passwordHash: "test-only",
+      fullName: "Unsupported Model Review Student",
+      role: "STUDENT",
+      accessStatus: "APPROVED",
+    } });
+    const unsupportedArtifact = {
+      format: "unsupported-model-fixture-v1",
+      task: "classification",
+      inputSchema: { features: [{ name: "unknownFeature", type: "number" }] },
+    };
+    await server.db.registeredModel.create({ data: {
+      id: randomBytes(16).toString("hex"),
+      modelId: "student_readiness",
+      version: 2,
+      algorithm: "custom_classifier",
+      task: "classification",
+      dataset: "unit-test-fixture",
+      artifactJson: JSON.stringify({ sha256: digest(stableModelJson(unsupportedArtifact)), modelArtifact: unsupportedArtifact }),
+      isActive: true,
+      activatedAt: new Date(),
+    } });
+    const review = await callTool("get_student_performance_for_review", { studentId: student.id });
+    expect(review.modelInference).toMatchObject({
+      status: "FEATURE_SCHEMA_UNSUPPORTED",
+      modelId: "student_readiness",
+    });
+    expect(review.modelInference).not.toHaveProperty("prediction");
+    expect(review.reviewGuidance.modelPredictionIsSupplementaryNotAGrade).toBe(true);
+  });
+
   it("uses a compatible active Model Lab artifact in student performance reviews", async () => {
     const student = await server.db.user.create({ data: {
       email: "student-active-model-review@arctester.test",

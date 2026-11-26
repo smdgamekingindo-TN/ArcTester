@@ -137,12 +137,27 @@ model User {
   modelDatasets ModelDataset[]
   modelTrainingJobs ModelTrainingJob[]
   auditEvents AuditEvent[] @relation("AuditEventActor")
+  legalAcceptances LegalAcceptance[]
   modelRegistryAudits ModelRegistryAudit[]
   modelEvaluations ModelEvaluation[]
 
   @@index([collegeName])
   @@index([branchName])
   @@index([role, accessStatus])
+}
+
+model LegalAcceptance {
+  id                    String   @id @default(cuid())
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId                Int
+  termsVersion           String
+  privacyNoticeVersion   String
+  consentNoticeVersion  String
+  acceptedAt             DateTime @default(now())
+  source                 String   @default("web")
+
+  @@index([userId, acceptedAt])
+  @@index([acceptedAt])
 }
 
 model Invitation {

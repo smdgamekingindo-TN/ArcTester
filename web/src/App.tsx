@@ -149,6 +149,11 @@ export default function App() {
 
 
   useEffect(() => {
+    if (passwordResetToken) {
+      setUser(null);
+      setSessionRestoring(false);
+      return;
+    }
     request<{ user: User }>("/auth/me")
       .then(({ user: current }) => {
         setUser(current);
@@ -158,7 +163,7 @@ export default function App() {
         setUser(null);
         setSessionRestoring(false);
       });
-  }, []);
+  }, [passwordResetToken]);
 
   useEffect(() => {
     if (!user) return;

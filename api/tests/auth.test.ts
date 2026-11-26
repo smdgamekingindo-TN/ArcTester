@@ -150,6 +150,27 @@ describe("auth", () => {
     expect(res.status).toBe(400);
   });
 
+  it("fails closed for browser registration when production CAPTCHA is not configured", async () => {
+    const previousNodeEnv = process.env.NODE_ENV;
+    const previousTurnstileSecret = process.env.TURNSTILE_SECRET_KEY;
+    process.env.NODE_ENV = "production";
+    delete process.env.TURNSTILE_SECRET_KEY;
+    try {
+      const response = await postJson(`${server.baseUrl}/auth/register`, {
+        ...STUDENT_PROFILE,
+        email: "captcha-unconfigured@example.com",
+        password: "secret1234",
+      });
+      expect(response.status).toBe(400);
+      expect((response.json as { error: string }).error).toContain("Registration security check is not configured");
+    } finally {
+      if (previousNodeEnv === undefined) delete process.env.NODE_ENV;
+      else process.env.NODE_ENV = previousNodeEnv;
+      if (previousTurnstileSecret === undefined) delete process.env.TURNSTILE_SECRET_KEY;
+      else process.env.TURNSTILE_SECRET_KEY = previousTurnstileSecret;
+    }
+  });
+
   it("requires academic identity fields for new student registration", async () => {
     const res = await postJsonWithCookie(`${server.baseUrl}/auth/register`, {
       email: "missing-profile@example.com",

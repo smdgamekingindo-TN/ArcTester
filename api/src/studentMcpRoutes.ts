@@ -228,6 +228,7 @@ export function studentMcpRouter(db: PrismaClient): Router {
         { name: "create_my_practice_test", description: "Create a private practice test from AI-generated questions; does not publish or assign an official exam.", inputSchema: { type: "object", required: ["title", "questions"], properties: { title: { type: "string" }, description: { type: "string" }, durationMinutes: { type: "integer", minimum: 1, maximum: 600 }, questions: { type: "array", minItems: 1, maxItems: 100, items: { type: "object" } } } } },
         { name: "create_my_practice_exam", description: "Create a saved practice exam in the student app’s My practice exams library. It is private to this student and is not an official assigned exam.", inputSchema: { type: "object", required: ["title", "questions"], properties: { title: { type: "string" }, description: { type: "string" }, durationMinutes: { type: "integer", minimum: 1, maximum: 600 }, questions: { type: "array", minItems: 1, maxItems: 100, items: { type: "object" } } } } },
         { name: "list_my_practice_tests", description: "List your saved private practice tests.", inputSchema: { type: "object", properties: { limit: { type: "integer", minimum: 1, maximum: 100 } } } },
+        { name: "list_my_practice_exams", description: "List saved practice exams shown in the student app’s My practice exams library.", inputSchema: { type: "object", properties: { limit: { type: "integer", minimum: 1, maximum: 100 } } } },
         { name: "edit_my_practice_test", description: "Edit one of your own saved private practice tests, including replacing or revising its questions.", inputSchema: { type: "object", required: ["id", "patch"], properties: { id: { type: "string" }, patch: { type: "object" } } } },
       ];
       return res.json({ jsonrpc: "2.0", id, result: { tools } });
@@ -287,6 +288,7 @@ export function studentMcpRouter(db: PrismaClient): Router {
           const updated = await db.studentPracticeSet.update({ where: { id: existing.id }, data: { ...merged, questions: merged.questions as never } });
           output = { practiceTest: updated }; break;
         }
+        case "list_my_practice_exams":
         case "list_my_practice_tests": {
           if (!hasScope(key, "practice:read")) return res.json(jsonRpcError(id, -32003, "Missing practice:read scope."));
           const input = z.object({ limit: z.number().int().min(1).max(100).default(50) }).parse(args);

@@ -18,7 +18,7 @@ function rpcError(id: unknown, code: number, message: string) { return { jsonrpc
 function rpcResult(id: unknown, value: unknown) { return { jsonrpc: "2.0", id, result: { content: [{ type: "text", text: JSON.stringify(value) }], isError: false } }; }
 
 async function authAdminKey(db: PrismaClient, req: Request, _res: Response, next: NextFunction) {
-  const token = req.headers.authorization?.match(/^Bearer\\s+(\\S+)$/)?.[1];
+  const token = req.headers.authorization?.match(/^Bearer\s+(\S+)$/)?.[1];
   if (!token) return next(forbidden("A valid administrator MCP bearer key or OAuth token is required."));
   try {
     let oauthPayload: Record<string, unknown> | null = null;

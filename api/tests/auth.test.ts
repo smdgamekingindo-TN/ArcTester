@@ -74,6 +74,10 @@ async function postJsonWithCookie(
     headers,
     body: JSON.stringify(payload),
   });
+  if (url.endsWith("/auth/register") && res.status === 201 && body && typeof body === "object" && !Array.isArray(body)) {
+    const email = (body as Record<string, unknown>).email;
+    if (typeof email === "string") await server.db.user.update({ where: { email: email.trim().toLowerCase() }, data: { emailVerifiedAt: new Date() } });
+  }
   setCookieFromResponse(res);
   return { status: res.status, json: await res.json(), headers: res.headers };
 }

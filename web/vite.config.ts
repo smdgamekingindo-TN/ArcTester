@@ -10,6 +10,7 @@ export default defineConfig(({ mode }) => {
     // embedded at build time. It is intentionally not a VITE_* dashboard key.
     define: {
       __TURNSTILE_SITE_KEY__: JSON.stringify(env.TURNSTILE_SITE_KEY || ""),
+      "import.meta.env.GOOGLE_CLIENT_ID": JSON.stringify(env.GOOGLE_CLIENT_ID || ""),
     },
     plugins: [react()],
     // Vercel serves from the domain root; Electron needs relative file:// URLs.

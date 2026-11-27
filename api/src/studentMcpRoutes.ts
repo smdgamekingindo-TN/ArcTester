@@ -3,7 +3,7 @@ import express, { Router, type Request, type Response, type NextFunction } from 
 import { z } from "zod";
 import type { PrismaClient } from "@prisma/client";
 import { badRequest, forbidden, notFound } from "./errors.js";
-import { requireAuth, type AuthedRequest } from "./auth.js";
+import { requireAuth, requireRecentReauthentication, type AuthedRequest } from "./auth.js";
 
 const KEY_PREFIX = "arc_student_";
 const KEY_SCOPES = ["questions:read", "questions:write", "practice:read", "practice:write"] as const;
@@ -81,7 +81,7 @@ export function studentMcpRouter(db: PrismaClient): Router {
     } catch (error) { next(error); }
   });
 
-  router.post("/student/mcp-keys", requireAuth, requireStudent(db), async (req: AuthedRequest, res, next) => {
+  router.post("/student/mcp-keys", requireAuth, requireStudent(db), requireRecentReauthentication(), async (req: AuthedRequest, res, next) => {
     try {
       const input = z.object({
         name: z.string().trim().min(2).max(80),

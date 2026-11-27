@@ -54,9 +54,8 @@ describe("Google credential verification", () => {
 });
 
 
-describe("guardian consent registration requirements", () => {
+describe("student registration age attestation", () => {
   const base = {
-    adultAttestation: false,
     termsAccepted: true,
     privacyConsent: true,
     termsVersion: "2026-11-27-v3",
@@ -73,12 +72,7 @@ describe("guardian consent registration requirements", () => {
     branchCode: "CM",
   };
 
-  it("requires a parent or guardian email when the student is under 18", () => {
-    expect(RegisterSchema.safeParse(base).success).toBe(false);
-    expect(RegisterSchema.safeParse({ ...base, guardianEmail: "guardian@example.com" }).success).toBe(true);
-  });
-
-  it("allows adult registration without a guardian email", () => {
-    expect(RegisterSchema.safeParse({ ...base, adultAttestation: true }).success).toBe(true);
+  it("allows under-18 students to register without adult attestation or guardian email", () => {
+    expect(RegisterSchema.safeParse(base).success).toBe(true);
   });
 });

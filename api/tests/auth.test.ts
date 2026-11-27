@@ -65,7 +65,7 @@ async function postJsonWithCookie(
   let payload = body;
   if (url.endsWith("/auth/register") && body && typeof body === "object" && !Array.isArray(body)) {
     const input = body as Record<string, unknown>;
-    const legal = { adultAttestation: true, termsAccepted: true, privacyConsent: true, termsVersion: "2026-11-27-v2", privacyNoticeVersion: "2026-11-27-v2", consentNoticeVersion: "2026-11-27-v2", ageGateVersion: "2026-11-27-v2", ...input };
+    const legal = { adultAttestation: true, termsAccepted: true, privacyConsent: true, termsVersion: "2026-11-27-v3", privacyNoticeVersion: "2026-11-27-v3", consentNoticeVersion: "2026-11-27-v3", ageGateVersion: "2026-11-27-v3", ...input };
     payload = legal;
     if (input.registrationNumber === "24999-CM-053" && typeof input.email === "string") payload = { ...legal, registrationNumber: fixtureRegistrationNumber(input.email) };
   }
@@ -173,11 +173,11 @@ describe("auth", () => {
     expect((res.json as { user: { registrationNumber: string } }).user.registrationNumber).toBe("24999-CM-053");
     const registeredUserId = (res.json as { user: { id: number } }).user.id;
     const acceptance = await server.db.legalAcceptance.findFirst({ where: { userId: registeredUserId } });
-    expect(acceptance).toMatchObject({ termsVersion: "2026-11-27-v2", privacyNoticeVersion: "2026-11-27-v2", consentNoticeVersion: "2026-11-27-v2", ageGateVersion: "2026-11-27-v2", ageAttested: true, source: "web" });
+    expect(acceptance).toMatchObject({ termsVersion: "2026-11-27-v3", privacyNoticeVersion: "2026-11-27-v3", consentNoticeVersion: "2026-11-27-v3", ageGateVersion: "2026-11-27-v3", ageAttested: true, source: "web" });
     expect(acceptance?.acceptedAt).toBeInstanceOf(Date);
   });
 
-  it("rejects false adult attestation and false privacy consent", async () => {
+  it("rejects false privacy consent regardless of age attestation", async () => {
     const response = await fetch(`${server.baseUrl}/auth/register`, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -188,10 +188,10 @@ describe("auth", () => {
         adultAttestation: false,
         termsAccepted: true,
         privacyConsent: false,
-        termsVersion: "2026-11-27-v2",
-        privacyNoticeVersion: "2026-11-27-v2",
-        consentNoticeVersion: "2026-11-27-v2",
-        ageGateVersion: "2026-11-27-v2",
+        termsVersion: "2026-11-27-v3",
+        privacyNoticeVersion: "2026-11-27-v3",
+        consentNoticeVersion: "2026-11-27-v3",
+        ageGateVersion: "2026-11-27-v3",
       }),
     });
     expect(response.status).toBe(400);

@@ -17,6 +17,8 @@ const selfAuthenticatingPublicAuthPaths = new Set([
   "/register", "/login", "/token", "/login/2fa", "/token/2fa",
   "/passkeys/login/options", "/passkeys/login/verify", "/me", "/logout", "/captcha/challenge",
   "/password-reset/request", "/password-reset/complete", "/google/login", "/google/register",
+  // Guardian consent endpoints authorize the request with an opaque, expiring, single-use token.
+  "/guardian-consent/verify",
 ]);
 
 describe("API route authentication coverage", () => {

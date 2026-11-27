@@ -5,12 +5,12 @@
 import type { NextFunction, Request, Response } from "express";
 import { Router, urlencoded } from "express";
 import { z } from "zod";
-import { createHash, createHmac, randomBytes, scrypt, scryptSync, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, randomBytes, randomInt, scrypt, scryptSync, timingSafeEqual } from "node:crypto";
 import { badRequest, conflict, forbidden, notFound } from "./errors.js";
 import type { PrismaClient } from "@prisma/client";
 import { decryptTotpSecret, encryptTotpSecret, generateRecoveryCodes, generateTotpSecret, hashRecoveryCode, verifyTotp } from "./totp.js";
 import { base64urlEncode, createWebAuthnChallenge, parseNoneAttestation, verifyClientData, verifyPasskeyAssertion } from "./webauthn.js";
-import { sendPasswordResetEmail } from "./passwordResetEmail.js";
+import { sendEmailVerificationCode, sendPasswordResetEmail } from "./passwordResetEmail.js";
 
 const DEVELOPMENT_JWT_SECRET = "dev-secret-change-me-in-production";
 const JWT_SECRET = process.env.JWT_SECRET ?? (process.env.NODE_ENV === "production" ? "" : DEVELOPMENT_JWT_SECRET);
@@ -697,6 +697,7 @@ export function authRouter(db: PrismaClient): Router {
         registrationBranchName = identity.branchName;
       }
       await verifyRegistrationCaptcha(input.captchaToken, req.ip ?? "unknown", nativeClient);
+      const verificationCode = String(randomInt(0, 1_000_000)).padStart(6, "0");
       const passwordHash = await hashPasswordAsync(input.password);
       const user = await db.$transaction(async (tx) => {
         const created = await tx.user.create({
@@ -714,13 +715,11 @@ export function authRouter(db: PrismaClient): Router {
             source: nativeClient ? "mobile" : "web",
           },
         });
+        await tx.authChallenge.create({ data: { userId: created.id, challenge: sha256(created.id + ":email-verification:" + verificationCode), purpose: "email-verification", expiresAt: new Date(Date.now() + 15 * 60 * 1000) } });
         return created;
       });
-      res.status(201).json({
-        ok: true,
-        message: "Account submitted for administrator approval. You can sign in after approval.",
-        user,
-      });
+      try { await sendEmailVerificationCode(user.email, verificationCode); } catch (deliveryError) { console.error("ArcTester email-verification delivery failed:", deliveryError instanceof Error ? deliveryError.message : "unknown delivery error"); }
+      res.status(201).json({ ok: true, emailVerificationRequired: true, message: "We sent a 6-digit verification code to your email. Verify it before signing in; administrator approval is still required.", user });
     } catch (error) {
       if (error && typeof error === "object" && "code" in error && error.code === "P2002") return next(conflict("An account with this email already exists."));
       next(error);

@@ -306,6 +306,50 @@ export const LoginSchema = z.object({
   password: z.string().min(1, "Password is required."),
 });
 
+const GoogleCredentialSchema = z.object({ credential: z.string().min(100).max(8192) });
+const GoogleRegistrationSchema = StudentAcademicProfileSchema.extend({
+  registrationNumber: z.string().trim().regex(/^\d{5}-[A-Z]{1,3}-\d{3}$/i, "Enter your diploma registration number."),
+  adultAttestation: z.literal(true),
+  termsAccepted: z.literal(true),
+  privacyConsent: z.literal(true),
+  termsVersion: z.literal(TERMS_VERSION),
+  privacyNoticeVersion: z.literal(PRIVACY_NOTICE_VERSION),
+  consentNoticeVersion: z.literal(CONSENT_NOTICE_VERSION),
+  ageGateVersion: z.literal(AGE_GATE_VERSION),
+});
+
+export type GoogleIdentity = { sub: string; email: string; name: string };
+
+export async function verifyGoogleCredential(credential: string): Promise<GoogleIdentity> {
+  const clientId = process.env.GOOGLE_CLIENT_ID?.trim();
+  if (!clientId) throw badRequest("Google sign-in is not configured on ArcTester.");
+  const response = await fetch("https://oauth2.googleapis.com/tokeninfo?id_token=" + encodeURIComponent(credential), {
+    headers: { accept: "application/json" },
+    signal: AbortSignal.timeout(8000),
+  });
+  if (!response.ok) throw forbidden("Google sign-in could not verify your account. Try again.");
+  const claims = await response.json() as Record<string, unknown>;
+  const email = typeof claims.email === "string" ? claims.email.trim().toLowerCase() : "";
+  const verified = claims.email_verified === true || claims.email_verified === "true";
+  const expiry = Number(claims.exp);
+  const issuer = claims.iss;
+  if (
+    claims.aud !== clientId ||
+    !verified ||
+    !email ||
+    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ||
+    typeof claims.sub !== "string" ||
+    !claims.sub ||
+    !Number.isFinite(expiry) ||
+    expiry <= nowSeconds() ||
+    (issuer !== "accounts.google.com" && issuer !== "https://accounts.google.com")
+  ) {
+    throw forbidden("Google account verification failed. Use a verified Google account and try again.");
+  }
+  return { sub: claims.sub, email, name: typeof claims.name === "string" ? claims.name.trim().slice(0, 100) : "" };
+}
+
+
 const ChangePasswordSchema = z.object({
   currentPassword: z.string().min(1, "Current password is required.").max(128),
   newPassword: z.string().min(12, "New password must be at least 12 characters.").max(128),
@@ -664,6 +708,82 @@ export function authRouter(db: PrismaClient): Router {
       });
     } catch (error) {
       if (error && typeof error === "object" && "code" in error && error.code === "P2002") return next(conflict("An account with this email already exists."));
+      next(error);
+    }
+  });
+
+  router.post("/google/login", async (req, res, next) => {
+    try {
+      const input = GoogleCredentialSchema.parse(req.body);
+      const identity = await verifyGoogleCredential(input.credential);
+      const user = await db.user.findUnique({ where: { email: identity.email } });
+      if (!user) return res.json({ ok: true, newAccount: true, email: identity.email, fullName: identity.name });
+      if (user.role !== "STUDENT") return next(forbidden("Google student sign-in is only available for student accounts."));
+      if (user.accessStatus !== "APPROVED") {
+        await recordLoginEvent(db, req, identity.email, user.id, "blocked", "google");
+        return next(forbidden(user.accessStatus === "REJECTED" ? "Your account was not approved. Contact your administrator." : "Your account is waiting for administrator approval."));
+      }
+      const totp = await db.totpCredential.findUnique({ where: { userId: user.id }, select: { enabledAt: true } });
+      if (totp?.enabledAt) {
+        const challengeId = randomBytes(32).toString("base64url");
+        await db.authChallenge.create({ data: { userId: user.id, challenge: sha256(challengeId), purpose: "totp-login-google", expiresAt: new Date(Date.now() + 5 * 60 * 1000) } });
+        await recordLoginEvent(db, req, identity.email, user.id, "second-factor-required", "google");
+        return res.json({ ok: true, twoFactorRequired: true, challengeId, expiresIn: 300 });
+      }
+      await recordLoginEvent(db, req, identity.email, user.id, "success", "google");
+      const { token } = await createAuthSession(db, req, user, "google");
+      setSessionCookie(res, token);
+      res.json({ ok: true, user: { id: user.id, email: user.email, role: user.role, fullName: user.fullName, collegeName: user.collegeName, collegeCode: user.collegeCode, postalPin: user.postalPin, branchName: user.branchName, branchCode: user.branchCode, registrationNumber: user.registrationNumber } });
+    } catch (error) { next(error); }
+  });
+
+  router.post("/google/register", async (req, res, next) => {
+    try {
+      const input = GoogleCredentialSchema.extend({
+        profile: GoogleRegistrationSchema,
+      }).parse(req.body);
+      const identity = await verifyGoogleCredential(input.credential);
+      const existing = await db.user.findUnique({ where: { email: identity.email }, select: { id: true } });
+      if (existing) return next(conflict("An account with this Google email already exists. Sign in instead."));
+      const profile = input.profile;
+      const registrationNumber = profile.registrationNumber.toUpperCase();
+      const parts = registrationNumber.match(/^(\d{2})(\d{3})-([A-Z]{1,3})-(\d{3})$/);
+      if (!parts) throw badRequest("Registration number must look like 24010-CM-053.");
+      const identityParts = validateRegistrationIdentity(registrationNumber, profile.collegeCode, profile.branchCode || "", profile.branchName);
+      const passwordHash = await hashPasswordAsync(randomBytes(48).toString("base64url"));
+      const user = await db.$transaction(async (tx) => {
+        const created = await tx.user.create({
+          data: {
+            email: identity.email,
+            passwordHash,
+            role: "STUDENT",
+            accessStatus: "PENDING",
+            fullName: profile.fullName,
+            collegeName: profile.collegeName,
+            collegeCode: identityParts.collegeCode,
+            postalPin: profile.postalPin || null,
+            branchName: identityParts.branchName,
+            branchCode: identityParts.branchCode,
+            registrationNumber,
+          },
+          select: { id: true, email: true, role: true, accessStatus: true, fullName: true },
+        });
+        await tx.legalAcceptance.create({
+          data: {
+            userId: created.id,
+            termsVersion: profile.termsVersion,
+            privacyNoticeVersion: profile.privacyNoticeVersion,
+            consentNoticeVersion: profile.consentNoticeVersion,
+            ageGateVersion: profile.ageGateVersion,
+            ageAttested: profile.adultAttestation,
+            source: "google-web",
+          },
+        });
+        return created;
+      });
+      res.status(201).json({ ok: true, submitted: true, message: "Your Google account and academic details were submitted. ArcTester access starts after administrator approval.", user });
+    } catch (error) {
+      if (error && typeof error === "object" && "code" in error && error.code === "P2002") return next(conflict("This Google email or diploma registration number is already connected to an account."));
       next(error);
     }
   });
@@ -1188,9 +1308,9 @@ export function authRouter(db: PrismaClient): Router {
     try {
       const input = z.object({ challengeId: z.string().min(20).max(100), code: z.string().min(6).max(32) }).parse(req.body);
       const challenge = await db.authChallenge.findUnique({ where: { challenge: sha256(input.challengeId) } });
-      if (!challenge || challenge.purpose !== "totp-login" || challenge.expiresAt <= new Date() || challenge.attempts >= 5) return next(forbidden("The verification request expired. Sign in again."));
+      if (!challenge || (challenge.purpose !== "totp-login" && challenge.purpose !== "totp-login-google") || challenge.expiresAt <= new Date() || challenge.attempts >= 5) return next(forbidden("The verification request expired. Sign in again."));
       const attempt = await db.authChallenge.updateMany({
-        where: { id: challenge.id, purpose: "totp-login", attempts: { lt: 5 }, expiresAt: { gt: new Date() } },
+        where: { id: challenge.id, purpose: challenge.purpose, attempts: { lt: 5 }, expiresAt: { gt: new Date() } },
         data: { attempts: { increment: 1 } },
       });
       if (attempt.count !== 1) return next(forbidden("The verification request expired. Sign in again."));
@@ -1223,8 +1343,9 @@ export function authRouter(db: PrismaClient): Router {
         return next(forbidden("Authenticator or recovery code is incorrect."));
       }
       await db.authChallenge.delete({ where: { id: challenge.id } });
-      await recordLoginEvent(db, req, user.email, user.id, "success", "password+totp");
-      const { token } = await createAuthSession(db, req, user, "password+totp");
+      const loginMethod = challenge.purpose === "totp-login-google" ? "google+totp" : "password+totp";
+      await recordLoginEvent(db, req, user.email, user.id, "success", loginMethod);
+      const { token } = await createAuthSession(db, req, user, loginMethod);
       if (!nativeClient) setSessionCookie(res, token);
       res.json({ ok: true, ...(nativeClient ? { token, tokenType: "Bearer", expiresIn: JWT_TTL_SECONDS } : {}), user: { id: user.id, email: user.email, role: user.role, fullName: user.fullName, collegeName: user.collegeName, collegeCode: user.collegeCode, postalPin: user.postalPin, branchName: user.branchName, branchCode: user.branchCode, registrationNumber: user.registrationNumber } });
     } catch (error) { next(error); }

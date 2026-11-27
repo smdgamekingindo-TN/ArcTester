@@ -47,4 +47,4 @@ The service is provided subject to applicable law. Warranty disclaimers, liabili
 
 ## 11. Changes and contact
 
-Material changes will be versioned and communicated; users may be asked to accept updated Terms before using affected features. Project operator: ArcTester project operator, operating remotely from India with no public business premises. Contact: **smdgameking@gmail.com** (email correspondence). Final governing-law/jurisdiction wording remains subject to qualified Indian counsel review.
+Material changes will be versioned and communicated; users may be asked to accept updated Terms before using affected features. Project operator: ArcTester project operator, operating remotely from India with no public business premises. Contact: **[verified public project email to be published]** (email correspondence). Final governing-law/jurisdiction wording remains subject to qualified Indian counsel review.

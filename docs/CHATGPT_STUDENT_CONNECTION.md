@@ -17,7 +17,7 @@ ChatGPT tools currently include:
 ### Google Cloud Console
 
 1. Open Google Cloud Console and select the ArcTester project.
-2. Enable **Google People API** / Google OAuth userinfo access (the OAuth `openid email profile` scopes are used for identity).
+2. Configure Google OAuth consent and enable the OAuth/OpenID identity flow. The server uses Google's OpenID Connect UserInfo endpoint with the `openid email profile` scopes; the People API is not required.
 3. Configure the OAuth consent screen with ArcTester branding and a privacy policy.
 4. Create an OAuth 2.0 **Web application** client ID.
 5. In the ChatGPT plugin's OAuth connection setup, use:

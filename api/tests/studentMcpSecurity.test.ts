@@ -112,7 +112,7 @@ describe("student MCP authorization and ownership", () => {
   it("accepts a short-lived OAuth access token linked to a student key record", async () => {
     const user = await server.db.user.findUnique({ where: { id: studentId }, select: { id: true, email: true, sessionVersion: true } });
     expect(user).toBeTruthy();
-    const oauthToken = signJwt({ sub: String(user!.id), email: user!.email, sv: user!.sessionVersion, mcp_oauth: true, scope: "questions:read practice:read" }, 3600);
+    const oauthToken = signJwt({ sub: String(user!.id), email: user!.email, sv: user!.sessionVersion, mcp_oauth: true, resource: "https://arctester.onrender.com/mcp/student", scope: "questions:read practice:read" }, 3600);
     await server.db.studentMcpKey.create({
       data: { userId: studentId, name: "OAuth test connection", keyHash: digest(oauthToken), scopes: ["questions:read", "practice:read"] },
     });

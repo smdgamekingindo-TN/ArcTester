@@ -177,6 +177,29 @@ describe("auth", () => {
     expect(acceptance?.acceptedAt).toBeInstanceOf(Date);
   });
 
+  it("allows under-18 students to register without an adult attestation", async () => {
+    const response = await fetch(`${server.baseUrl}/auth/register`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        ...STUDENT_PROFILE,
+        email: "student-under-18@example.com",
+        password: "secret1234",
+        termsAccepted: true,
+        privacyConsent: true,
+        termsVersion: "2026-11-27-v3",
+        privacyNoticeVersion: "2026-11-27-v3",
+        consentNoticeVersion: "2026-11-27-v3",
+        ageGateVersion: "2026-11-27-v3",
+      }),
+    });
+    expect(response.status).toBe(201);
+    const user = await server.db.user.findUnique({ where: { email: "student-under-18@example.com" } });
+    expect(user).not.toBeNull();
+    const acceptance = await server.db.legalAcceptance.findFirst({ where: { userId: user!.id } });
+    expect(acceptance?.ageAttested).toBe(false);
+  });
+
   it("rejects false privacy consent regardless of age attestation", async () => {
     const response = await fetch(`${server.baseUrl}/auth/register`, {
       method: "POST",

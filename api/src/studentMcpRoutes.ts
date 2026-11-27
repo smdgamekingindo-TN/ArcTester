@@ -37,6 +37,15 @@ function sendToolResult(id: unknown, value: unknown) {
   return { jsonrpc: "2.0", id, result: { content: [{ type: "text", text: JSON.stringify(value) }], isError: false } };
 }
 function hasScope(key: StudentKey, scope: string): boolean { return key.scopes.includes(scope); }
+function jsonRpcAuthError(id: unknown, description: string) {
+  const safeDescription = description.replace(/["\\\\]/g, "");
+  const challenge = 'Bearer resource_metadata="https://arctester.onrender.com/.well-known/oauth-protected-resource/mcp/student", error="insufficient_scope", error_description="' + safeDescription + '"';
+  return { jsonrpc: "2.0", id, result: {
+    content: [{ type: "text", text: "Authentication required: " + description }],
+    _meta: { "mcp/www_authenticate": [challenge] },
+    isError: true,
+  } };
+}
 
 function sendMcpOAuthChallenge(res: Response): void {
   res.setHeader("WWW-Authenticate", 'Bearer resource_metadata="https://arctester.onrender.com/.well-known/oauth-protected-resource/mcp/student", scope="questions:read questions:write practice:read practice:write"');
@@ -256,7 +265,22 @@ export function studentMcpRouter(db: PrismaClient): Router {
         { name: "list_my_practice_exams", description: "List saved practice exams shown in the student app’s My practice exams library.", inputSchema: { type: "object", properties: { limit: { type: "integer", minimum: 1, maximum: 100 } } } },
         { name: "edit_my_practice_test", description: "Edit one of your own saved private practice tests, including replacing or revising its questions.", inputSchema: { type: "object", required: ["id", "patch"], properties: { id: { type: "string" }, patch: { type: "object" } } } },
       ];
-      return res.json({ jsonrpc: "2.0", id, result: { tools } });
+      const toolScopes: Record<string, string[]> = {
+        list_my_questions: ["questions:read"],
+        create_my_questions: ["questions:write"],
+        edit_my_question: ["questions:write"],
+        delete_my_question: ["questions:write"],
+        create_my_practice_test: ["practice:write"],
+        create_my_practice_exam: ["practice:write"],
+        list_my_practice_tests: ["practice:read"],
+        list_my_practice_exams: ["practice:read"],
+        edit_my_practice_test: ["practice:write"],
+      };
+      const securedTools = tools.map(tool => ({
+        ...tool,
+        securitySchemes: [{ type: "oauth2", scopes: toolScopes[tool.name] ?? [...KEY_SCOPES] }],
+      }));
+      return res.json({ jsonrpc: "2.0", id, result: { tools: securedTools } });
     }
     if (body.method !== "tools/call") return res.json(jsonRpcError(id, -32601, "Method not found."));
     const params = body.params as { name?: unknown; arguments?: unknown };
@@ -266,7 +290,7 @@ export function studentMcpRouter(db: PrismaClient): Router {
       let output: unknown;
       switch (params.name) {
         case "list_my_questions": {
-          if (!hasScope(key, "questions:read")) return res.json(jsonRpcError(id, -32003, "Missing questions:read scope."));
+          if (!hasScope(key, "questions:read")) return res.json(jsonRpcAuthError(id, "Missing questions:read scope."));
           const input = z.object({ search: z.string().max(200).optional(), subject: z.string().max(100).optional(), limit: z.number().int().min(1).max(100).default(50) }).parse(args);
           const questions = await db.studentPrivateQuestion.findMany({
             where: { userId: key.userId, ...(input.subject ? { subject: input.subject } : {}), ...(input.search ? { text: { contains: input.search, mode: "insensitive" } } : {}) },
@@ -275,7 +299,7 @@ export function studentMcpRouter(db: PrismaClient): Router {
           output = { questions }; break;
         }
         case "create_my_questions": {
-          if (!hasScope(key, "questions:write")) return res.json(jsonRpcError(id, -32003, "Missing questions:write scope."));
+          if (!hasScope(key, "questions:write")) return res.json(jsonRpcAuthError(id, "Missing questions:write scope."));
           const input = z.object({ questions: z.array(QuestionInput).min(1).max(100) }).parse(args);
           const created = await db.studentPrivateQuestion.createMany({ data: input.questions.map(q => ({ ...q, userId: key.userId, options: q.options as never })) });
           output = { created: created.count }; break;
@@ -299,7 +323,7 @@ export function studentMcpRouter(db: PrismaClient): Router {
         }
         case "create_my_practice_exam":
         case "create_my_practice_test": {
-          if (!hasScope(key, "practice:write")) return res.json(jsonRpcError(id, -32003, "Missing practice:write scope."));
+          if (!hasScope(key, "practice:write")) return res.json(jsonRpcAuthError(id, "Missing practice:write scope."));
           const input = PracticeSetInput.parse(args);
           const set = await db.studentPracticeSet.create({ data: { ...input, userId: key.userId, questions: input.questions as never } });
           output = { practiceTest: set }; break;
@@ -315,7 +339,7 @@ export function studentMcpRouter(db: PrismaClient): Router {
         }
         case "list_my_practice_exams":
         case "list_my_practice_tests": {
-          if (!hasScope(key, "practice:read")) return res.json(jsonRpcError(id, -32003, "Missing practice:read scope."));
+          if (!hasScope(key, "practice:read")) return res.json(jsonRpcAuthError(id, "Missing practice:read scope."));
           const input = z.object({ limit: z.number().int().min(1).max(100).default(50) }).parse(args);
           const tests = await db.studentPracticeSet.findMany({ where: { userId: key.userId }, orderBy: { updatedAt: "desc" }, take: input.limit, select: { id: true, title: true, description: true, durationMinutes: true, questions: true, createdAt: true, updatedAt: true } });
           output = { practiceTests: tests }; break;

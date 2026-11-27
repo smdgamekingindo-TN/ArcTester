@@ -2,7 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import express, { Router, type Request, type Response, type NextFunction } from "express";
 import { z } from "zod";
 import type { PrismaClient } from "@prisma/client";
-import { badRequest, forbidden, notFound } from "./errors.js";
+import { badRequest, notFound } from "./errors.js";
 import { requireAuth, requireRecentReauthentication, verifyJwt, type AuthedRequest } from "./auth.js";
 
 const KEY_PREFIX = "arc_student_";

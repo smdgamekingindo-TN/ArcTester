@@ -9,6 +9,9 @@ type PracticeRun = { id: string; titleSnapshot: string; totalQuestions: number; 
 
 const scopes = ["questions:read", "questions:write", "practice:read", "practice:write"];
 const endpoint = API + "/mcp/student";
+function fromBase64Url(value:string):Uint8Array{const base=value.replace(/-/g,"+").replace(/_/g,"/");const padded=base+"=".repeat((4-base.length%4)%4);return Uint8Array.from(atob(padded),ch=>ch.charCodeAt(0));}
+function toBufferSource(value:Uint8Array):ArrayBuffer{const buffer=new ArrayBuffer(value.byteLength);new Uint8Array(buffer).set(value);return buffer;}
+function toBase64Url(value:ArrayBuffer):string{const bytes=new Uint8Array(value);let binary="";bytes.forEach(byte=>binary+=String.fromCharCode(byte));return btoa(binary).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/g,"");}
 
 export default function StudentMcpAssistant() {
   const [keys, setKeys] = useState<McpKey[]>([]);
@@ -16,6 +19,8 @@ export default function StudentMcpAssistant() {
   const [tests, setTests] = useState<PracticeSet[]>([]);
   const [runs, setRuns] = useState<PracticeRun[]>([]);
   const [name, setName] = useState("My AI study assistant");
+  const [reauthPassword, setReauthPassword] = useState("");
+  const [reauthCode, setReauthCode] = useState("");
   const [secret, setSecret] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -41,16 +46,37 @@ export default function StudentMcpAssistant() {
   }
   useEffect(() => { void refresh().catch((e) => setError((e as Error).message)); }, []);
 
+  async function finishKeyCreation() {
+    const result = await request<{ key: McpKey & { secret: string } }>("/student/mcp-keys", {
+      method: "POST", body: JSON.stringify({ name, scopes }),
+    });
+    setReauthPassword("");
+    setReauthCode("");
+    setSecret(result.key.secret);
+    setNotice("MCP key created. Copy it now; the secret is shown only once.");
+    await refresh();
+  }
   async function createKey() {
     setBusy(true); setError(""); setNotice(""); setSecret("");
     try {
-      const result = await request<{ key: McpKey & { secret: string } }>("/student/mcp-keys", {
-        method: "POST", body: JSON.stringify({ name, scopes }),
-      });
-      setSecret(result.key.secret);
-      setNotice("MCP key created. Copy it now; the secret is shown only once.");
-      await refresh();
+      if (!reauthPassword && !reauthCode.trim()) throw new Error("Enter your password or authenticator code.");
+      await request("/auth/reauthenticate", { method: "POST", body: JSON.stringify({ password: reauthPassword || undefined, code: reauthCode.trim() || undefined }) });
+      await finishKeyCreation();
     } catch (e) { setError((e as Error).message); }
+    finally { setBusy(false); }
+  }
+  async function createKeyWithPasskey() {
+    setBusy(true); setError(""); setNotice(""); setSecret("");
+    try {
+      if (!navigator.credentials) throw new Error("Passkeys are not supported by this browser.");
+      const options = await request<{challengeId:string;publicKey:{challenge:string;rpId:string;allowCredentials:{type:"public-key";id:string;transports?:AuthenticatorTransport[]}[];timeout:number;userVerification:UserVerificationRequirement}}>("/auth/reauthenticate/passkey/options",{method:"POST",body:"{}"});
+      const publicKey:PublicKeyCredentialRequestOptions={...options.publicKey,challenge:toBufferSource(fromBase64Url(options.publicKey.challenge)),allowCredentials:options.publicKey.allowCredentials.map(item=>({...item,id:toBufferSource(fromBase64Url(item.id))}))};
+      const credential=await navigator.credentials.get({publicKey}) as PublicKeyCredential|null;
+      if(!credential)throw new Error("Passkey confirmation was cancelled.");
+      const response=credential.response as AuthenticatorAssertionResponse;
+      await request("/auth/reauthenticate/passkey/verify",{method:"POST",body:JSON.stringify({challengeId:options.challengeId,credentialId:credential.id,clientDataJSON:toBase64Url(response.clientDataJSON),authenticatorData:toBase64Url(response.authenticatorData),signature:toBase64Url(response.signature)})});
+      await finishKeyCreation();
+    } catch(e) { setError((e as Error).message); }
     finally { setBusy(false); }
   }
   async function revoke(id: string) {
@@ -114,7 +140,11 @@ export default function StudentMcpAssistant() {
         <p>Create a personal key, then add the MCP endpoint to an AI client that supports remote Streamable HTTP MCP servers.</p>
         <label>Key name<input value={name} maxLength={80} onChange={(e) => setName(e.target.value)} /></label>
         <div className="mcp-scope-list">{scopes.map((scope) => <span key={scope}>{scope}</span>)}</div>
-        <button type="button" className="primary" disabled={busy || name.trim().length < 2} onClick={() => void createKey()}>Create student MCP key</button>
+        <label>Confirm account password<input type="password" autoComplete="current-password" value={reauthPassword} onChange={e => setReauthPassword(e.target.value)} required /></label>
+        <label>Authenticator or recovery code (if enabled)<input autoComplete="one-time-code" value={reauthCode} onChange={e => setReauthCode(e.target.value)} maxLength={32} /></label>
+        <p className="muted">Confirm with your password or authenticator/recovery code. You can also use a registered passkey.</p>
+        <button type="button" className="primary" disabled={busy || name.trim().length < 2 || (!reauthPassword && !reauthCode.trim())} onClick={() => void createKey()}>Confirm and create student MCP key</button>
+        <button type="button" className="ghost" disabled={busy || name.trim().length < 2} onClick={() => void createKeyWithPasskey()}>Use passkey instead</button>
         {secret && <div className="mcp-secret-box"><strong>Copy this key now — it will not be shown again.</strong><textarea readOnly rows={3} value={secret} /><button type="button" className="ghost" onClick={() => void copy(secret)}>Copy key</button></div>}
         <label>MCP endpoint<input readOnly value={endpoint} /></label>
         <label>Connection details<textarea readOnly rows={5} value={config} /></label>

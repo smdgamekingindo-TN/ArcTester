@@ -110,13 +110,13 @@ export async function postJson(
   if (url.endsWith("/auth/register") && body && typeof body === "object" && !Array.isArray(body)) {
     const input = body as Record<string, unknown>;
     const withLegalAcceptance = {
-      adultAttestation: true,
+      adultAttestation: false,
       termsAccepted: true,
       privacyConsent: true,
-      termsVersion: "2026-11-27-v2",
-      privacyNoticeVersion: "2026-11-27-v2",
-      consentNoticeVersion: "2026-11-27-v2",
-      ageGateVersion: "2026-11-27-v2",
+      termsVersion: "2026-11-27-v3",
+      privacyNoticeVersion: "2026-11-27-v3",
+      consentNoticeVersion: "2026-11-27-v3",
+      ageGateVersion: "2026-11-27-v3",
       ...input,
     };
     payload = withLegalAcceptance;
@@ -197,13 +197,13 @@ export async function signUp(
     body: JSON.stringify({
       email,
       password,
-      adultAttestation: true,
+      adultAttestation: false,
       termsAccepted: true,
       privacyConsent: true,
-      termsVersion: "2026-11-27-v2",
-      privacyNoticeVersion: "2026-11-27-v2",
-      consentNoticeVersion: "2026-11-27-v2",
-      ageGateVersion: "2026-11-27-v2",
+      termsVersion: "2026-11-27-v3",
+      privacyNoticeVersion: "2026-11-27-v3",
+      consentNoticeVersion: "2026-11-27-v3",
+      ageGateVersion: "2026-11-27-v3",
       fullName: "Test Student",
       collegeName: "Test Polytechnic",
       collegeCode: "999",

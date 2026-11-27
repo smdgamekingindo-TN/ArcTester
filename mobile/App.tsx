@@ -145,7 +145,7 @@ export default function App() {
   const [profileBusy, setProfileBusy] = useState(false);
   const [profileSuccessVisible, setProfileSuccessVisible] = useState(false);
   const [register, setRegister] = useState(false);
-  const [adultAttestation, setAdultAttestation] = useState(false);
+  
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [privacyConsent, setPrivacyConsent] = useState(false);
   const [twoFactorChallenge, setTwoFactorChallenge] = useState("");
@@ -711,7 +711,7 @@ export default function App() {
 
   async function authenticate() {
     if (register) {
-      if (!adultAttestation || !termsAccepted || !privacyConsent) { setError("Confirm you are 18 or older, accept the Terms & Conditions and consent to the Privacy Notice."); return; }
+      if (!termsAccepted || !privacyConsent) { setError("Accept the Terms & Conditions and separately consent to the Privacy Notice."); return; }
       const validationError = validateAcademicRegistration(academicProfile);
       if (validationError) { setError(validationError); return; }
     }
@@ -726,7 +726,6 @@ export default function App() {
             email: email.trim(),
             password,
             ...academicProfile,
-            adultAttestation: true,
             termsAccepted: true,
             privacyConsent: true,
             termsVersion: TERMS_VERSION,
@@ -1262,10 +1261,6 @@ export default function App() {
             )}
             {register ? (
               <View style={{ marginTop: 8, marginBottom: 12, padding: 12, borderWidth: 1, borderColor: darkMode ? "#334155" : "#d5dce8", borderRadius: 12, gap: 10 }}>
-                <TouchableOpacity accessibilityRole="checkbox" accessibilityState={{ checked: adultAttestation }} onPress={() => setAdultAttestation(value => !value)} style={{ flexDirection: "row", alignItems: "flex-start", gap: 10 }}>
-                  <View style={{ width: 20, height: 20, borderRadius: 5, borderWidth: 1.5, borderColor: adultAttestation ? "#2563eb" : (darkMode ? "#64748b" : "#94a3b8"), backgroundColor: adultAttestation ? "#2563eb" : "transparent", alignItems: "center", justifyContent: "center" }}><Text style={{ color: "#fff", fontSize: 14, fontWeight: "900" }}>{adultAttestation ? "✓" : ""}</Text></View>
-                  <Text style={[styles.muted, { flex: 1, fontSize: 12 }, darkMode && { color: "#cbd5e1" }]}>I confirm I am 18 or older. Students under 18 cannot register until a verified parent/guardian consent process is available.</Text>
-                </TouchableOpacity>
                 <TouchableOpacity accessibilityRole="checkbox" accessibilityState={{ checked: termsAccepted }} onPress={() => setTermsAccepted(value => !value)} style={{ flexDirection: "row", alignItems: "flex-start", gap: 10 }}>
                   <View style={{ width: 20, height: 20, borderRadius: 5, borderWidth: 1.5, borderColor: termsAccepted ? "#2563eb" : (darkMode ? "#64748b" : "#94a3b8"), backgroundColor: termsAccepted ? "#2563eb" : "transparent", alignItems: "center", justifyContent: "center" }}><Text style={{ color: "#fff", fontSize: 14, fontWeight: "900" }}>{termsAccepted ? "✓" : ""}</Text></View>
                   <Text style={[styles.muted, { flex: 1, fontSize: 12 }, darkMode && { color: "#cbd5e1" }]}>I agree to the Terms & Conditions.</Text>
@@ -1286,7 +1281,7 @@ export default function App() {
                 {busy ? "Please wait…" : twoFactorChallenge ? "Verify code" : register ? "Create account" : "Sign in"}
               </Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => { setRegister(!register); setAdultAttestation(false); setTermsAccepted(false); setPrivacyConsent(false); setTwoFactorChallenge(""); setTwoFactorCode(""); }} style={styles.secondary}>
+            <TouchableOpacity onPress={() => { setRegister(!register); setTermsAccepted(false); setPrivacyConsent(false); setTwoFactorChallenge(""); setTwoFactorCode(""); }} style={styles.secondary}>
               <Text style={[styles.secondaryText, darkMode && { color: "#cbd5e1" }]}>
                 {register
                   ? "Already have an account? Sign in"

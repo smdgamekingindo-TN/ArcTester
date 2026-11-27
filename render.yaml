@@ -18,3 +18,11 @@ services:
         sync: false
       - key: COOKIE_SAME_SITE
         value: None
+      - key: GMAIL_USER
+        value: smdgameking@gmail.com
+      - key: GMAIL_APP_PASSWORD
+        sync: false
+      - key: GMAIL_FROM_NAME
+        value: ArcTester
+      - key: APP_BASE_URL
+        value: https://arctester.vercel.app

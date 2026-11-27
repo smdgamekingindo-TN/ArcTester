@@ -1,13 +1,13 @@
 # ArcTester Privacy Notice
 
-**Version:** 2026-11-27-v2  
+**Version:** 2026-11-27-v3  
 **Status:** Draft — production locations, retention periods and legal review remain outstanding.
 
 > **Publication blocker:** Verify production processing locations and retention periods, and obtain qualified Indian legal review. This engineering draft is not legal advice or a compliance certification.
 
 ## 1. Operator and contact
 
-ArcTester is operated by its project operator remotely from India and has no public business premises. Privacy and grievance contact: **[verified public project email to be published]** (email correspondence). A residential address is not published; correspondence is handled by email.
+ArcTester is operated by **Shaik Mahammad Hussain**, remotely from India. There is no public business premises or published residential address. Privacy and grievance contact: **smdgameking@gmail.com** (email correspondence).
 
 ## 2. Data processed
 
@@ -48,7 +48,7 @@ ArcTester uses safeguards including password hashing, server-side role checks, s
 
 ## 9. Children and age eligibility
 
-ArcTester is intended for students, including diploma students who may be under 18. Registration is currently restricted to users aged 18 or older because a verified parent/legal-guardian consent workflow and child-data safeguards are not yet available. A checkbox or student's self-attestation is not verifiable parental consent. A parent/legal guardian would provide consent through a future verified workflow and would not become the project operator.
+ArcTester is intended for students, including diploma students under 18. Students under 18 are permitted to register; ArcTester does not require a parent/guardian to create or operate the student account. Users are responsible for their account activity and for providing accurate information. The project operator remains responsible for handling personal data in accordance with applicable law and implementing appropriate safeguards; this statement does not transfer the operator's legal obligations to students.
 
 ## 10. Changes
 

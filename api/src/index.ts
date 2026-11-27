@@ -21,6 +21,7 @@ import { learningPathRouter } from "./learningPathRoutes.js";
 import { gamificationRouter } from "./gamificationRoutes.js";
 import { masteryRouter } from "./masteryRoutes.js";
 import { studentMcpRouter } from "./studentMcpRoutes.js";
+import { studentMcpOAuthRouter } from "./studentMcpOAuthRoutes.js";
 import { adminMcpRouter } from "./adminMcpRoutes.js";
 import { adminModelLabRouter } from "./adminModelLabRoutes.js";
 import { modelInferenceRouter } from "./modelInferenceRoutes.js";
@@ -227,6 +228,7 @@ export function buildApp(database: PrismaClient = db): express.Express {
   app.use(learningPathRouter(database));
   app.use(gamificationRouter(database));
   app.use(masteryRouter(database));
+  app.use(studentMcpOAuthRouter(database));
   app.use(studentMcpRouter(database));
   app.use(adminInstitutionRouter(database));
   app.use(adminMcpRouter(database));

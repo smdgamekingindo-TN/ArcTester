@@ -1023,4 +1023,23 @@ describe("auth — bearer token (native/mobile clients)", () => {
     }
   });
 
+  it("reports passkey and authenticator availability for the student connect screen", async () => {
+    const email = "mcp-connect-methods@example.com";
+    await postJsonWithCookie(`${server.baseUrl}/auth/register`, { ...STUDENT_PROFILE, email, password: "mcp-connect-password" });
+    const user = await server.db.user.update({ where: { email }, data: { accessStatus: "APPROVED" } });
+    await server.db.passkeyCredential.create({
+      data: { userId: user.id, credentialId: "mcp-connect-passkey-credential", publicKey: "test-public-key", name: "Connect passkey" },
+    });
+    const secret = generateTotpSecret();
+    await server.db.totpCredential.create({
+      data: { userId: user.id, secretEncrypted: encryptTotpSecret(secret), enabledAt: new Date(), lastUsedCounter: -1, recoveryCodesJson: "[]" },
+    });
+    cookieJar.delete("ecet_session");
+    const login = await postJsonWithCookie(`${server.baseUrl}/auth/login`, { email, password: "mcp-connect-password" });
+    expect(login.status).toBe(200);
+    const methods = await getJsonWithCookie(`${server.baseUrl}/auth/reauthenticate/methods`);
+    expect(methods.status).toBe(200);
+    expect(methods.json).toMatchObject({ ok: true, passkeyAvailable: true, authenticatorEnabled: true });
+  });
+
 });

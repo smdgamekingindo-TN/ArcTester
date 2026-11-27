@@ -214,7 +214,7 @@ export default function App() {
   }, [passwordResetToken]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || user.role !== "STUDENT") return;
     request("/auth/devices/register", {
       method: "POST",
       body: JSON.stringify({
@@ -855,7 +855,7 @@ export default function App() {
   if (oauthRequest) {
     const expectedRole = oauthRequest.resource === "https://arctester.onrender.com/mcp/admin" ? "ADMIN" : "STUDENT";
     const roleMatches = user.role === expectedRole;
-    const scopes = (oauthRequest.scope || "").split(/\\s+/).filter(Boolean);
+    const scopes = (oauthRequest.scope || "").split(/\s+/).filter(Boolean);
     let clientLabel = "ChatGPT";
     try { clientLabel = new URL(oauthRequest.client_id).hostname; } catch { /* Server validates client metadata before approval. */ }
     return <div className="app-shell" style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 24 }}>

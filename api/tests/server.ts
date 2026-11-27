@@ -110,7 +110,7 @@ export async function postJson(
   if (url.endsWith("/auth/register") && body && typeof body === "object" && !Array.isArray(body)) {
     const input = body as Record<string, unknown>;
     const withLegalAcceptance = {
-      adultAttestation: true,
+      adultAttestation: false,
       termsAccepted: true,
       privacyConsent: true,
       termsVersion: "2026-11-27-v3",
@@ -197,7 +197,7 @@ export async function signUp(
     body: JSON.stringify({
       email,
       password,
-      adultAttestation: true,
+      adultAttestation: false,
       termsAccepted: true,
       privacyConsent: true,
       termsVersion: "2026-11-27-v3",

@@ -110,3 +110,24 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string): Prom
   </div></div></body></html>`;
   await sendEmail(to, "Reset your ArcTester password", text, html);
 }
+
+
+export async function sendEmailVerificationCode(to: string, code: string): Promise<void> {
+  const baseUrl = requiredEnv("APP_BASE_URL").replace(/\\/$/, "");
+  const verifyUrl = baseUrl + "/?verifyEmail=1&email=" + encodeURIComponent(to);
+  const text = "Verify your ArcTester email\\n\\nYour 6-digit verification code is " + code +
+    ". It expires in 15 minutes.\\n\\nOpen ArcTester to enter the code: " + verifyUrl +
+    "\\n\\nIf you did not create an ArcTester account, you can ignore this email.";
+  const html = `<!doctype html><html><body style="margin:0;background:#f3f6fb;font-family:Arial,Helvetica,sans-serif;color:#172033">
+  <div style="padding:32px 12px"><div style="max-width:560px;margin:0 auto;background:#fff;border:1px solid #e3e8f1;border-radius:18px;overflow:hidden">
+    <div style="padding:24px 28px;background:#3159d8;color:#fff"><div style="font-size:12px;font-weight:700;letter-spacing:2px;opacity:.85">ARCTESTER</div><h1 style="margin:12px 0 0;font-size:24px;line-height:1.25">Verify your email</h1></div>
+    <div style="padding:28px"><p style="margin:0 0 14px;font-size:15px;line-height:1.7">One quick step to finish creating your ArcTester account.</p>
+      <p style="margin:0 0 12px;font-size:14px;line-height:1.7;color:#526078">Enter this verification code in ArcTester:</p>
+      <div style="margin:0 0 22px;padding:18px 14px;background:#f3f6ff;border:1px solid #dbe4ff;border-radius:12px;text-align:center;font-size:30px;font-weight:800;letter-spacing:10px;color:#3159d8">${code}</div>
+      <p style="margin:0 0 22px;font-size:13px;line-height:1.6;color:#65738a">This code expires in <strong>15 minutes</strong> and can only be used once.</p>
+      <p style="margin:0 0 24px"><a href="${verifyUrl}" style="display:inline-block;padding:14px 24px;background:#3159d8;color:#fff;text-decoration:none;font-size:14px;font-weight:700;border-radius:10px">Open email verification</a></p>
+      <p style="margin:0;font-size:12px;line-height:1.6;color:#65738a">If you did not create an ArcTester account, you can ignore this email.</p>
+    </div><div style="padding:16px 28px;border-top:1px solid #edf0f5;font-size:11px;color:#8792a5">ArcTester · Focused exam practice</div>
+  </div></div></body></html>`;
+  await sendEmail(to, "Verify your ArcTester email", text, html);
+}

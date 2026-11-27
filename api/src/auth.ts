@@ -701,7 +701,7 @@ export function authRouter(db: PrismaClient): Router {
         registrationBranchName = identity.branchName;
       }
       await verifyRegistrationCaptcha(input.captchaToken, req.ip ?? "unknown", nativeClient);
-      const verificationCode = String(randomInt(0, 1_000_000)).padStart(6, "0");
+      const verificationCode = process.env.ARCTESTER_E2E === "true" && input.email.endsWith("@arctester.test") ? "123456" : String(randomInt(0, 1_000_000)).padStart(6, "0");
       const passwordHash = await hashPasswordAsync(input.password);
       const user = await db.$transaction(async (tx) => {
         const created = await tx.user.create({
@@ -992,7 +992,7 @@ export function authRouter(db: PrismaClient): Router {
       if (!user || user.emailVerifiedAt) return res.status(202).json({ ok: true, message: genericMessage });
       const recent = await db.authChallenge.findFirst({ where: { userId: user.id, purpose: "email-verification", createdAt: { gt: new Date(Date.now() - 60 * 1000) } }, select: { id: true } });
       if (recent) return res.status(202).json({ ok: true, message: genericMessage });
-      const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
+      const code = process.env.ARCTESTER_E2E === "true" && user.email.endsWith("@arctester.test") ? "123456" : String(randomInt(0, 1_000_000)).padStart(6, "0");
       await db.authChallenge.deleteMany({ where: { userId: user.id, purpose: "email-verification" } });
       await db.authChallenge.create({ data: { userId: user.id, challenge: sha256(user.id + ":email-verification:" + code), purpose: "email-verification", expiresAt: new Date(Date.now() + 15 * 60 * 1000) } });
       try { await sendEmailVerificationCode(user.email, code); } catch (deliveryError) { console.error("ArcTester email-verification resend failed:", deliveryError instanceof Error ? deliveryError.message : "unknown delivery error"); }

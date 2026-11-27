@@ -1,6 +1,6 @@
 # ArcTester Terms & Conditions
 
-**Version:** 2026-11-27-v2  
+**Version:** 2026-11-27-v3  
 **Status:** Draft — operator identity and final legal review required.
 
 > **Publication blocker:** Complete the operator's legal identity/contact and have qualified Indian counsel review governing law, jurisdiction, liability and dispute wording before treating these Terms as final.
@@ -47,4 +47,4 @@ The service is provided subject to applicable law. Warranty disclaimers, liabili
 
 ## 11. Changes and contact
 
-Material changes will be versioned and communicated; users may be asked to accept updated Terms before using affected features. Project operator: ArcTester project operator, operating remotely from India with no public business premises. Contact: **[verified public project email to be published]** (email correspondence). Final governing-law/jurisdiction wording remains subject to qualified Indian counsel review.
+Material changes will be versioned and communicated; users may be asked to accept updated Terms before using affected features. Project operator: **Shaik Mahammad Hussain**, operating ArcTester remotely from India with no public business premises or published residential address. Contact: **smdgameking@gmail.com** (email correspondence). Final governing-law/jurisdiction wording remains subject to qualified Indian counsel review.

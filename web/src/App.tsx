@@ -94,6 +94,8 @@ export default function App() {
   const [practiceDurationMinutes, setPracticeDurationMinutes] = useState(20);
   const [practiceQuestionTypes, setPracticeQuestionTypes] = useState<PracticeQuestionType[]>([]);
   const [register, setRegister] = useState(false);
+  const [googleCredential, setGoogleCredential] = useState("");
+  const [googleProfileCompletion, setGoogleProfileCompletion] = useState(false);
   const [twoFactorChallenge, setTwoFactorChallenge] = useState("");
   const [passwordResetToken, setPasswordResetToken] = useState(() => new URLSearchParams(window.location.search).get("passwordResetToken") ?? "");
   const [test, setTest] = useState<Test | null>(null);
@@ -287,6 +289,58 @@ export default function App() {
     }
     setError("");
     setActivePage(page);
+  }
+
+  async function authenticateWithGoogle(credential: string) {
+    setBusy(true);
+    setError("");
+    try {
+      const result = await request<{ user?: User; newAccount?: boolean; email?: string; fullName?: string; twoFactorRequired?: boolean; challengeId?: string }>("/auth/google/login", {
+        method: "POST",
+        body: JSON.stringify({ credential }),
+      });
+      if (result.newAccount) {
+        setEmail(result.email ?? "");
+        setAcademicProfile(current => ({ ...current, fullName: result.fullName ?? current.fullName }));
+        setGoogleCredential(credential);
+        setGoogleProfileCompletion(true);
+      } else if (result.twoFactorRequired && result.challengeId) {
+        setTwoFactorChallenge(result.challengeId);
+      } else if (result.user) {
+        setUser(result.user);
+      } else {
+        throw new Error("Google sign-in response was incomplete.");
+      }
+    } catch (cause) {
+      setError((cause as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function registerGoogleStudent(credential: string, profile: AcademicRegistration, legalAcceptance: LegalAcceptance) {
+    setBusy(true);
+    setError("");
+    try {
+      const result = await request<{ message: string }>("/auth/google/register", {
+        method: "POST",
+        body: JSON.stringify({ credential, profile, ...legalAcceptance }),
+      });
+      setGoogleProfileCompletion(false);
+      setGoogleCredential("");
+      setRegister(false);
+      setError(result.message);
+      setAcademicProfile({ fullName: "", collegeName: "", collegeCode: "", registrationNumber: "", branchName: "", branchCode: "" });
+    } catch (cause) {
+      setError((cause as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function closeGoogleProfileCompletion() {
+    setGoogleProfileCompletion(false);
+    setGoogleCredential("");
   }
 
   async function authenticate(captchaToken?: string, legalAcceptance?: LegalAcceptance) {
@@ -641,6 +695,12 @@ export default function App() {
         passwordResetToken={passwordResetToken}
         onRequestPasswordReset={(emailAddress) => void requestPasswordReset(emailAddress)}
         onResetPassword={(token, newPassword, code) => void completePasswordReset(token, newPassword, code)}
+        googleClientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}
+        onGoogleAuthenticate={(credential) => void authenticateWithGoogle(credential)}
+        googleProfileCompletion={googleProfileCompletion}
+        googleCredential={googleCredential}
+        onGoogleRegister={(credential, profile, legalAcceptance) => void registerGoogleStudent(credential, profile, legalAcceptance)}
+        onGoogleProfileClose={closeGoogleProfileCompletion}
       />
     );
   }

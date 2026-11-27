@@ -113,11 +113,11 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string): Prom
 
 
 export async function sendEmailVerificationCode(to: string, code: string): Promise<void> {
-  const baseUrl = requiredEnv("APP_BASE_URL").replace(/\\/$/, "");
+  const baseUrl = requiredEnv("APP_BASE_URL").replace(/\/$/, "");
   const verifyUrl = baseUrl + "/?verifyEmail=1&email=" + encodeURIComponent(to);
-  const text = "Verify your ArcTester email\\n\\nYour 6-digit verification code is " + code +
-    ". It expires in 15 minutes.\\n\\nOpen ArcTester to enter the code: " + verifyUrl +
-    "\\n\\nIf you did not create an ArcTester account, you can ignore this email.";
+  const text = "Verify your ArcTester email\n\nYour 6-digit verification code is " + code +
+    ". It expires in 15 minutes.\n\nOpen ArcTester to enter the code: " + verifyUrl +
+    "\n\nIf you did not create an ArcTester account, you can ignore this email.";
   const html = `<!doctype html><html><body style="margin:0;background:#f3f6fb;font-family:Arial,Helvetica,sans-serif;color:#172033">
   <div style="padding:32px 12px"><div style="max-width:560px;margin:0 auto;background:#fff;border:1px solid #e3e8f1;border-radius:18px;overflow:hidden">
     <div style="padding:24px 28px;background:#3159d8;color:#fff"><div style="font-size:12px;font-weight:700;letter-spacing:2px;opacity:.85">ARCTESTER</div><h1 style="margin:12px 0 0;font-size:24px;line-height:1.25">Verify your email</h1></div>

@@ -86,8 +86,9 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string): Prom
       "--" + boundary + "--",
       ".",
     ].join("\r\n");
-    await new Promise<void>((resolve, reject) => socket.write(message + "\r\n", error => error ? reject(error) : resolve()));
-    await readReply(socket);
+    const finalReply = readReply(socket);
+    const messageWrite = new Promise<void>((resolve, reject) => socket.write(message + "\r\n", error => error ? reject(error) : resolve()));
+    await Promise.all([messageWrite, finalReply]);
     await command(socket, "QUIT");
   } catch (error) {
     throw error instanceof Error && /Gmail SMTP/.test(error.message) ? error : new Error("Gmail SMTP password reset email delivery failed.");

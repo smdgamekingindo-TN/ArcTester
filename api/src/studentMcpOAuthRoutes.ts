@@ -205,7 +205,7 @@ export function studentMcpOAuthRouter(db: PrismaClient): Router {
       const user = await db.user.findUnique({ where: { id: row.userId }, select: { id: true, email: true, role: true, accessStatus: true, sessionVersion: true } });
       if (!user || user.role !== "STUDENT" || user.accessStatus !== "APPROVED") return res.status(403).json({ error: "access_denied" });
       const expiresIn = 7 * 24 * 60 * 60;
-      const accessToken = signJwt({ sub: String(user.id), email: user.email, sv: user.sessionVersion, mcp_oauth: true, scope: metadata.scopes.join(" ") }, expiresIn);
+      const accessToken = signJwt({ sub: String(user.id), email: user.email, sv: user.sessionVersion, mcp_oauth: true, resource: RESOURCE, scope: metadata.scopes.join(" ") }, expiresIn);
       const activeKeys = await db.studentMcpKey.count({ where: { userId: user.id, revokedAt: null } });
       if (activeKeys >= 20) return res.status(429).json({ error: "temporarily_unavailable", error_description: "Too many active student MCP connections. Revoke an unused connection in ArcTester and retry." });
       await db.studentMcpKey.create({ data: { userId: user.id, name: "ChatGPT OAuth connection", keyHash: digestText(accessToken), scopes: metadata.scopes } });

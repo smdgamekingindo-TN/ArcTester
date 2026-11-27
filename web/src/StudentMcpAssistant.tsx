@@ -180,10 +180,10 @@ export default function StudentMcpAssistant() {
         {oauthRequest && <div className="mcp-scope-list" aria-label="Requested access">{(oauthRequest.scope || "").split(/\s+/).filter(Boolean).map(scope => <span key={scope}>{scope}</span>)}</div>}
         {!connectFlowActive && !secret && <button type="button" className="primary" disabled={busy} onClick={() => void beginConnection()}>{busy ? "Checking account…" : oauthRequest ? "Authorize and connect" : "Connect ArcTester"}</button>}
         <p className="muted">{oauthRequest ? "ArcTester will return you to ChatGPT after verification. Your credential stays with the connected client and is never displayed here." : "Your production API endpoint is preconfigured. Only your student connection credential is created after identity verification."}</p>
-        <h3>Connection details</h3>
-        <p>Create a personal key, then add the MCP endpoint to an AI client that supports remote Streamable HTTP MCP servers.</p>
-        {connectFlowActive && <label>Connection name<input value={name} maxLength={80} onChange={(e) => setName(e.target.value)} /></label> }
-        <div className="mcp-scope-list">{scopes.map((scope) => <span key={scope}>{scope}</span>)}</div>
+        {!oauthRequest && <><h3>Connection details</h3>
+        <p>Create a personal key, then add the MCP endpoint to an AI client that supports remote Streamable HTTP MCP servers.</p></>}
+        {connectFlowActive && !oauthRequest && <label>Connection name<input value={name} maxLength={80} onChange={(e) => setName(e.target.value)} /></label> }
+        {!oauthRequest && <div className="mcp-scope-list">{scopes.map((scope) => <span key={scope}>{scope}</span>)}</div>}
         {connectFlowActive && !secret && reauthMethods?.authenticatorEnabled && <label>Authenticator or recovery code<input autoComplete="one-time-code" value={reauthCode} onChange={e => setReauthCode(e.target.value)} maxLength={32} placeholder="6-digit code or recovery code" /></label>}
         {connectFlowActive && !secret && !reauthMethods?.authenticatorEnabled && <label>Confirm account password<input type="password" autoComplete="current-password" value={reauthPassword} onChange={e => setReauthPassword(e.target.value)} /></label>}
         {connectFlowActive && !secret && reauthMethods?.passkeyAvailable && <button type="button" className="ghost" disabled={busy || name.trim().length < 2} onClick={() => void createKeyWithPasskey()}>Use passkey instead</button>}

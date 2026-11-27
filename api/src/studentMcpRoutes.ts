@@ -38,7 +38,7 @@ function sendToolResult(id: unknown, value: unknown) {
 }
 function hasScope(key: StudentKey, scope: string): boolean { return key.scopes.includes(scope); }
 function jsonRpcAuthError(id: unknown, description: string) {
-  const safeDescription = description.replace(/["\\\\]/g, "");
+  const safeDescription = description.replace(/"/g, "");
   const challenge = 'Bearer resource_metadata="https://arctester.onrender.com/.well-known/oauth-protected-resource/mcp/student", error="insufficient_scope", error_description="' + safeDescription + '"';
   return { jsonrpc: "2.0", id, result: {
     content: [{ type: "text", text: "Authentication required: " + description }],
@@ -75,9 +75,12 @@ async function authenticateMcp(db: PrismaClient, req: Request, res: Response, ne
       catch { return sendMcpOAuthChallenge(res); }
       if (
         payload.mcp_oauth !== true ||
+        payload.resource !== "https://arctester.onrender.com/mcp/student" ||
         Number(payload.sub) !== user.id ||
         payload.email !== user.email ||
         Number(payload.sv) !== user.sessionVersion ||
+        typeof payload.scope !== "string" ||
+        key.scopes.some(scope => !payload.scope!.split(/\\s+/).includes(scope)) ||
         typeof payload.exp !== "number" ||
         payload.exp <= Math.floor(Date.now() / 1000)
       ) return sendMcpOAuthChallenge(res);

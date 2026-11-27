@@ -309,13 +309,6 @@ export const LoginSchema = z.object({
 const GoogleCredentialSchema = z.object({ credential: z.string().min(100).max(8192) });
 const GoogleRegistrationSchema = StudentAcademicProfileSchema.extend({
   registrationNumber: z.string().trim().regex(/^\d{5}-[A-Z]{1,3}-\d{3}$/i, "Enter your diploma registration number."),
-  adultAttestation: z.literal(true),
-  termsAccepted: z.literal(true),
-  privacyConsent: z.literal(true),
-  termsVersion: z.literal(TERMS_VERSION),
-  privacyNoticeVersion: z.literal(PRIVACY_NOTICE_VERSION),
-  consentNoticeVersion: z.literal(CONSENT_NOTICE_VERSION),
-  ageGateVersion: z.literal(AGE_GATE_VERSION),
 });
 
 export type GoogleIdentity = { sub: string; email: string; name: string };
@@ -741,6 +734,13 @@ export function authRouter(db: PrismaClient): Router {
     try {
       const input = GoogleCredentialSchema.extend({
         profile: GoogleRegistrationSchema,
+        adultAttestation: z.literal(true),
+        termsAccepted: z.literal(true),
+        privacyConsent: z.literal(true),
+        termsVersion: z.literal(TERMS_VERSION),
+        privacyNoticeVersion: z.literal(PRIVACY_NOTICE_VERSION),
+        consentNoticeVersion: z.literal(CONSENT_NOTICE_VERSION),
+        ageGateVersion: z.literal(AGE_GATE_VERSION),
       }).parse(req.body);
       const identity = await verifyGoogleCredential(input.credential);
       const existing = await db.user.findUnique({ where: { email: identity.email }, select: { id: true } });
@@ -771,11 +771,11 @@ export function authRouter(db: PrismaClient): Router {
         await tx.legalAcceptance.create({
           data: {
             userId: created.id,
-            termsVersion: profile.termsVersion,
-            privacyNoticeVersion: profile.privacyNoticeVersion,
-            consentNoticeVersion: profile.consentNoticeVersion,
-            ageGateVersion: profile.ageGateVersion,
-            ageAttested: profile.adultAttestation,
+            termsVersion: input.termsVersion,
+            privacyNoticeVersion: input.privacyNoticeVersion,
+            consentNoticeVersion: input.consentNoticeVersion,
+            ageGateVersion: input.ageGateVersion,
+            ageAttested: input.adultAttestation,
             source: "google-web",
           },
         });

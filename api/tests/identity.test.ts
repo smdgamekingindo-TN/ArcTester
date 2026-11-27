@@ -59,6 +59,7 @@ describe("identity foundation", () => {
         email: "admin@arctester.test",
         passwordHash: hashPassword("admin-password-123"),
         role: "ADMIN",
+        emailVerifiedAt: new Date(),
       },
     });
     const login = await fetch(`${server.baseUrl}/auth/login`, {
@@ -171,6 +172,7 @@ describe("identity foundation", () => {
     const approval = await request(`/admin/students/${studentId}/access`, "PATCH", { accessStatus: "APPROVED" }, adminCookie);
     expect(approval.status).toBe(200);
     expect(approval.json.student).toMatchObject({ id: studentId, accessStatus: "APPROVED" });
+    await server.db.user.update({ where: { id: studentId }, data: { emailVerifiedAt: new Date() } });
 
     const reused = await request("/auth/register", "POST", {
       ...STUDENT_PROFILE,

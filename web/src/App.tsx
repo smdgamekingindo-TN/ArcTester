@@ -747,7 +747,7 @@ export default function App() {
         passwordResetToken={passwordResetToken}
         onRequestPasswordReset={(emailAddress) => void requestPasswordReset(emailAddress)}
         onResetPassword={(token, newPassword, code) => void completePasswordReset(token, newPassword, code)}
-        googleClientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}
+        googleClientId={import.meta.env.VITE_AUTH_CLIENT_ID}
         onGoogleAuthenticate={(credential) => void authenticateWithGoogle(credential)}
         googleProfileCompletion={googleProfileCompletion}
         googleCredential={googleCredential}

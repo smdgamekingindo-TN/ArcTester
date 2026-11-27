@@ -226,8 +226,6 @@ export async function signUp(
     throw new Error(`Register failed (${reg.status}): ${await reg.text()}`);
   }
   await db.user.update({ where: { email: email.trim().toLowerCase() }, data: { accessStatus: "APPROVED", emailVerifiedAt: new Date() } });
-  const db = testDatabases.get(baseUrl);
-  if (db) await db.user.update({ where: { email: email.trim().toLowerCase() }, data: { emailVerifiedAt: new Date() } });
   const login = await fetch(`${baseUrl}/auth/login`, {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -246,6 +244,8 @@ export async function signIn(
   email: string,
   password = "correct-horse-battery"
 ): Promise<{ cookie: string; userId: number }> {
+  const db = testDatabases.get(baseUrl);
+  if (db) await db.user.update({ where: { email: email.trim().toLowerCase() }, data: { emailVerifiedAt: new Date() } });
   const login = await fetch(`${baseUrl}/auth/login`, {
     method: "POST",
     headers: { "content-type": "application/json" },

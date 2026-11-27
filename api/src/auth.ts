@@ -946,6 +946,48 @@ export function authRouter(db: PrismaClient): Router {
     } catch (error) { next(error); }
   });
 
+
+  router.post("/email-verification/verify", async (req, res, next) => {
+    try {
+      const input = z.object({ email: z.string().email().trim().toLowerCase(), code: z.string().regex(/^\d{6}$/, "Enter the 6-digit code.") }).parse(req.body);
+      const user = await db.user.findUnique({ where: { email: input.email }, select: { id: true, emailVerifiedAt: true } });
+      if (!user) return next(forbidden("The verification code is invalid or expired."));
+      if (user.emailVerifiedAt) return res.json({ ok: true, message: "Your email is already verified. You can sign in." });
+      const challenge = await db.authChallenge.findFirst({ where: { userId: user.id, purpose: "email-verification" }, orderBy: { createdAt: "desc" } });
+      if (!challenge || challenge.expiresAt <= new Date() || challenge.attempts >= 5) return next(forbidden("The verification code is invalid or expired. Request a new code."));
+      const expected = sha256(user.id + ":email-verification:" + input.code);
+      if (challenge.challenge !== expected) {
+        await db.authChallenge.updateMany({ where: { id: challenge.id, attempts: { lt: 5 } }, data: { attempts: { increment: 1 } } });
+        return next(forbidden("The verification code is incorrect. Check it and try again."));
+      }
+      const verified = await db.$transaction(async (tx) => {
+        const consumed = await tx.authChallenge.updateMany({ where: { id: challenge.id, challenge: expected, attempts: { lt: 5 }, expiresAt: { gt: new Date() } }, data: { attempts: { increment: 1 } } });
+        if (consumed.count !== 1) return false;
+        await tx.user.update({ where: { id: user.id }, data: { emailVerifiedAt: new Date() } });
+        await tx.authChallenge.deleteMany({ where: { userId: user.id, purpose: "email-verification" } });
+        return true;
+      });
+      if (!verified) return next(forbidden("The verification code was already used or expired. Request a new code."));
+      res.json({ ok: true, message: "Email verified. You can sign in after administrator approval." });
+    } catch (error) { next(error); }
+  });
+
+  router.post("/email-verification/resend", async (req, res, next) => {
+    try {
+      const input = z.object({ email: z.string().email().trim().toLowerCase() }).parse(req.body);
+      const genericMessage = "If that account needs verification, a new code will be sent.";
+      const user = await db.user.findUnique({ where: { email: input.email }, select: { id: true, email: true, emailVerifiedAt: true } });
+      if (!user || user.emailVerifiedAt) return res.status(202).json({ ok: true, message: genericMessage });
+      const recent = await db.authChallenge.findFirst({ where: { userId: user.id, purpose: "email-verification", createdAt: { gt: new Date(Date.now() - 60 * 1000) } }, select: { id: true } });
+      if (recent) return res.status(202).json({ ok: true, message: genericMessage });
+      const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
+      await db.authChallenge.deleteMany({ where: { userId: user.id, purpose: "email-verification" } });
+      await db.authChallenge.create({ data: { userId: user.id, challenge: sha256(user.id + ":email-verification:" + code), purpose: "email-verification", expiresAt: new Date(Date.now() + 15 * 60 * 1000) } });
+      try { await sendEmailVerificationCode(user.email, code); } catch (deliveryError) { console.error("ArcTester email-verification resend failed:", deliveryError instanceof Error ? deliveryError.message : "unknown delivery error"); }
+      res.status(202).json({ ok: true, message: genericMessage });
+    } catch (error) { next(error); }
+  });
+
   router.post("/login", async (req, res, next) => {
     try {
       const input = LoginSchema.parse(req.body);

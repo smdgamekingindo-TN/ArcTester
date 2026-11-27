@@ -434,6 +434,7 @@ describe("auth", () => {
   });
 
   it("blocks unverified students and activates them after email verification", async () => {
+    await server.db.user.update({ where: { email: "alice@example.com" }, data: { emailVerifiedAt: null } });
     const pending = await postJsonWithCookie(`${server.baseUrl}/auth/login`, { email: "alice@example.com", password: "secret1234" });
     expect(pending.status).toBe(403);
     expect((pending.json as { error: string }).error).toContain("Verify your email first");

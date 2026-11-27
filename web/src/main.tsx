@@ -5,6 +5,7 @@ import { AppErrorBoundary } from "./ErrorBoundary";
 import { OnlineStatusProvider } from "./OnlineStatusContext";
 import "./styles.css";
 import "./design-system.css";
+import "./ui-polish.css";
 
 /**
  * Remove the static HTML loader only after React has committed its first

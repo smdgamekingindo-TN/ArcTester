@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
 import ExamLayout from "./components/ExamLayout";
+import ExamQuestionNavigation from "./components/ExamQuestionNavigation";
 export type PracticeSessionTest={attemptId:number;mode:string;deadline:string|null;serverNow?:string;questions:{id:number;subject:string;topic:string|null;text:string;options:string[];questionType?:string;promptData?:Record<string,unknown>}[];warnings:string[]};
 type Props={test:PracticeSessionTest;answers:Record<number,unknown>;remainingSeconds:number|null;busy:boolean;isOnline?:boolean;syncStatus?:"idle"|"saving"|"saved"|"pending";localSaveAvailable?:boolean;onLeave:()=>void;onSelectAnswer:(questionId:number,response:unknown)=>void;onSubmit:()=>void};
 const hasAnswer=(value:unknown)=>value!==undefined&&value!==null&&value!==""&&(!Array.isArray(value)||value.some(item=>item!==null&&item!==undefined));
@@ -50,6 +51,7 @@ export default function StudentPracticeSession({test,answers,remainingSeconds,bu
   onPrevious={()=>goToQuestion(activeQuestionIndex-1)}
   onNext={()=>goToQuestion(activeQuestionIndex+1)}
   onSubmit={()=>isFullMock?setShowSubmitReview(true):onSubmit()}
+  questionNavigation={<ExamQuestionNavigation questionCount={test.questions.length} currentIndex={activeQuestionIndex} answered={test.questions.map(question=>hasAnswer(answers[question.id]))} marked={test.questions.map(question=>markedForReview.has(question.id))} onSelect={goToQuestion} />}
  >
   {isFullMock?<div className="ecet-preset-summary" role="note"><strong>AP ECET CSE preset</strong><span>Mathematics 50 · Physics 25 · Chemistry 25 · CSE 100</span><span>180 minutes · +1 correct · 0 negative marking · official section order</span></div>:null}
   {current?renderQuestionCard(current,activeQuestionIndex):<p className="panel muted">No questions are available in this session.</p>}

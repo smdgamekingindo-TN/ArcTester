@@ -109,6 +109,46 @@ describe("student MCP authorization and ownership", () => {
     expect(response.headers.get("www-authenticate")).toContain("oauth-protected-resource");
   });
 
+  it("advertises the admin OAuth resource and accepts admin-resource OAuth tokens only for admins", async () => {
+    const metadata = await fetch(server.baseUrl + "/.well-known/oauth-protected-resource/mcp/admin");
+    expect(metadata.status).toBe(200);
+    expect(await metadata.json()).toMatchObject({
+      resource: "https://arctester.onrender.com/mcp/admin",
+      authorization_servers: ["https://arctester.onrender.com"],
+    });
+
+    const admin = await server.db.user.create({
+      data: { email: "admin-mcp-oauth@arctester.test", passwordHash: "test-only", role: "ADMIN", accessStatus: "APPROVED" },
+    });
+    const token = signJwt({
+      sub: String(admin.id),
+      email: admin.email,
+      sv: admin.sessionVersion,
+      mcp_oauth: true,
+      resource: "https://arctester.onrender.com/mcp/admin",
+      scope: "models:read",
+    }, 3600);
+    await server.db.adminMcpKey.create({
+      data: { userId: admin.id, name: "Admin OAuth test", keyHash: digest(token), scopes: ["models:read"] },
+    });
+
+    const response = await fetch(server.baseUrl + "/mcp/admin", {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: "Bearer " + token },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize" }),
+    });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ result: { serverInfo: { name: "arctester-admin-mcp" } } });
+
+    await server.db.user.update({ where: { id: admin.id }, data: { role: "STUDENT" } });
+    const revokedRole = await fetch(server.baseUrl + "/mcp/admin", {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: "Bearer " + token },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 2, method: "initialize" }),
+    });
+    expect(revokedRole.status).toBe(403);
+  });
+
   it("accepts a short-lived OAuth access token linked to a student key record", async () => {
     const user = await server.db.user.findUnique({ where: { id: studentId }, select: { id: true, email: true, sessionVersion: true } });
     expect(user).toBeTruthy();

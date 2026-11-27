@@ -1,6 +1,6 @@
 # ArcTester Terms & Conditions
 
-**Version:** 2026-11-27-v1  
+**Version:** 2026-11-27-v2  
 **Status:** Draft — operator identity and final legal review required.
 
 > **Publication blocker:** Complete the operator's legal identity/contact and have qualified Indian counsel review governing law, jurisdiction, liability and dispute wording before treating these Terms as final.
@@ -15,7 +15,7 @@ Provide accurate account and academic information, keep credentials confidential
 
 ## 3. Eligibility
 
-Registration currently requires confirmation that you are at least 18. Students under 18 cannot register until ArcTester implements and verifies an appropriate parent/guardian consent process and child-data safeguards. The age checkbox is an attestation, not independent age verification.
+ArcTester is intended for students, including diploma students who may be under 18. Registration is currently restricted to users aged 18 or older because a verified parent/legal-guardian consent workflow and child-data safeguards are not yet available. A checkbox or student's self-attestation is not verifiable parental consent. A parent/legal guardian would provide consent through a future verified workflow and would not become the project operator.
 
 ## 4. Acceptable use
 
@@ -47,4 +47,4 @@ The service is provided subject to applicable law. Warranty disclaimers, liabili
 
 ## 11. Changes and contact
 
-Material changes will be versioned and communicated; users may be asked to accept updated Terms before using affected features. Operator legal name, postal address, grievance contact and governing-law/jurisdiction wording: **[DETAILS REQUIRED BEFORE FINAL PUBLICATION]**.
+Material changes will be versioned and communicated; users may be asked to accept updated Terms before using affected features. Project operator: ArcTester project operator, operating remotely from India with no public business premises. Contact: **[verified public project email to be published]** (email correspondence). Final governing-law/jurisdiction wording remains subject to qualified Indian counsel review.

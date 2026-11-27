@@ -31,8 +31,8 @@ describe("AuthScreen",()=>{
   fireEvent.submit(screen.getByRole("button",{name:"Request account"}).closest("form")!);
   await waitFor(()=>expect(props.onAuthenticate).toHaveBeenCalledWith("captcha-token:ABCDE",{
     adultAttestation:true,termsAccepted:true,privacyConsent:true,
-    termsVersion:"2026-11-27-v1",privacyNoticeVersion:"2026-11-27-v1",
-    consentNoticeVersion:"2026-11-27-v1",ageGateVersion:"2026-11-27-v1",
+    termsVersion:"2026-11-27-v2",privacyNoticeVersion:"2026-11-27-v2",
+    consentNoticeVersion:"2026-11-27-v2",ageGateVersion:"2026-11-27-v2",
   }));
  });
 

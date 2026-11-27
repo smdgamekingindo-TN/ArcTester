@@ -24,10 +24,10 @@ const LEGAL_ACCEPTANCE = {
   adultAttestation: true,
   termsAccepted: true,
   privacyConsent: true,
-  termsVersion: "2026-11-27-v1",
-  privacyNoticeVersion: "2026-11-27-v1",
-  consentNoticeVersion: "2026-11-27-v1",
-  ageGateVersion: "2026-11-27-v1",
+  termsVersion: "2026-11-27-v2",
+  privacyNoticeVersion: "2026-11-27-v2",
+  consentNoticeVersion: "2026-11-27-v2",
+  ageGateVersion: "2026-11-27-v2",
 };
 
 async function request(

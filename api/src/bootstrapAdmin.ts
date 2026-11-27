@@ -26,8 +26,8 @@ export async function bootstrapAdmin(
 
     await tx.user.upsert({
       where: { email },
-      create: { email, passwordHash, role: "ADMIN" },
-      update: { passwordHash, role: "ADMIN" },
+      create: { email, passwordHash, role: "ADMIN", emailVerifiedAt: new Date() },
+      update: { passwordHash, role: "ADMIN", emailVerifiedAt: new Date() },
     });
   });
 }

@@ -789,7 +789,7 @@ export default function App() {
     setOauthWorking(true);
     setOauthError("");
     try {
-      await request("/reauthenticate", {
+      await request("/auth/reauthenticate", {
         method: "POST",
         body: JSON.stringify({ password: oauthPassword, ...(oauthCode.trim() ? { code: oauthCode.trim() } : {}) }),
       });

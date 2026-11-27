@@ -7,7 +7,7 @@
 
 ## 1. Operator and contact
 
-ArcTester is operated by its project operator remotely from India and has no public business premises. Privacy and grievance contact: **smdgameking@gmail.com** (email correspondence). A residential address is not published; correspondence is handled by email.
+ArcTester is operated by its project operator remotely from India and has no public business premises. Privacy and grievance contact: **[verified public project email to be published]** (email correspondence). A residential address is not published; correspondence is handled by email.
 
 ## 2. Data processed
 

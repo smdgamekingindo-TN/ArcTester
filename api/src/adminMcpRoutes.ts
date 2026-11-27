@@ -2,7 +2,7 @@ import { createHash, randomBytes, randomUUID } from "node:crypto";
 import express, { Router, type Request, type Response, type NextFunction } from "express";
 import { z } from "zod";
 import type { PrismaClient } from "@prisma/client";
-import { forbidden, badRequest, notFound } from "./errors.js";
+import { badRequest, notFound } from "./errors.js";
 import { requireAuth, requireAdmin, requireRecentReauthentication, verifyJwt, type AuthedRequest } from "./auth.js";
 import { importFromCsv, importFromJson } from "./importService.js";
 import { QuestionInputSchema, hashQuestion, encodeOptions } from "./questions.js";

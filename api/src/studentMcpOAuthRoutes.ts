@@ -131,7 +131,7 @@ export function studentMcpOAuthRouter(db: PrismaClient): Router {
     res.json(authorizationMetadata());
   });
 
-  router.get("/oauth/authorize", async (req, res, next) => {
+  router.get("/oauth/authorize", async (req, res) => {
     try {
       const input = AuthorizeInput.parse({
         client_id: req.query.client_id,

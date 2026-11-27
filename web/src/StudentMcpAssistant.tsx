@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { API, request } from "./apiClient";
+import { request } from "./apiClient";
 
 type McpKey = { id: string; name: string; scopes: string[]; createdAt: string; lastUsedAt: string | null; revokedAt: string | null };
 type PrivateQuestion = { id: string; subject: string; topic: string; text: string; options: string[]; difficulty: string; updatedAt: string };
@@ -8,7 +8,8 @@ type PracticeSet = { id: string; title: string; description: string; durationMin
 type PracticeRun = { id: string; titleSnapshot: string; totalQuestions: number; answeredCount: number; correctCount: number; percentage: number; completedAt: string };
 
 const scopes = ["questions:read", "questions:write", "practice:read", "practice:write"];
-const endpoint = API + "/mcp/student";
+// Use the canonical public MCP resource URL advertised by Render OAuth metadata.
+const endpoint = "https://arctester.onrender.com/mcp/student";
 type ReauthMethods = { passkeyAvailable: boolean; authenticatorEnabled: boolean };
 type OAuthRequest = { client_id: string; redirect_uri: string; response_type: "code"; code_challenge: string; code_challenge_method: "S256"; scope?: string; state?: string; resource?: string; clientName?: string };
 function readOAuthRequest(): OAuthRequest | null {

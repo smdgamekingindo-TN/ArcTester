@@ -739,7 +739,7 @@ export function authRouter(db: PrismaClient): Router {
       }
       if (user.accessStatus !== "APPROVED") {
         await recordLoginEvent(db, req, identity.email, user.id, "blocked", "google");
-        return next(forbidden(user.accessStatus === "REJECTED" ? "Your account was not approved. Contact your administrator." : "Your account is waiting for administrator approval."));
+        return next(forbidden(user.accessStatus === "REJECTED" ? "Your account was not approved. Contact your administrator." : "Verify your email to activate your student account."));
       }
       const totp = await db.totpCredential.findUnique({ where: { userId: user.id }, select: { enabledAt: true } });
       if (totp?.enabledAt) {
@@ -1052,7 +1052,7 @@ export function authRouter(db: PrismaClient): Router {
       }
       await clearLoginFailures(db, ip, input.email);
       if (!user.emailVerifiedAt) return next(forbidden("Verify your email first. Enter the 6-digit code sent to your inbox."));
-      if (user.accessStatus !== "APPROVED") { await recordLoginEvent(db, req, input.email, user.id, "blocked"); return next(forbidden(user.accessStatus === "REJECTED" ? "Your account was not approved. Contact your administrator." : "Your account is waiting for administrator approval.")); }
+      if (user.accessStatus !== "APPROVED") { await recordLoginEvent(db, req, input.email, user.id, "blocked"); return next(forbidden(user.accessStatus === "REJECTED" ? "Your account was not approved. Contact your administrator." : "Verify your email to activate your student account.")); }
       await recordLoginEvent(db, req, input.email, user.id, "success", "password");
       const { token } = await createAuthSession(db, req, user, "password");
       res.json({
@@ -1119,7 +1119,7 @@ export function authRouter(db: PrismaClient): Router {
       const trackedId = sessionId || "legacy-" + user.id + "-" + sha256(token).slice(0, 20);
       const trackedSession = await db.authSession.findUnique({ where: { id: trackedId }, select: { revokedAt: true, expiresAt: true } });
       if (trackedSession && (trackedSession.revokedAt || trackedSession.expiresAt <= new Date())) return next(forbidden("This device session has been revoked. Sign in again."));
-      if (user.accessStatus !== "APPROVED") return next(forbidden(user.accessStatus === "REJECTED" ? "Your account was not approved. Contact your administrator." : "Your account is waiting for administrator approval."));
+      if (user.accessStatus !== "APPROVED") return next(forbidden(user.accessStatus === "REJECTED" ? "Your account was not approved. Contact your administrator." : "Verify your email to activate your student account."));
       res.json({ ok: true, user });
     } catch {
       next(forbidden("Invalid session."));

@@ -1,15 +1,10 @@
 /**
  * Same-origin API proxy for the static Vite app.
  *
- * Configure API_ORIGIN as a private Vercel environment variable, for example:
- * https://arctester.onrender.com
+ * API_ORIGIN may override the deployed Render API origin.
  */
 export default async function handler(req: any, res: any): Promise<void> {
-  const origin = process.env.API_ORIGIN?.trim().replace(/\/+$/, "");
-  if (!origin) {
-    res.status(500).json({ error: "API_ORIGIN is not configured." });
-    return;
-  }
+  const origin = (process.env.API_ORIGIN?.trim() || "https://arctester.onrender.com").replace(/\/+$/, "");
 
   const incomingUrl = new URL(req.url || "/api", "https://vercel.internal");
   const upstreamPath = incomingUrl.pathname.replace(/^\/api(?=\/|$)/, "") || "/";
@@ -18,7 +13,7 @@ export default async function handler(req: any, res: any): Promise<void> {
 
   const headers = new Headers();
   for (const [name, value] of Object.entries(req.headers || {})) {
-    if (value == null || ["host", "connection", "content-length"].includes(name.toLowerCase())) continue;
+    if (value == null || ["host", "connection", "content-length", "transfer-encoding", "upgrade", "keep-alive"].includes(name.toLowerCase())) continue;
     headers.set(name, Array.isArray(value) ? value.join(", ") : String(value));
   }
 
@@ -38,9 +33,15 @@ export default async function handler(req: any, res: any): Promise<void> {
     });
     res.status(upstream.status);
     upstream.headers.forEach((value, name) => {
-      if (["connection", "content-length", "content-encoding", "transfer-encoding"].includes(name.toLowerCase())) return;
+      if (["connection", "content-length", "content-encoding", "transfer-encoding", "set-cookie"].includes(name.toLowerCase())) return;
       res.setHeader(name, value);
     });
+    // Preserve each cookie separately; Headers.forEach() can fold Set-Cookie.
+    const getSetCookie = (upstream.headers as Headers & { getSetCookie?: () => string[] }).getSetCookie;
+    const cookies = getSetCookie ? getSetCookie.call(upstream.headers) : [];
+    const singleCookie = upstream.headers.get("set-cookie");
+    if (cookies.length) res.setHeader("Set-Cookie", cookies);
+    else if (singleCookie) res.setHeader("Set-Cookie", singleCookie);
     const payload = Buffer.from(await upstream.arrayBuffer());
     res.end(payload);
   } catch (error) {

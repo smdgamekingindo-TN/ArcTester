@@ -11,7 +11,7 @@ const scopes = ["questions:read", "questions:write", "practice:read", "practice:
 const endpoint = API + "/mcp/student";
 function fromBase64Url(value:string):Uint8Array{const base=value.replace(/-/g,"+").replace(/_/g,"/");const padded=base+"=".repeat((4-base.length%4)%4);return Uint8Array.from(atob(padded),ch=>ch.charCodeAt(0));}
 function toBufferSource(value:Uint8Array):ArrayBuffer{const buffer=new ArrayBuffer(value.byteLength);new Uint8Array(buffer).set(value);return buffer;}
-function toBase64Url(value:ArrayBuffer):string{const bytes=new Uint8Array(value);let binary="";bytes.forEach(byte=>binary+=String.fromCharCode(byte));return btoa(binary).replace(/\\+/g,"-").replace(/\\//g,"_").replace(/=+$/g,"");}
+function toBase64Url(value:ArrayBuffer):string{const bytes=new Uint8Array(value);let binary="";bytes.forEach(byte=>binary+=String.fromCharCode(byte));return btoa(binary).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/g,"");}
 
 export default function StudentMcpAssistant() {
   const [keys, setKeys] = useState<McpKey[]>([]);
@@ -69,7 +69,7 @@ export default function StudentMcpAssistant() {
     setBusy(true); setError(""); setNotice(""); setSecret("");
     try {
       if (!navigator.credentials) throw new Error("Passkeys are not supported by this browser.");
-      const options = await request<{challengeId:string;publicKey:{challenge:string;rpId:string;allowCredentials:{type:"public-key";id:string;transports?:string[]}[];timeout:number;userVerification:UserVerificationRequirement}}("/auth/reauthenticate/passkey/options",{method:"POST",body:"{}"});
+      const options = await request<{challengeId:string;publicKey:{challenge:string;rpId:string;allowCredentials:{type:"public-key";id:string;transports?:AuthenticatorTransport[]}[];timeout:number;userVerification:UserVerificationRequirement}}("/auth/reauthenticate/passkey/options",{method:"POST",body:"{}"});
       const publicKey:PublicKeyCredentialRequestOptions={...options.publicKey,challenge:toBufferSource(fromBase64Url(options.publicKey.challenge)),allowCredentials:options.publicKey.allowCredentials.map(item=>({...item,id:toBufferSource(fromBase64Url(item.id))}))};
       const credential=await navigator.credentials.get({publicKey}) as PublicKeyCredential|null;
       if(!credential)throw new Error("Passkey confirmation was cancelled.");

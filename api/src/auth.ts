@@ -221,7 +221,6 @@ const AGE_GATE_VERSION = "2026-11-27-v3";
 
 export const RegisterSchema = z.object({
   adultAttestation: z.boolean(),
-  guardianEmail: z.string().email("Enter a valid parent or guardian email.").trim().toLowerCase().optional(),
   termsAccepted: z.literal(true),
   privacyConsent: z.literal(true),
   termsVersion: z.literal(TERMS_VERSION),
@@ -232,9 +231,7 @@ export const RegisterSchema = z.object({
   password: z.string().min(8, "Password must be at least 8 characters.").max(128),
   captchaToken: z.string().optional(),
   registrationNumber: z.string().trim().regex(/^\d{5}-[A-Z]{1,3}-\d{3}$/i, "Enter your diploma registration number, e.g. 24010-CM-053.").optional(),
-}).merge(StudentAcademicProfileSchema).superRefine((input, ctx) => {
-  if (!input.adultAttestation && !input.guardianEmail) ctx.addIssue({ code: "custom", path: ["guardianEmail"], message: "A parent or legal guardian email is required for students under 18." });
-});
+}).merge(StudentAcademicProfileSchema);
 
 type SvgCaptchaPayload = { answerDigest: string; expiresAt: number; nonce: string };
 const usedSvgCaptchaNonces = new Map<string, number>();
@@ -442,13 +439,6 @@ export async function requireAuth(req: AuthedRequest, _res: Response, next: Next
     }
     if (user.accessStatus !== "APPROVED") {
       return next(forbidden(user.accessStatus === "REJECTED" ? "Your account was not approved. Contact your administrator." : "Your account is waiting for administrator approval."));
-    }
-    if (user.role === "STUDENT") {
-      const legal = await db.legalAcceptance.findFirst({ where: { userId: id }, orderBy: { acceptedAt: "desc" }, select: { ageAttested: true } });
-      if (legal && !legal.ageAttested) {
-        const guardian = await db.guardianConsent.findFirst({ where: { studentId: id, verifiedAt: { not: null }, consentedAt: { not: null } }, select: { id: true } });
-        if (!guardian) return next(forbidden("Parent or legal guardian consent is required before student access can begin."));
-      }
     }
     req.user = { id, email };
     next();
@@ -681,7 +671,6 @@ export function authRouter(db: PrismaClient): Router {
   router.post("/register", async (req, res, next) => {
     try {
       const input = RegisterSchema.parse(req.body);
-      const guardianToken = input.adultAttestation ? null : randomBytes(32).toString("base64url");
       const nativeClient = req.header("x-arctester-client") === "mobile";
       if (!input.registrationNumber && !nativeClient) throw badRequest("Enter your diploma registration number.");
       const registrationNumber: string | null = input.registrationNumber?.toUpperCase() ?? null;
@@ -715,16 +704,11 @@ export function authRouter(db: PrismaClient): Router {
             source: nativeClient ? "mobile" : "web",
           },
         });
-        if (guardianToken && input.guardianEmail) await tx.guardianConsent.create({ data: { studentId: created.id, guardianEmail: input.guardianEmail, tokenHash: sha256(guardianToken), expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000) } });
         return created;
       });
-      if (guardianToken && input.guardianEmail) {
-        try { await sendGuardianConsentEmail(input.guardianEmail, input.fullName, guardianToken); }
-        catch { return res.status(202).json({ ok: true, submitted: true, guardianConsentPending: true, message: "Account request saved, but the guardian email could not be sent. Contact ArcTester support to resend it." }); }
-      }
       res.status(201).json({
         ok: true,
-        message: guardianToken ? "Account request submitted. A parent or legal guardian must confirm consent by email before student access can begin." : "Account submitted for administrator approval. You can sign in after approval.",
+        message: "Account submitted for administrator approval. You can sign in after approval.",
         user,
       });
     } catch (error) {
@@ -763,15 +747,12 @@ export function authRouter(db: PrismaClient): Router {
       const input = GoogleCredentialSchema.extend({
         profile: GoogleRegistrationSchema,
         adultAttestation: z.boolean(),
-        guardianEmail: z.string().email("Enter a valid parent or guardian email.").trim().toLowerCase().optional(),
         termsAccepted: z.literal(true),
         privacyConsent: z.literal(true),
         termsVersion: z.literal(TERMS_VERSION),
         privacyNoticeVersion: z.literal(PRIVACY_NOTICE_VERSION),
         consentNoticeVersion: z.literal(CONSENT_NOTICE_VERSION),
         ageGateVersion: z.literal(AGE_GATE_VERSION),
-      }).superRefine((input, ctx) => {
-        if (!input.adultAttestation && !input.guardianEmail) ctx.addIssue({ code: "custom", path: ["guardianEmail"], message: "A parent or legal guardian email is required for students under 18." });
       }).parse(req.body);
       const identity = await verifyGoogleCredential(input.credential);
       const existing = await db.user.findUnique({ where: { email: identity.email }, select: { id: true } });
@@ -782,7 +763,6 @@ export function authRouter(db: PrismaClient): Router {
       if (!parts) throw badRequest("Registration number must look like 24010-CM-053.");
       const identityParts = validateRegistrationIdentity(registrationNumber, profile.collegeCode, profile.branchCode || "", profile.branchName);
       const passwordHash = await hashPasswordAsync(randomBytes(48).toString("base64url"));
-      const guardianToken = input.adultAttestation ? null : randomBytes(32).toString("base64url");
       const user = await db.$transaction(async (tx) => {
         const created = await tx.user.create({
           data: {
@@ -811,14 +791,9 @@ export function authRouter(db: PrismaClient): Router {
             source: "google-web",
           },
         });
-        if (guardianToken && input.guardianEmail) await tx.guardianConsent.create({ data: { studentId: created.id, guardianEmail: input.guardianEmail, tokenHash: sha256(guardianToken), expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000) } });
         return created;
       });
-      if (guardianToken && input.guardianEmail) {
-        try { await sendGuardianConsentEmail(input.guardianEmail, profile.fullName, guardianToken); }
-        catch { return res.status(202).json({ ok: true, submitted: true, guardianConsentPending: true, message: "Account request saved, but the guardian email could not be sent. Contact ArcTester support to resend it." }); }
-      }
-      res.status(201).json({ ok: true, submitted: true, message: guardianToken ? "Your student account request was submitted. A parent or legal guardian must confirm consent by email before access can begin." : "Your Google account and academic details were submitted. ArcTester access starts after administrator approval.", user });
+      res.status(201).json({ ok: true, submitted: true, message: "Your Google account and academic details were submitted. ArcTester access starts after administrator approval.", user });
     } catch (error) {
       if (error && typeof error === "object" && "code" in error && error.code === "P2002") return next(conflict("This Google email or diploma registration number is already connected to an account."));
       next(error);

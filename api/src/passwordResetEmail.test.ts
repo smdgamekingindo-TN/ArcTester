@@ -61,7 +61,8 @@ describe("Gmail API email delivery", () => {
     const payload = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body)) as { raw: string };
     const mime = Buffer.from(payload.raw.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8");
     expect(mime).toContain("Reset your ArcTester password");
-    expect(mime).toContain(Buffer.from("https://arctester.example/reset?token=abc").toString("base64"));
+    const plainBody = mime.split("Content-Type: text/plain; charset=UTF-8")[1]?.split("Content-Transfer-Encoding: base64")[1]?.split("\r\n\r\n")[1]?.split("\r\n--")[0]?.replace(/\s/g, "");
+    expect(Buffer.from(plainBody ?? "", "base64").toString("utf8")).toContain("https://arctester.example/reset?token=abc");
   });
 
   it("fails instead of claiming delivery when Gmail API rejects the message", async () => {

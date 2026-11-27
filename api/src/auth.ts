@@ -437,6 +437,10 @@ export async function requireAuth(req: AuthedRequest, _res: Response, next: Next
       const legacySession = await db.authSession.findUnique({ where: { id: legacySessionId }, select: { id: true, revokedAt: true, expiresAt: true } });
       if (legacySession && (legacySession.revokedAt || legacySession.expiresAt <= new Date())) return next(forbidden("This legacy session has been revoked. Sign in again."));
     }
+    if (user.role === "STUDENT" && user.accessStatus === "PENDING" && user.emailVerifiedAt) {
+      await db.user.update({ where: { id: user.id }, data: { accessStatus: "APPROVED" } });
+      user.accessStatus = "APPROVED";
+    }
     if (user.accessStatus !== "APPROVED") {
       return next(forbidden(user.accessStatus === "REJECTED" ? "Your account was not approved. Contact your administrator." : "Verify your email to activate your student account."));
     }
@@ -955,10 +959,10 @@ export function authRouter(db: PrismaClient): Router {
   router.post("/email-verification/verify", async (req, res, next) => {
     try {
       const input = z.object({ email: z.string().email().trim().toLowerCase(), code: z.string().regex(/^\d{6}$/, "Enter the 6-digit code.") }).parse(req.body);
-      const user = await db.user.findUnique({ where: { email: input.email }, select: { id: true, emailVerifiedAt: true, accessStatus: true } });
+      const user = await db.user.findUnique({ where: { email: input.email }, select: { id: true, emailVerifiedAt: true, accessStatus: true, role: true } });
       if (!user) return next(forbidden("The verification code is invalid or expired."));
       if (user.emailVerifiedAt) {
-        if (user.accessStatus === "PENDING") await db.user.update({ where: { id: user.id }, data: { accessStatus: "APPROVED" } });
+        if (user.role === "STUDENT" && user.accessStatus === "PENDING") await db.user.update({ where: { id: user.id }, data: { accessStatus: "APPROVED" } });
         return res.json({ ok: true, message: "Your email is already verified. You can sign in." });
       }
       const challenge = await db.authChallenge.findFirst({ where: { userId: user.id, purpose: "email-verification" }, orderBy: { createdAt: "desc" } });
@@ -971,7 +975,7 @@ export function authRouter(db: PrismaClient): Router {
       const verified = await db.$transaction(async (tx) => {
         const consumed = await tx.authChallenge.updateMany({ where: { id: challenge.id, challenge: expected, attempts: { lt: 5 }, expiresAt: { gt: new Date() } }, data: { attempts: { increment: 1 } } });
         if (consumed.count !== 1) return false;
-        await tx.user.update({ where: { id: user.id }, data: { emailVerifiedAt: new Date(), accessStatus: user.accessStatus === "REJECTED" ? "REJECTED" : "APPROVED" } });
+        await tx.user.update({ where: { id: user.id }, data: { emailVerifiedAt: new Date(), accessStatus: user.role === "STUDENT" && user.accessStatus !== "REJECTED" ? "APPROVED" : user.accessStatus } });
         await tx.authChallenge.deleteMany({ where: { userId: user.id, purpose: "email-verification" } });
         return true;
       });
@@ -1015,7 +1019,7 @@ export function authRouter(db: PrismaClient): Router {
       }
       await clearLoginFailures(db, ip, input.email);
       if (!user.emailVerifiedAt) return next(forbidden("Verify your email first. Enter the 6-digit code sent to your inbox."));
-      if (user.accessStatus === "PENDING" && user.emailVerifiedAt) { await db.user.update({ where: { id: user.id }, data: { accessStatus: "APPROVED" } }); user.accessStatus = "APPROVED"; }
+      if (user.role === "STUDENT" && user.accessStatus === "PENDING" && user.emailVerifiedAt) { await db.user.update({ where: { id: user.id }, data: { accessStatus: "APPROVED" } }); user.accessStatus = "APPROVED"; }
        if (user.accessStatus !== "APPROVED") { await recordLoginEvent(db, req, input.email, user.id, "blocked"); return next(forbidden(user.accessStatus === "REJECTED" ? "Your account was not approved. Contact your administrator." : "Verify your email to activate your student account.")); }
       const totp = await db.totpCredential.findUnique({ where: { userId: user.id }, select: { enabledAt: true } });
       if (totp?.enabledAt) {
@@ -1052,6 +1056,7 @@ export function authRouter(db: PrismaClient): Router {
       }
       await clearLoginFailures(db, ip, input.email);
       if (!user.emailVerifiedAt) return next(forbidden("Verify your email first. Enter the 6-digit code sent to your inbox."));
+      if (user.role === "STUDENT" && user.accessStatus === "PENDING" && user.emailVerifiedAt) { await db.user.update({ where: { id: user.id }, data: { accessStatus: "APPROVED" } }); user.accessStatus = "APPROVED"; }
       if (user.accessStatus !== "APPROVED") { await recordLoginEvent(db, req, input.email, user.id, "blocked"); return next(forbidden(user.accessStatus === "REJECTED" ? "Your account was not approved. Contact your administrator." : "Verify your email to activate your student account.")); }
       await recordLoginEvent(db, req, input.email, user.id, "success", "password");
       const { token } = await createAuthSession(db, req, user, "password");
@@ -1110,7 +1115,7 @@ export function authRouter(db: PrismaClient): Router {
       }
       const user = await db.user.findUnique({
         where: { id },
-        select: { id: true, email: true, role: true, sessionVersion: true, accessStatus: true, fullName: true, collegeName: true, collegeCode: true, postalPin: true, branchName: true, branchCode: true, registrationNumber: true },
+        select: { id: true, email: true, role: true, sessionVersion: true, accessStatus: true, emailVerifiedAt: true, fullName: true, collegeName: true, collegeCode: true, postalPin: true, branchName: true, branchCode: true, registrationNumber: true },
       });
       if (!user || user.email !== tokenEmail || user.sessionVersion !== sessionVersion) {
         return next(forbidden("This session has been revoked. Sign in again."));

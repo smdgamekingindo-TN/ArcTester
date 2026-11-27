@@ -214,10 +214,10 @@ function validateRegistrationIdentity(registrationNumber: string, collegeCode: s
   return { collegeCode: parts[2], branchCode: branch.code, branchName: branch.name };
 }
 
-const TERMS_VERSION = "2026-11-27-v1";
-const PRIVACY_NOTICE_VERSION = "2026-11-27-v1";
-const CONSENT_NOTICE_VERSION = "2026-11-27-v1";
-const AGE_GATE_VERSION = "2026-11-27-v1";
+const TERMS_VERSION = "2026-11-27-v2";
+const PRIVACY_NOTICE_VERSION = "2026-11-27-v2";
+const CONSENT_NOTICE_VERSION = "2026-11-27-v2";
+const AGE_GATE_VERSION = "2026-11-27-v2";
 
 export const RegisterSchema = z.object({
   adultAttestation: z.literal(true),

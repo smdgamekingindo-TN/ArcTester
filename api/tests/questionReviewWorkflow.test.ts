@@ -21,7 +21,7 @@ describe("question review workflow and student approval boundary", () => {
     server = await startTestServer(buildApp);
     const admin = await server.db.user.create({ data: { email: "question-review-admin@example.test", passwordHash: hashPassword("correct-horse-battery"), role: "ADMIN" } });
     const student = await server.db.user.create({ data: { email: "question-review-student@example.test", passwordHash: hashPassword("correct-horse-battery"), role: "STUDENT" } });
-    const pendingStudent = await server.db.user.create({ data: { email: "question-review-pending@example.test", passwordHash: hashPassword("correct-horse-battery"), role: "STUDENT", accessStatus: "PENDING", emailVerifiedAt: new Date() } });
+    const pendingStudent = await server.db.user.create({ data: { email: "question-review-pending@example.test", passwordHash: hashPassword("correct-horse-battery"), role: "STUDENT", accessStatus: "PENDING", emailVerifiedAt: null } });
     pendingStudentId = pendingStudent.id;
     adminCookie = (await signIn(server.baseUrl, admin.email)).cookie;
     studentCookie = (await signIn(server.baseUrl, student.email)).cookie;
@@ -36,17 +36,17 @@ describe("question review workflow and student approval boundary", () => {
 
   afterAll(async () => { if (server) await server.close(); });
 
-  it("lists pending accounts and permits admin approval before sign-in", async () => {
+  it("keeps unverified students pending and activates them after verification without admin approval", async () => {
     const pendingLogin = await postJson(server.baseUrl + "/auth/login", { email: "question-review-pending@example.test", password: "correct-horse-battery" });
     expect(pendingLogin.status).toBe(403);
     const pendingList = await getJson(server.baseUrl + "/admin/students?accessStatus=PENDING&search=question-review-pending", adminCookie);
     expect(pendingList.status).toBe(200);
     expect((pendingList.json as { students: Array<{ id: number; accessStatus: string }> }).students).toContainEqual(expect.objectContaining({ id: pendingStudentId, accessStatus: "PENDING" }));
-    const approved = await patchJson(server.baseUrl + `/admin/students/${pendingStudentId}/access`, { accessStatus: "APPROVED" }, adminCookie);
-    expect(approved.status).toBe(200);
-    expect(approved.json.student).toMatchObject({ id: pendingStudentId, accessStatus: "APPROVED" });
+    await server.db.user.update({ where: { id: pendingStudentId }, data: { emailVerifiedAt: new Date() } });
     const login = await postJson(server.baseUrl + "/auth/login", { email: "question-review-pending@example.test", password: "correct-horse-battery" });
     expect(login.status).toBe(200);
+    const activated = await server.db.user.findUnique({ where: { id: pendingStudentId }, select: { accessStatus: true } });
+    expect(activated?.accessStatus).toBe("APPROVED");
   });
 
   it("exposes only approved questions in student bank counts and practice", async () => {

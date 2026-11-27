@@ -1,6 +1,6 @@
 import { createHash, createHmac } from "node:crypto";
-const { mockSendPasswordResetEmail } = vi.hoisted(() => ({ mockSendPasswordResetEmail: vi.fn() }));
-vi.mock("../src/passwordResetEmail.js", () => ({ sendPasswordResetEmail: mockSendPasswordResetEmail }));
+const { mockSendPasswordResetEmail, mockSendEmailVerificationCode } = vi.hoisted(() => ({ mockSendPasswordResetEmail: vi.fn(), mockSendEmailVerificationCode: vi.fn() }));
+vi.mock("../src/passwordResetEmail.js", () => ({ sendPasswordResetEmail: mockSendPasswordResetEmail, sendEmailVerificationCode: mockSendEmailVerificationCode }));
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { buildApp } from "../src/index.js";
 import {
@@ -165,7 +165,7 @@ describe("auth", () => {
     if (server) await server.close();
   });
 
-  it("registers a student without an invitation and leaves approval pending", async () => {
+  it("registers a student without an invitation and leaves email verification pending", async () => {
     const res = await postJsonWithCookie(`${server.baseUrl}/auth/register`, {
       ...STUDENT_PROFILE,
       email: "alice@example.com",
@@ -392,9 +392,12 @@ describe("auth", () => {
     expect(response.status).toBe(409);
     expect((await response.json() as { error: string }).error).toContain("already connected");
   });
-  it("denies academic profile edits for accounts that are not approved students", async () => {
+  it("denies academic profile edits for unverified pending students", async () => {
     const email = "profile-pending@example.com";
     await postJsonWithCookie(`${server.baseUrl}/auth/register`, { ...STUDENT_PROFILE, email, password: "profile-password-123" });
+    // Test-mode registration may mark email as verified; this case specifically
+    // exercises the unverified pending-account guard before auto-activation.
+    await server.db.user.update({ where: { email }, data: { emailVerifiedAt: null, accessStatus: "PENDING" } });
     const pending = await server.db.user.findUnique({ where: { email }, select: { id: true, email: true, sessionVersion: true, fullName: true } });
     expect(pending).toBeTruthy();
     const before = { fullName: pending!.fullName, sessionVersion: pending!.sessionVersion };
@@ -433,11 +436,12 @@ describe("auth", () => {
     expect((res.json as { error: string }).error).toBe("That request was invalid.");
   });
 
-  it("blocks pending students until an administrator approves them", async () => {
+  it("blocks unverified students and activates them after email verification", async () => {
+    await server.db.user.update({ where: { email: "alice@example.com" }, data: { emailVerifiedAt: null } });
     const pending = await postJsonWithCookie(`${server.baseUrl}/auth/login`, { email: "alice@example.com", password: "secret1234" });
     expect(pending.status).toBe(403);
-    expect((pending.json as { error: string }).error).toContain("waiting for administrator approval");
-    await server.db.user.update({ where: { email: "alice@example.com" }, data: { accessStatus: "APPROVED" } });
+    expect((pending.json as { error: string }).error).toContain("Verify your email first");
+    await server.db.user.update({ where: { email: "alice@example.com" }, data: { emailVerifiedAt: new Date() } });
     const res = await postJsonWithCookie(`${server.baseUrl}/auth/login`, {
       email: "alice@example.com",
       password: "secret1234",

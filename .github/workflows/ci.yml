@@ -246,7 +246,7 @@ jobs:
 
       - name: Start API server
         run: |
-          npm run dev --workspace=api &
+          ARCTESTER_E2E=true npm run dev --workspace=api &
           for attempt in $(seq 1 30); do
             if curl --fail --silent http://localhost:4000/health >/dev/null; then
               exit 0

@@ -35,7 +35,7 @@ describe("Gmail API email delivery", () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(String(fetchMock.mock.calls[0]?.[0])).toBe("https://oauth2.googleapis.com/token");
-    expect(fetchMock.mock.calls[0]?.[1]?.body).toContain("grant_type=refresh_token");
+    expect(String(fetchMock.mock.calls[0]?.[1]?.body)).toContain("grant_type=refresh_token");
     expect(String(fetchMock.mock.calls[1]?.[0])).toBe("https://gmail.googleapis.com/gmail/v1/users/me/messages/send");
     expect(fetchMock.mock.calls[1]?.[1]?.headers).toMatchObject({ authorization: "Bearer temporary-access-token" });
     const payload = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body)) as { raw: string };
@@ -61,7 +61,7 @@ describe("Gmail API email delivery", () => {
     const payload = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body)) as { raw: string };
     const mime = Buffer.from(payload.raw.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8");
     expect(mime).toContain("Reset your ArcTester password");
-    expect(mime).toContain("https://arctester.example/reset?token=abc");
+    expect(mime).toContain(Buffer.from("https://arctester.example/reset?token=abc").toString("base64"));
   });
 
   it("fails instead of claiming delivery when Gmail API rejects the message", async () => {

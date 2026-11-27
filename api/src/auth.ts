@@ -3,7 +3,7 @@
 // operations re-check the current database role instead of trusting client claims.
 
 import type { NextFunction, Request, Response } from "express";
-import { Router } from "express";
+import { Router, urlencoded } from "express";
 import { z } from "zod";
 import { createHash, createHmac, randomBytes, scrypt, scryptSync, timingSafeEqual } from "node:crypto";
 import { badRequest, conflict, forbidden, notFound } from "./errors.js";
@@ -809,6 +809,32 @@ export function authRouter(db: PrismaClient): Router {
       next(error);
     }
   });
+
+  router.get("/guardian-consent/verify", async (req, res, next) => {
+    try {
+      const token = typeof req.query.token === "string" ? req.query.token : "";
+      if (token.length < 32 || token.length > 128) return res.status(400).type("html").send("<h1>Invalid consent link</h1><p>Contact ArcTester support for a new link.</p>");
+      const record = await db.guardianConsent.findUnique({ where: { tokenHash: sha256(token) }, select: { expiresAt: true, consentedAt: true, guardianEmail: true } });
+      if (!record || record.expiresAt <= new Date()) return res.status(400).type("html").send("<h1>Consent link expired</h1><p>Contact ArcTester support for a new link.</p>");
+      if (record.consentedAt) return res.type("html").send("<h1>Guardian consent already confirmed</h1><p>Consent was already recorded for this student.</p>");
+      res.setHeader("Cache-Control", "no-store");
+      const escaped = token.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
+      const email = record.guardianEmail.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      res.type("html").send("<!doctype html><html><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>ArcTester Guardian Consent</title></head><body style=\"font:16px system-ui;max-width:560px;margin:48px auto;padding:20px\"><h1>Parent or legal guardian consent</h1><p>Guardian email: " + email + "</p><p>Confirm only if you are this student's parent or legal guardian and agree to processing described in ArcTester's Privacy Notice.</p><form method=\"post\" action=\"/auth/guardian-consent/verify\"><input type=\"hidden\" name=\"token\" value=\"" + escaped + "\"><label><input type=\"checkbox\" name=\"confirm\" value=\"yes\" required> I am the student's parent or legal guardian and confirm consent.</label><p><button type=\"submit\">Confirm guardian consent</button></p></form></body></html>");
+    } catch (error) { next(error); }
+  });
+
+  router.post("/guardian-consent/verify", urlencoded({ extended: false }), async (req, res, next) => {
+    try {
+      const input = z.object({ token: z.string().min(32).max(128), confirm: z.literal("yes") }).parse(req.body);
+      const now = new Date();
+      const result = await db.guardianConsent.updateMany({ where: { tokenHash: sha256(input.token), consentedAt: null, expiresAt: { gt: now } }, data: { verifiedAt: now, consentedAt: now } });
+      if (result.count !== 1) return res.status(400).type("html").send("<h1>Consent link expired or already used</h1><p>Contact ArcTester support if you still need to confirm consent.</p>");
+      res.setHeader("Cache-Control", "no-store");
+      res.type("html").send("<h1>Guardian consent confirmed</h1><p>The student account can now continue through administrator approval.</p><p>You may close this page.</p>");
+    } catch (error) { next(error); }
+  });
+
 
   router.post("/password-reset/request", async (req, res, next) => {
     try {

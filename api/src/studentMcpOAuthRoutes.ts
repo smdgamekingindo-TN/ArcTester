@@ -190,6 +190,26 @@ export function studentMcpOAuthRouter(db: PrismaClient): Router {
     } catch (error) { next(error); }
   });
 
+  router.post("/oauth/authorize/deny", async (req, res, next) => {
+    try {
+      const input = AuthorizeInput.extend({ approved: z.literal(false), clientName: z.string().max(100).optional() }).parse(req.body);
+      const resource = input.resource ?? STUDENT_RESOURCE;
+      if (!isSupportedResource(resource)) return res.status(400).json({ error: "invalid_target" });
+      parseScopes(input.scope, resource);
+      const client = await validateClient(input.client_id, input.redirect_uri);
+      const target = new URL(client.redirectUri);
+      target.searchParams.set("error", "access_denied");
+      target.searchParams.set("error_description", "The ArcTester connection was cancelled.");
+      if (input.state) target.searchParams.set("state", input.state);
+      target.searchParams.set("iss", ISSUER);
+      res.setHeader("Cache-Control", "no-store");
+      res.json({ ok: true, redirectUrl: target.toString() });
+    } catch (error) {
+      if (error instanceof z.ZodError) return res.status(400).json({ error: "invalid_request", error_description: error.issues.map(issue => issue.message).join("; ") });
+      next(error);
+    }
+  });
+
   router.post("/oauth/token", express.urlencoded({ extended: false }), async (req, res) => {
     try {
       const input = z.object({

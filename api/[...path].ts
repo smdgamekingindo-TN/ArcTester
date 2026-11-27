@@ -3,6 +3,8 @@
  *
  * API_ORIGIN may override the deployed Render API origin.
  */
+export const config = { api: { bodyParser: false } };
+
 export default async function handler(req: any, res: any): Promise<void> {
   const origin = (process.env.API_ORIGIN?.trim() || "https://arctester.onrender.com").replace(/\/+$/, "");
 

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { verifyGoogleCredential } from "./auth.js";
+import { RegisterSchema, verifyGoogleCredential } from "./auth.js";
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -50,5 +50,35 @@ describe("Google credential verification", () => {
       sub: "google-subject-123",
     }), { status: 200 })));
     await expect(verifyGoogleCredential("x".repeat(120))).rejects.toThrow("Google account verification failed");
+  });
+});
+
+
+describe("guardian consent registration requirements", () => {
+  const base = {
+    adultAttestation: false,
+    termsAccepted: true,
+    privacyConsent: true,
+    termsVersion: "2026-11-27-v2",
+    privacyNoticeVersion: "2026-11-27-v2",
+    consentNoticeVersion: "2026-11-27-v2",
+    ageGateVersion: "2026-11-27-v2",
+    email: "student@example.com",
+    password: "strong-password-123",
+    fullName: "Student Example",
+    collegeName: "Example Polytechnic",
+    collegeCode: "24010",
+    registrationNumber: "24010-CM-053",
+    branchName: "Computer Engineering (CME)",
+    branchCode: "CM",
+  };
+
+  it("requires a parent or guardian email when the student is under 18", () => {
+    expect(RegisterSchema.safeParse(base).success).toBe(false);
+    expect(RegisterSchema.safeParse({ ...base, guardianEmail: "guardian@example.com" }).success).toBe(true);
+  });
+
+  it("allows adult registration without a guardian email", () => {
+    expect(RegisterSchema.safeParse({ ...base, adultAttestation: true }).success).toBe(true);
   });
 });

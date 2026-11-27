@@ -1,6 +1,6 @@
 import { createHash, createHmac } from "node:crypto";
-const { mockSendPasswordResetEmail } = vi.hoisted(() => ({ mockSendPasswordResetEmail: vi.fn() }));
-vi.mock("../src/passwordResetEmail.js", () => ({ sendPasswordResetEmail: mockSendPasswordResetEmail }));
+const { mockSendPasswordResetEmail, mockSendEmailVerificationCode } = vi.hoisted(() => ({ mockSendPasswordResetEmail: vi.fn(), mockSendEmailVerificationCode: vi.fn() }));
+vi.mock("../src/passwordResetEmail.js", () => ({ sendPasswordResetEmail: mockSendPasswordResetEmail, sendEmailVerificationCode: mockSendEmailVerificationCode }));
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { buildApp } from "../src/index.js";
 import {

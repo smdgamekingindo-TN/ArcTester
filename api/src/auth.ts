@@ -436,7 +436,7 @@ export function requireRecentAuth(maxAgeSeconds = 5 * 60) {
 export function requireRecentReauthentication(maxAgeSeconds = 5 * 60) {
   return (req: AuthedRequest, _res: Response, next: NextFunction): void => {
     const token = readSessionToken(req);
-    if (!token) return next(forbidden("Re-enter your password and authenticator code to create an MCP key."));
+    if (!token) return next(forbidden("Confirm your identity again to create an MCP key."));
     try {
       const payload = verifyJwt(token);
       const issuedAt = payload.iat;

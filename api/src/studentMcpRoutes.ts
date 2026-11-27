@@ -46,7 +46,7 @@ function sendMcpOAuthChallenge(res: Response): void {
 async function authenticateMcp(db: PrismaClient, req: Request, res: Response, next: NextFunction): Promise<void> {
   const authorization = req.headers.authorization ?? "";
   const keyMatch = authorization.match(/^Bearer\s+(arc_student_[A-Za-z0-9_-]{32,})$/);
-  const tokenMatch = authorization.match(/^Bearer\s+(\\S{20,4096})$/);
+  const tokenMatch = authorization.match(/^Bearer\s+(\S{20,4096})$/);
   const token = keyMatch?.[1] ?? tokenMatch?.[1];
   if (!token) return sendMcpOAuthChallenge(res);
   try {
@@ -57,7 +57,8 @@ async function authenticateMcp(db: PrismaClient, req: Request, res: Response, ne
       select: { id: true, email: true, role: true, accessStatus: true, sessionVersion: true },
     });
     if (!user || user.role !== "STUDENT" || user.accessStatus !== "APPROVED") {
-      return res.status(403).json({ error: "An approved student account is required." });
+      res.status(403).json({ error: "An approved student account is required." });
+      return;
     }
     if (!keyMatch) {
       let payload: Record<string, unknown>;

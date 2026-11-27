@@ -13,7 +13,7 @@ function readReply(socket: ReturnType<typeof connect>): Promise<SmtpReply> {
       const complete = lines.filter(line => /^\d{3} /.test(line));
       if (!complete.length) return;
       const code = Number(complete[complete.length - 1].slice(0, 3));
-      if (code < 200 || code >= 400) { cleanup(); reject(new Error("Gmail SMTP rejected a command (SMTP " + code + ").")); return; }
+      if (code < 200 || code >= 400) { const detail = complete.map(line => line.slice(4)).join(" ").replace(/[^\\x20-\\x7E]/g, " ").slice(0, 160); cleanup(); reject(new Error("Gmail SMTP rejected a command (SMTP " + code + (detail ? ": " + detail : "") + ").")); return; }
       cleanup();
       resolve({ code, lines: complete });
     };
@@ -27,7 +27,7 @@ function command(socket: ReturnType<typeof connect>, value: string): Promise<Smt
   // callback runs, and attaching the reader afterward can lose the response.
   const response = readReply(socket);
   return new Promise<void>((resolve, reject) => {
-    socket.write(value + "\\r\\n", error => error ? reject(error) : resolve());
+    socket.write(value + "\r\n", error => error ? reject(error) : resolve());
   }).then(() => response).catch(error => {
     socket.destroy();
     throw error;

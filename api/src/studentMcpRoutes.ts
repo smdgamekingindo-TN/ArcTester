@@ -80,7 +80,7 @@ async function authenticateMcp(db: PrismaClient, req: Request, res: Response, ne
         payload.email !== user.email ||
         Number(payload.sv) !== user.sessionVersion ||
         typeof payload.scope !== "string" ||
-        key.scopes.some(scope => !payload.scope!.split(/\\s+/).includes(scope)) ||
+        key.scopes.some(scope => !payload.scope!.split(/\s+/).includes(scope)) ||
         typeof payload.exp !== "number" ||
         payload.exp <= Math.floor(Date.now() / 1000)
       ) return sendMcpOAuthChallenge(res);

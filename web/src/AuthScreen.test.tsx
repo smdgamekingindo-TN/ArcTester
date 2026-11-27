@@ -2,7 +2,7 @@ import { fireEvent, render, screen, within, waitFor } from "@testing-library/rea
 import { describe, expect, it, vi } from "vitest";
 import AuthScreen from "./AuthScreen";
 function renderAuth(overrides: Partial<React.ComponentProps<typeof AuthScreen>> = {}) {
- const props={email:"",password:"",register:false,busy:false,error:"",academicProfile:{fullName:"",collegeName:"",collegeCode:"",registrationNumber:"",branchName:"",branchCode:""},onAcademicChange:vi.fn(),onEmailChange:vi.fn(),onPasswordChange:vi.fn(),onRegisterChange:vi.fn(),onAuthenticate:vi.fn(),onRequestPasswordReset:vi.fn(),onResetPassword:vi.fn(),...overrides};
+ const props={email:"",password:"",register:false,busy:false,error:"",academicProfile:{fullName:"",collegeName:"",collegeCode:"",registrationNumber:"",branchName:"",branchCode:""},onAcademicChange:vi.fn(),onEmailChange:vi.fn(),onPasswordChange:vi.fn(),onRegisterChange:vi.fn(),onAuthenticate:vi.fn(),onRequestPasswordReset:vi.fn(),onResetPassword:vi.fn(),onVerifyEmail:vi.fn(),onResendEmailVerification:vi.fn(),...overrides};
  render(<AuthScreen {...props}/>);return props;
 }
 describe("AuthScreen",()=>{
@@ -36,4 +36,18 @@ describe("AuthScreen",()=>{
   }));
  });
 
+
+ it("renders a six-box email verification code and submits it",()=>{
+  const props=renderAuth({email:"student@example.test",emailVerificationPending:true});
+  expect(screen.getByRole("heading",{name:"Verify your email"})).toBeTruthy();
+  const digits=Array.from({length:6},(_,i)=>screen.getByRole("textbox",{name:"Verification code digit "+(i+1)}));
+  ["1","2","3","4","5","6"].forEach((value,index)=>fireEvent.change(digits[index],{target:{value}}));
+  fireEvent.submit(screen.getByRole("button",{name:"Verify email"}).closest("form")!);
+  expect(props.onVerifyEmail).toHaveBeenCalledWith("student@example.test","123456");
+ });
+ it("shows a visible Google sign-in entry when the client ID is not configured",()=>{
+  renderAuth();
+  expect(screen.getByRole("button",{name:/Continue with Google/i})).toBeTruthy();
+  expect(screen.getByText(/Google sign-in is being configured/i)).toBeTruthy();
+ });
 });

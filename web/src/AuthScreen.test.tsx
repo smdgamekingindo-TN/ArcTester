@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, within, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import AuthScreen from "./AuthScreen";
+import { AGE_GATE_VERSION, CONSENT_NOTICE_VERSION, PRIVACY_NOTICE_VERSION, TERMS_VERSION } from "./legalVersions";
 function renderAuth(overrides: Partial<React.ComponentProps<typeof AuthScreen>> = {}) {
  const props={email:"",password:"",register:false,busy:false,error:"",academicProfile:{fullName:"",collegeName:"",collegeCode:"",registrationNumber:"",branchName:"",branchCode:""},onAcademicChange:vi.fn(),onEmailChange:vi.fn(),onPasswordChange:vi.fn(),onRegisterChange:vi.fn(),onAuthenticate:vi.fn(),onRequestPasswordReset:vi.fn(),onResetPassword:vi.fn(),...overrides};
  render(<AuthScreen {...props}/>);return props;
@@ -31,8 +32,8 @@ describe("AuthScreen",()=>{
   fireEvent.submit(screen.getByRole("button",{name:"Request account"}).closest("form")!);
   await waitFor(()=>expect(props.onAuthenticate).toHaveBeenCalledWith("captcha-token:ABCDE",{
     adultAttestation:true,termsAccepted:true,privacyConsent:true,
-    termsVersion:"2026-11-27-v2",privacyNoticeVersion:"2026-11-27-v2",
-    consentNoticeVersion:"2026-11-27-v2",ageGateVersion:"2026-11-27-v2",
+    termsVersion:TERMS_VERSION,privacyNoticeVersion:PRIVACY_NOTICE_VERSION,
+    consentNoticeVersion:CONSENT_NOTICE_VERSION,ageGateVersion:AGE_GATE_VERSION,
   }));
  });
 

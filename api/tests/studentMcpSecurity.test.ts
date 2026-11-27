@@ -93,6 +93,47 @@ describe("student MCP authorization and ownership", () => {
     await server.db.user.update({ where: { id: studentId }, data: { role: "STUDENT" } });
   });
 
+  it("returns a verified OAuth denial redirect and preserves state", async () => {
+    const clientId = "https://chatgpt.com/oauth/client-metadata.json";
+    const redirectUri = "https://chatgpt.com/connector/oauth/redirect";
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input) === clientId) {
+        return new Response(JSON.stringify({ client_name: "ChatGPT", redirect_uris: [redirectUri] }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      }
+      return originalFetch(input, init);
+    }) as typeof fetch;
+    try {
+      const response = await fetch(server.baseUrl + "/oauth/authorize/deny", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          client_id: clientId,
+          redirect_uri: redirectUri,
+          response_type: "code",
+          code_challenge: "A".repeat(43),
+          code_challenge_method: "S256",
+          scope: "questions:read",
+          state: "oauth-state-check",
+          resource: "https://arctester.onrender.com/mcp/student",
+          approved: false,
+        }),
+      });
+      expect(response.status).toBe(200);
+      const body = await response.json() as { redirectUrl: string };
+      const target = new URL(body.redirectUrl);
+      expect(target.origin + target.pathname).toBe(redirectUri);
+      expect(target.searchParams.get("error")).toBe("access_denied");
+      expect(target.searchParams.get("state")).toBe("oauth-state-check");
+      expect(target.searchParams.get("iss")).toBe("https://arctester.onrender.com");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   it("advertises OAuth resource metadata and challenges unlinked clients", async () => {
     const metadata = await fetch(server.baseUrl + "/.well-known/oauth-protected-resource/mcp/student");
     expect(metadata.status).toBe(200);

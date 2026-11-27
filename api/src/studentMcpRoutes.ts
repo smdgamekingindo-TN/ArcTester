@@ -3,7 +3,7 @@ import express, { Router, type Request, type Response, type NextFunction } from 
 import { z } from "zod";
 import type { PrismaClient } from "@prisma/client";
 import { badRequest, forbidden, notFound } from "./errors.js";
-import { requireAuth, requireRecentReauthentication, type AuthedRequest } from "./auth.js";
+import { requireAuth, requireRecentReauthentication, verifyJwt, type AuthedRequest } from "./auth.js";
 
 const KEY_PREFIX = "arc_student_";
 const KEY_SCOPES = ["questions:read", "questions:write", "practice:read", "practice:write"] as const;
@@ -38,48 +38,43 @@ function sendToolResult(id: unknown, value: unknown) {
 }
 function hasScope(key: StudentKey, scope: string): boolean { return key.scopes.includes(scope); }
 
+function sendMcpOAuthChallenge(res: Response): void {
+  res.setHeader("WWW-Authenticate", 'Bearer resource_metadata="https://arctester.onrender.com/.well-known/oauth-protected-resource/mcp/student", scope="questions:read questions:write practice:read practice:write"');
+  res.status(401).json({ error: "unauthorized", message: "Connect ArcTester to authorize this student MCP request." });
+}
+
 async function authenticateMcp(db: PrismaClient, req: Request, res: Response, next: NextFunction): Promise<void> {
   const authorization = req.headers.authorization ?? "";
-  const keyMatch = authorization.match(/^Bearer\s+(arc_student_[A-Za-z0-9_-]{32,})$/);
-  const oauthMatch = authorization.match(/^Bearer\s+(\S{20,4096})$/);
-  if (!keyMatch && !oauthMatch) return next(forbidden("Connect an approved ArcTester student account or use a valid student MCP key."));
+  const keyMatch = authorization.match(/^Bearer\\s+(arc_student_[A-Za-z0-9_-]{32,})$/);
+  const tokenMatch = authorization.match(/^Bearer\\s+(\\S{20,4096})$/);
+  const token = keyMatch?.[1] ?? tokenMatch?.[1];
+  if (!token) return sendMcpOAuthChallenge(res);
   try {
-    if (keyMatch) {
-      const key = await db.studentMcpKey.findUnique({ where: { keyHash: sha256(keyMatch[1]) } });
-      if (!key || key.revokedAt) return next(forbidden("This student MCP key is invalid or revoked."));
-      const user = await db.user.findUnique({ where: { id: key.userId }, select: { role: true, accessStatus: true } });
-      if (!user || user.role !== "STUDENT" || user.accessStatus !== "APPROVED") {
-        return next(forbidden("An approved student account is required."));
-      }
-      await db.studentMcpKey.update({ where: { id: key.id }, data: { lastUsedAt: new Date() } });
-      (req as Request & { studentMcpKey?: StudentKey }).studentMcpKey = { id: key.id, userId: key.userId, scopes: key.scopes };
-      return next();
-    }
-
-    // ChatGPT account linking uses Google OAuth tokens from the Google Cloud
-    // Console OAuth client. Google verifies identity; ArcTester maps the
-    // verified email to an existing approved student account.
-    const identityResponse = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
-      headers: { authorization: "Bearer " + oauthMatch![1] },
-    });
-    if (!identityResponse.ok) return next(forbidden("Google account connection is invalid or expired."));
-    const identity = await identityResponse.json() as { email?: unknown; email_verified?: unknown };
-    if (identity.email_verified !== true || typeof identity.email !== "string") {
-      return next(forbidden("A Google account with a verified email address is required."));
-    }
+    const key = await db.studentMcpKey.findUnique({ where: { keyHash: sha256(token) } });
+    if (!key || key.revokedAt) return sendMcpOAuthChallenge(res);
     const user = await db.user.findUnique({
-      where: { email: identity.email.trim().toLowerCase() },
-      select: { id: true, role: true, accessStatus: true },
+      where: { id: key.userId },
+      select: { id: true, email: true, role: true, accessStatus: true, sessionVersion: true },
     });
     if (!user || user.role !== "STUDENT" || user.accessStatus !== "APPROVED") {
-      return next(forbidden("Connect the Google account whose verified email matches your approved ArcTester student account."));
+      return res.status(403).json({ error: "An approved student account is required." });
     }
-    (req as Request & { studentMcpKey?: StudentKey }).studentMcpKey = {
-      id: "google-oauth:" + user.id,
-      userId: user.id,
-      scopes: [...KEY_SCOPES],
-    };
-    next();
+    if (!keyMatch) {
+      let payload: Record<string, unknown>;
+      try { payload = verifyJwt(token); }
+      catch { return sendMcpOAuthChallenge(res); }
+      if (
+        payload.mcp_oauth !== true ||
+        Number(payload.sub) !== user.id ||
+        payload.email !== user.email ||
+        Number(payload.sv) !== user.sessionVersion ||
+        typeof payload.exp !== "number" ||
+        payload.exp <= Math.floor(Date.now() / 1000)
+      ) return sendMcpOAuthChallenge(res);
+    }
+    await db.studentMcpKey.update({ where: { id: key.id }, data: { lastUsedAt: new Date() } });
+    (req as Request & { studentMcpKey?: StudentKey }).studentMcpKey = { id: key.id, userId: key.userId, scopes: key.scopes };
+    return next();
   } catch (error) { next(error); }
 }
 

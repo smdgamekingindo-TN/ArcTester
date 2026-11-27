@@ -85,7 +85,7 @@ describe("student MCP authorization and ownership", () => {
   it("enforces per-key scopes and re-checks current account role", async () => {
     await server.db.studentMcpKey.update({ where: { id: keyId }, data: { scopes: ["questions:read"] } });
     const denied = await rpc("create_my_questions", { questions: [{ subject: "Math", text: "Should be denied", options: ["A", "B"], correctIndex: 0 }] });
-    expect(denied.body, JSON.stringify(denied.body)).toMatchObject({ error: { code: -32003 } });
+    expect(denied.body, JSON.stringify(denied.body)).toMatchObject({ result: { isError: true, content: [{ text: expect.stringContaining("Missing questions:write scope.") }] } });
 
     await server.db.user.update({ where: { id: studentId }, data: { role: "ADMIN" } });
     const demotedOrWrongRole = await rpc("list_my_questions", { limit: 10 });

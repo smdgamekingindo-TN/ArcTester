@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { API, request } from "./apiClient";
+import { request } from "./apiClient";
 
 type McpKey = { id: string; name: string; scopes: string[]; createdAt: string; lastUsedAt: string | null; revokedAt: string | null };
 type PrivateQuestion = { id: string; subject: string; topic: string; text: string; options: string[]; difficulty: string; updatedAt: string };

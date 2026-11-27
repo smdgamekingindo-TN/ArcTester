@@ -6,10 +6,19 @@ import { forbidden } from "./errors.js";
 import { readSessionToken, requireAuth, requireRecentReauthentication, signJwt, verifyJwt, type AuthedRequest } from "./auth.js";
 
 const ISSUER = "https://arctester.onrender.com";
-const RESOURCE = "https://arctester.onrender.com/mcp/student";
+const STUDENT_RESOURCE = "https://arctester.onrender.com/mcp/student";
+const ADMIN_RESOURCE = "https://arctester.onrender.com/mcp/admin";
 const WEB_APP = (process.env.APP_BASE_URL?.trim() || "https://arctester.vercel.app").replace(/\/+$/, "");
-const SCOPES = ["questions:read", "questions:write", "practice:read", "practice:write"] as const;
-type Scope = typeof SCOPES[number];
+const STUDENT_SCOPES = ["questions:read", "questions:write", "practice:read", "practice:write"] as const;
+const ADMIN_SCOPES = ["questions:read", "questions:create", "questions:review", "papers:create", "papers:read", "papers:publish", "exams:assign", "announcements:write", "activity:read", "models:read", "models:monitoring:read", "models:dataset:create", "models:verification:read", "models:train", "models:register", "models:evaluate", "models:activate", "students:read", "students:manage", "students:review"] as const;
+type Scope = string;
+function scopesFor(resource: string): readonly string[] {
+  if (resource === STUDENT_RESOURCE) return STUDENT_SCOPES;
+  if (resource === ADMIN_RESOURCE) return ADMIN_SCOPES;
+  throw new Error("Unsupported ArcTester resource.");
+}
+function isSupportedResource(resource: string): boolean { return resource === STUDENT_RESOURCE || resource === ADMIN_RESOURCE; }
+function roleForResource(resource: string): "STUDENT" | "ADMIN" { return resource === ADMIN_RESOURCE ? "ADMIN" : "STUDENT"; }
 
 function sha256(value: string): Buffer {
   return createHash("sha256").update(value).digest();
@@ -20,18 +29,14 @@ function base64url(value: Buffer): string {
 function digestText(value: string): string {
   return createHash("sha256").update(value).digest("hex");
 }
-function parseScopes(raw: string | undefined): Scope[] {
-  const requested = raw?.trim() ? raw.trim().split(/\s+/) : [...SCOPES];
-  if (requested.some(scope => !SCOPES.includes(scope as Scope))) throw new Error("Unsupported ArcTester scope.");
-  return [...new Set(requested as Scope[])];
+function parseScopes(raw: string | undefined, resource: string): Scope[] {
+  const supported = scopesFor(resource);
+  const requested = raw?.trim() ? raw.trim().split(/\s+/) : [...supported];
+  if (requested.some(scope => !supported.includes(scope))) throw new Error("Unsupported ArcTester scope for this resource.");
+  return [...new Set(requested)];
 }
-function resourceMetadata() {
-  return {
-    resource: RESOURCE,
-    authorization_servers: [ISSUER],
-    scopes_supported: [...SCOPES],
-    bearer_methods_supported: ["header"],
-  };
+function resourceMetadata(resource: string = STUDENT_RESOURCE) {
+  return { resource, authorization_servers: [ISSUER], scopes_supported: [...scopesFor(resource)], bearer_methods_supported: ["header"] };
 }
 function authorizationMetadata() {
   return {
@@ -42,7 +47,7 @@ function authorizationMetadata() {
     client_id_metadata_document_supported: true,
     token_endpoint_auth_methods_supported: ["none"],
     code_challenge_methods_supported: ["S256"],
-    scopes_supported: [...SCOPES],
+    scopes_supported: [...new Set([...STUDENT_SCOPES, ...ADMIN_SCOPES])],
   };
 }
 type OAuthClient = { clientId: string; redirectUri: string; clientName: string };
@@ -115,7 +120,11 @@ export function studentMcpOAuthRouter(db: PrismaClient): Router {
   });
   router.get("/.well-known/oauth-protected-resource/mcp/student", (_req, res) => {
     res.setHeader("Cache-Control", "public, max-age=300");
-    res.json(resourceMetadata());
+    res.json(resourceMetadata(STUDENT_RESOURCE));
+  });
+  router.get("/.well-known/oauth-protected-resource/mcp/admin", (_req, res) => {
+    res.setHeader("Cache-Control", "public, max-age=300");
+    res.json(resourceMetadata(ADMIN_RESOURCE));
   });
   router.get("/.well-known/oauth-authorization-server", (_req, res) => {
     res.setHeader("Cache-Control", "public, max-age=300");
@@ -134,10 +143,11 @@ export function studentMcpOAuthRouter(db: PrismaClient): Router {
         state: req.query.state,
         resource: req.query.resource,
       });
-      if (input.resource && input.resource !== RESOURCE) return res.status(400).json({ error: "invalid_target", error_description: "Unsupported ArcTester resource." });
-      const scopes = parseScopes(input.scope);
+      const resource = input.resource ?? STUDENT_RESOURCE;
+      if (!isSupportedResource(resource)) return res.status(400).json({ error: "invalid_target", error_description: "Unsupported ArcTester resource." });
+      const scopes = parseScopes(input.scope, resource);
       const client = await validateClient(input.client_id, input.redirect_uri);
-      const request: OAuthRequest = { ...input, scope: scopes.join(" "), resource: RESOURCE, clientName: client.clientName };
+      const request: OAuthRequest = { ...input, scope: scopes.join(" "), resource, clientName: client.clientName };
       const user = await currentApprovedStudent(req, db);
       if (!user) {
         return res.redirect(302, appAuthorizationUrl(request));
@@ -153,11 +163,13 @@ export function studentMcpOAuthRouter(db: PrismaClient): Router {
   router.post("/oauth/authorize/approve", requireAuth, requireRecentReauthentication(), async (req: AuthedRequest, res, next) => {
     try {
       const input = AuthorizeInput.extend({ approved: z.literal(true), clientName: z.string().max(100).optional() }).parse(req.body);
-      if (input.resource && input.resource !== RESOURCE) return res.status(400).json({ error: "invalid_target" });
+      const resource = input.resource ?? STUDENT_RESOURCE;
+      if (!isSupportedResource(resource)) return res.status(400).json({ error: "invalid_target" });
       const client = await validateClient(input.client_id, input.redirect_uri);
-      const scopes = parseScopes(input.scope);
+      const scopes = parseScopes(input.scope, resource);
+      const expectedRole = roleForResource(resource);
       const user = await db.user.findUnique({ where: { id: req.user!.id }, select: { id: true, email: true, role: true, accessStatus: true } });
-      if (!user || user.role !== "STUDENT" || user.accessStatus !== "APPROVED") return next(forbidden("An approved ArcTester student account is required."));
+      if (!user || user.role !== expectedRole || user.accessStatus !== "APPROVED") return next(forbidden(`An approved ArcTester ${expectedRole.toLowerCase()} account is required.`));
       const code = randomBytes(32).toString("base64url");
       const metadata = {
         codeHash: digestText(code),
@@ -165,7 +177,7 @@ export function studentMcpOAuthRouter(db: PrismaClient): Router {
         redirectUri: client.redirectUri,
         codeChallenge: input.code_challenge,
         scopes,
-        resource: RESOURCE,
+        resource,
       };
       const challenge = metadata.codeHash + "." + base64url(Buffer.from(JSON.stringify(metadata), "utf8"));
       await db.authChallenge.create({ data: { userId: user.id, challenge, purpose: "mcp-oauth-code", expiresAt: new Date(Date.now() + 5 * 60 * 1000) } });
@@ -188,7 +200,8 @@ export function studentMcpOAuthRouter(db: PrismaClient): Router {
         code_verifier: z.string().regex(/^[A-Za-z0-9._~-]{43,128}$/),
         resource: z.string().url().max(2048).optional(),
       }).parse(req.body);
-      if (input.resource && input.resource !== RESOURCE) return res.status(400).json({ error: "invalid_target" });
+      const resource = input.resource ?? STUDENT_RESOURCE;
+      if (!isSupportedResource(resource)) return res.status(400).json({ error: "invalid_target" });
       await validateClient(input.client_id, input.redirect_uri);
       const codeHash = digestText(input.code);
       const row = await db.authChallenge.findFirst({ where: { purpose: "mcp-oauth-code", expiresAt: { gt: new Date() }, challenge: { startsWith: codeHash + "." } } });
@@ -197,18 +210,24 @@ export function studentMcpOAuthRouter(db: PrismaClient): Router {
       try { metadata = JSON.parse(Buffer.from(row.challenge.split(".").slice(1).join("."), "base64url").toString("utf8")); }
       catch { return res.status(400).json({ error: "invalid_grant" }); }
       const verifierChallenge = base64url(sha256(input.code_verifier));
-      if (metadata.codeHash !== codeHash || metadata.clientId !== input.client_id || metadata.redirectUri !== input.redirect_uri || metadata.codeChallenge !== verifierChallenge || metadata.resource !== RESOURCE) {
+      if (metadata.codeHash !== codeHash || metadata.clientId !== input.client_id || metadata.redirectUri !== input.redirect_uri || metadata.codeChallenge !== verifierChallenge || metadata.resource !== resource) {
         return res.status(400).json({ error: "invalid_grant", error_description: "Authorization code or PKCE verification failed." });
       }
       const consumed = await db.authChallenge.deleteMany({ where: { id: row.id, purpose: "mcp-oauth-code", expiresAt: { gt: new Date() } } });
       if (consumed.count !== 1) return res.status(400).json({ error: "invalid_grant", error_description: "Authorization code was already used." });
       const user = await db.user.findUnique({ where: { id: row.userId }, select: { id: true, email: true, role: true, accessStatus: true, sessionVersion: true } });
-      if (!user || user.role !== "STUDENT" || user.accessStatus !== "APPROVED") return res.status(403).json({ error: "access_denied" });
+      if (!user || user.role !== roleForResource(resource) || user.accessStatus !== "APPROVED") return res.status(403).json({ error: "access_denied" });
       const expiresIn = 7 * 24 * 60 * 60;
-      const accessToken = signJwt({ sub: String(user.id), email: user.email, sv: user.sessionVersion, mcp_oauth: true, resource: RESOURCE, scope: metadata.scopes.join(" ") }, expiresIn);
-      const activeKeys = await db.studentMcpKey.count({ where: { userId: user.id, revokedAt: null } });
-      if (activeKeys >= 20) return res.status(429).json({ error: "temporarily_unavailable", error_description: "Too many active student MCP connections. Revoke an unused connection in ArcTester and retry." });
-      await db.studentMcpKey.create({ data: { userId: user.id, name: "ChatGPT OAuth connection", keyHash: digestText(accessToken), scopes: metadata.scopes } });
+      const accessToken = signJwt({ sub: String(user.id), email: user.email, sv: user.sessionVersion, mcp_oauth: true, resource, scope: metadata.scopes.join(" ") }, expiresIn);
+      if (resource === ADMIN_RESOURCE) {
+        const activeKeys = await db.adminMcpKey.count({ where: { userId: user.id, revokedAt: null } });
+        if (activeKeys >= 5) return res.status(429).json({ error: "temporarily_unavailable", error_description: "Too many active administrator MCP connections. Revoke an unused connection in ArcTester and retry." });
+        await db.adminMcpKey.create({ data: { userId: user.id, name: "ChatGPT OAuth connection", keyHash: digestText(accessToken), scopes: metadata.scopes } });
+      } else {
+        const activeKeys = await db.studentMcpKey.count({ where: { userId: user.id, revokedAt: null } });
+        if (activeKeys >= 20) return res.status(429).json({ error: "temporarily_unavailable", error_description: "Too many active student MCP connections. Revoke an unused connection in ArcTester and retry." });
+        await db.studentMcpKey.create({ data: { userId: user.id, name: "ChatGPT OAuth connection", keyHash: digestText(accessToken), scopes: metadata.scopes } });
+      }
       res.setHeader("Cache-Control", "no-store");
       res.setHeader("Pragma", "no-cache");
       res.json({ access_token: accessToken, token_type: "Bearer", expires_in: expiresIn, scope: metadata.scopes.join(" ") });

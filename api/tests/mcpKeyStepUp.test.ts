@@ -26,7 +26,7 @@ describe("MCP key creation step-up authentication", () => {
   async function verifyRole(role: "STUDENT" | "ADMIN") {
     const email = role.toLowerCase() + "-mcp-step-up@arctester.test";
     const user = await server.db.user.create({
-      data: { email, passwordHash: await hashPasswordAsync(password), role, accessStatus: "APPROVED" },
+      data: { email, passwordHash: await hashPasswordAsync(password), role, accessStatus: "APPROVED", emailVerifiedAt: new Date() },
     });
     const login = await post("/auth/login", { email, password });
     expect(login.status).toBe(200);

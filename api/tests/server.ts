@@ -130,7 +130,16 @@ export async function postJson(
     },
     body: JSON.stringify(payload),
   });
-  return { status: res.status, json: await res.json() };
+  const result = { status: res.status, json: await res.json() };
+  // Test registration helper bypasses real email delivery; mark its isolated fixture verified.
+  if (url.endsWith("/auth/register") && res.status === 201 && body && typeof body === "object" && !Array.isArray(body)) {
+    const email = (body as Record<string, unknown>).email;
+    const db = testDatabases.get(url.slice(0, -"/auth/register".length));
+    if (db && typeof email === "string") {
+      await db.user.update({ where: { email: email.trim().toLowerCase() }, data: { emailVerifiedAt: new Date() } });
+    }
+  }
+  return result;
 }
 
 export async function putJson(
@@ -216,7 +225,7 @@ export async function signUp(
   if (reg.status !== 201) {
     throw new Error(`Register failed (${reg.status}): ${await reg.text()}`);
   }
-  await db.user.update({ where: { email: email.trim().toLowerCase() }, data: { accessStatus: "APPROVED" } });
+  await db.user.update({ where: { email: email.trim().toLowerCase() }, data: { accessStatus: "APPROVED", emailVerifiedAt: new Date() } });
   const login = await fetch(`${baseUrl}/auth/login`, {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -235,6 +244,8 @@ export async function signIn(
   email: string,
   password = "correct-horse-battery"
 ): Promise<{ cookie: string; userId: number }> {
+  const db = testDatabases.get(baseUrl);
+  if (db) await db.user.update({ where: { email: email.trim().toLowerCase() }, data: { emailVerifiedAt: new Date() } });
   const login = await fetch(`${baseUrl}/auth/login`, {
     method: "POST",
     headers: { "content-type": "application/json" },

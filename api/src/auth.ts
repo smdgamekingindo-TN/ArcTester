@@ -440,7 +440,7 @@ export function requireRecentReauthentication(maxAgeSeconds = 5 * 60) {
     try {
       const payload = verifyJwt(token);
       const issuedAt = payload.iat;
-      if (payload.amr !== "reauthentication" || !Number.isSafeInteger(issuedAt)) {
+      if (typeof payload.amr !== "string" || !payload.amr.startsWith("reauthentication") || !Number.isSafeInteger(issuedAt)) {
         return next(forbidden("Re-enter your password and authenticator code to create an MCP key."));
       }
       const ageSeconds = nowSeconds() - (issuedAt as number);

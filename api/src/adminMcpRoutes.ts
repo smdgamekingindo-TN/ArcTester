@@ -3,7 +3,7 @@ import express, { Router, type Request, type Response, type NextFunction } from 
 import { z } from "zod";
 import type { PrismaClient } from "@prisma/client";
 import { forbidden, badRequest, notFound } from "./errors.js";
-import { requireAuth, requireAdmin, requireRecentReauthentication, type AuthedRequest } from "./auth.js";
+import { requireAuth, requireAdmin, requireRecentReauthentication, verifyJwt, type AuthedRequest } from "./auth.js";
 import { importFromCsv, importFromJson } from "./importService.js";
 import { QuestionInputSchema, hashQuestion, encodeOptions } from "./questions.js";
 import { evaluateModelArtifacts, predictActiveModel } from "./modelInference.js";
@@ -18,10 +18,28 @@ function rpcError(id: unknown, code: number, message: string) { return { jsonrpc
 function rpcResult(id: unknown, value: unknown) { return { jsonrpc: "2.0", id, result: { content: [{ type: "text", text: JSON.stringify(value) }], isError: false } }; }
 
 async function authAdminKey(db: PrismaClient, req: Request, _res: Response, next: NextFunction) {
-  const match = req.headers.authorization?.match(/^Bearer\s+(arc_admin_[A-Za-z0-9_-]{32,})$/);
-  if (!match) return next(forbidden("A valid administrator MCP bearer key is required."));
+  const token = req.headers.authorization?.match(/^Bearer\\s+(\\S+)$/)?.[1];
+  if (!token) return next(forbidden("A valid administrator MCP bearer key or OAuth token is required."));
   try {
-    const key = await db.adminMcpKey.findUnique({ where: { keyHash: sha(match[1]) } });
+    let oauthPayload: Record<string, unknown> | null = null;
+    if (!token.startsWith(PREFIX)) {
+      try { oauthPayload = verifyJwt(token); }
+      catch { return next(forbidden("The administrator MCP OAuth token is invalid or expired.")); }
+      if (oauthPayload.mcp_oauth !== true || oauthPayload.resource !== "https://arctester.onrender.com/mcp/admin") {
+        return next(forbidden("An administrator MCP OAuth token is required."));
+      }
+      const userId = Number(oauthPayload.sub);
+      const email = String(oauthPayload.email ?? "");
+      const sessionVersion = Number(oauthPayload.sv ?? -1);
+      if (!Number.isSafeInteger(userId) || userId <= 0 || !email) return next(forbidden("The administrator MCP OAuth token is invalid."));
+      const tokenUser = await db.user.findUnique({ where: { id: userId }, select: { id: true, email: true, role: true, accessStatus: true, sessionVersion: true } });
+      if (!tokenUser || tokenUser.email !== email || tokenUser.sessionVersion !== sessionVersion || tokenUser.role !== "ADMIN" || tokenUser.accessStatus !== "APPROVED") {
+        return next(forbidden("Administrator access is required."));
+      }
+    } else if (!/^arc_admin_[A-Za-z0-9_-]{32,}$/.test(token)) {
+      return next(forbidden("A valid administrator MCP bearer key is required."));
+    }
+    const key = await db.adminMcpKey.findUnique({ where: { keyHash: sha(token) } });
     if (!key || key.revokedAt) return next(forbidden("This administrator MCP key is invalid or revoked."));
     const user = await db.user.findUnique({ where: { id: key.userId }, select: { role: true, accessStatus: true } });
     if (!user || user.role !== "ADMIN" || user.accessStatus !== "APPROVED") return next(forbidden("Administrator access is required."));

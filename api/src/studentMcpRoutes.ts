@@ -45,8 +45,8 @@ function sendMcpOAuthChallenge(res: Response): void {
 
 async function authenticateMcp(db: PrismaClient, req: Request, res: Response, next: NextFunction): Promise<void> {
   const authorization = req.headers.authorization ?? "";
-  const keyMatch = authorization.match(/^Bearer\\s+(arc_student_[A-Za-z0-9_-]{32,})$/);
-  const tokenMatch = authorization.match(/^Bearer\\s+(\\S{20,4096})$/);
+  const keyMatch = authorization.match(/^Bearer\s+(arc_student_[A-Za-z0-9_-]{32,})$/);
+  const tokenMatch = authorization.match(/^Bearer\s+(\\S{20,4096})$/);
   const token = keyMatch?.[1] ?? tokenMatch?.[1];
   if (!token) return sendMcpOAuthChallenge(res);
   try {

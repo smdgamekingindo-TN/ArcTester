@@ -1131,6 +1131,24 @@ export function authRouter(db: PrismaClient): Router {
     }
   });
 
+  router.get("/reauthenticate/methods", requireAuth, async (req: AuthedRequest, res, next) => {
+    try {
+      const user = await db.user.findUnique({
+        where: { id: req.user!.id },
+        select: { role: true, accessStatus: true },
+      });
+      if (!user || user.role !== "STUDENT" || user.accessStatus !== "APPROVED") {
+        return next(forbidden("An approved student account is required."));
+      }
+      const [passkeyCount, totp] = await Promise.all([
+        db.passkeyCredential.count({ where: { userId: req.user!.id } }),
+        db.totpCredential.findUnique({ where: { userId: req.user!.id }, select: { enabledAt: true } }),
+      ]);
+      res.setHeader("Cache-Control", "no-store");
+      res.json({ ok: true, passkeyAvailable: passkeyCount > 0, authenticatorEnabled: Boolean(totp?.enabledAt) });
+    } catch (error) { next(error); }
+  });
+
   router.post("/reauthenticate", requireAuth, async (req: AuthedRequest, res, next) => {
     try {
       const input = z.object({ password: z.string().trim().min(1).max(128).optional(), code: z.string().trim().max(32).optional() }).parse(req.body);

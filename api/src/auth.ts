@@ -10,7 +10,7 @@ import { badRequest, conflict, forbidden, notFound } from "./errors.js";
 import type { PrismaClient } from "@prisma/client";
 import { decryptTotpSecret, encryptTotpSecret, generateRecoveryCodes, generateTotpSecret, hashRecoveryCode, verifyTotp } from "./totp.js";
 import { base64urlEncode, createWebAuthnChallenge, parseNoneAttestation, verifyClientData, verifyPasskeyAssertion } from "./webauthn.js";
-import { sendEmail, sendPasswordResetEmail } from "./passwordResetEmail.js";
+import { sendPasswordResetEmail } from "./passwordResetEmail.js";
 
 const DEVELOPMENT_JWT_SECRET = "dev-secret-change-me-in-production";
 const JWT_SECRET = process.env.JWT_SECRET ?? (process.env.NODE_ENV === "production" ? "" : DEVELOPMENT_JWT_SECRET);
@@ -575,17 +575,6 @@ async function createAuthSession(db: PrismaClient, req: Request, user: { id: num
   return { token, sessionId: session.id };
 }
 
-
-async function sendGuardianConsentEmail(to: string, studentName: string, token: string): Promise<void> {
-  const apiBase = process.env.API_BASE_URL?.trim();
-  if (!apiBase) throw new Error("API_BASE_URL is required for guardian consent links.");
-  const link = new URL("/auth/guardian-consent/verify", apiBase);
-  link.searchParams.set("token", token);
-  const safeName = studentName.replace(/[<>]/g, "");
-  const text = "A student has requested an ArcTester account and listed you as their parent or legal guardian.\n\nStudent: " + safeName + "\n\nIf you are their parent or legal guardian, review and confirm consent: " + link.toString() + "\n\nThe link expires in 48 hours. If you did not expect this request, ignore this email.";
-  const html = "<p>A student has requested an ArcTester account and listed you as their parent or legal guardian.</p><p><strong>Student:</strong> " + safeName + "</p><p><a href=\"" + link.toString() + "\">Review and confirm guardian consent</a></p><p>This link expires in 48 hours. If you did not expect this request, ignore this email.</p>";
-  await sendEmail(to, "ArcTester parent or guardian consent", text, html);
-}
 
 export function authRouter(db: PrismaClient): Router {
   const router = Router();

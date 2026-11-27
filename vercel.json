@@ -4,10 +4,6 @@
   "outputDirectory": "web/dist",
   "rewrites": [
     {
-      "source": "/api/:path*",
-      "destination": "https://arctester.onrender.com/:path*"
-    },
-    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

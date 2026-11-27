@@ -138,6 +138,7 @@ model User {
   modelTrainingJobs ModelTrainingJob[]
   auditEvents AuditEvent[] @relation("AuditEventActor")
   legalAcceptances LegalAcceptance[]
+  guardianConsents GuardianConsent[]
   modelRegistryAudits ModelRegistryAudit[]
   modelEvaluations ModelEvaluation[]
 
@@ -160,6 +161,21 @@ model LegalAcceptance {
 
   @@index([userId, acceptedAt])
   @@index([acceptedAt])
+}
+
+model GuardianConsent {
+  id          String   @id @default(cuid())
+  student     User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId   Int
+  guardianEmail String
+  tokenHash   String   @unique
+  expiresAt   DateTime
+  verifiedAt  DateTime?
+  consentedAt DateTime?
+  createdAt   DateTime @default(now())
+
+  @@index([studentId, consentedAt])
+  @@index([guardianEmail, expiresAt])
 }
 
 model Invitation {

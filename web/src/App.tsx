@@ -84,7 +84,7 @@ export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [sessionRestoring, setSessionRestoring] = useState(true);
   const [bank, setBank] = useState<Bank | null>(null);
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(() => { const params = new URLSearchParams(window.location.search); return params.get("verifyEmail") === "1" ? (params.get("email") ?? "") : ""; });
   const [password, setPassword] = useState("");
   const [academicProfile, setAcademicProfile] = useState<AcademicRegistration>({ fullName: "", collegeName: "", collegeCode: "", registrationNumber: "", branchName: "", branchCode: "" });
   const [practiceSubjects, setPracticeSubjects] = useState<string[]>([]);
@@ -94,6 +94,7 @@ export default function App() {
   const [practiceDurationMinutes, setPracticeDurationMinutes] = useState(20);
   const [practiceQuestionTypes, setPracticeQuestionTypes] = useState<PracticeQuestionType[]>([]);
   const [register, setRegister] = useState(false);
+  const [emailVerificationPendingEmail, setEmailVerificationPendingEmail] = useState(() => { const params = new URLSearchParams(window.location.search); return params.get("verifyEmail") === "1" ? (params.get("email") ?? "") : ""; });
   const [googleCredential, setGoogleCredential] = useState("");
   const [googleProfileCompletion, setGoogleProfileCompletion] = useState(false);
   const [twoFactorChallenge, setTwoFactorChallenge] = useState("");
@@ -351,15 +352,16 @@ export default function App() {
     const animationMinimum = new Promise<void>((resolve) => window.setTimeout(resolve, 5000));
     try {
       if (register) {
-        await Promise.all([
-          request("/auth/register", {
+        const [registrationResult] = await Promise.all([
+          request<{ message: string; emailVerificationRequired?: boolean }>("/auth/register", {
             method: "POST",
             body: JSON.stringify({ email, password, ...academicProfile, captchaToken, ...legalAcceptance }),
           }),
           animationMinimum,
         ]);
         setRegister(false);
-        setError("Account submitted for administrator approval. You can sign in after approval.");
+        if (registrationResult.emailVerificationRequired) setEmailVerificationPendingEmail(email);
+        setError(registrationResult.message || "Account submitted for administrator approval.");
       } else {
         const [session] = await Promise.all([
           request<{ user?: User; twoFactorRequired?: boolean; challengeId?: string }>("/auth/login", {
@@ -395,6 +397,52 @@ export default function App() {
     } finally {
       setBusy(false);
     }
+  }
+
+  async function verifyEmailAddress(emailAddress: string, code: string) {
+    setBusy(true);
+    setError("");
+    try {
+      const result = await request<{ message: string }>("/auth/email-verification/verify", {
+        method: "POST",
+        body: JSON.stringify({ email: emailAddress, code }),
+      });
+      setEmailVerificationPendingEmail("");
+      const currentUrl = new URL(window.location.href);
+      currentUrl.searchParams.delete("verifyEmail");
+      currentUrl.searchParams.delete("email");
+      window.history.replaceState({}, "", currentUrl.pathname + currentUrl.search + currentUrl.hash);
+      setError(result.message);
+    } catch (cause) {
+      setError((cause as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function resendEmailVerification(emailAddress: string) {
+    setBusy(true);
+    setError("");
+    try {
+      const result = await request<{ message: string }>("/auth/email-verification/resend", {
+        method: "POST",
+        body: JSON.stringify({ email: emailAddress }),
+      });
+      setError(result.message);
+    } catch {
+      setError("If that account needs verification, a new code will be sent.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function cancelEmailVerification() {
+    setEmailVerificationPendingEmail("");
+    setError("");
+    const currentUrl = new URL(window.location.href);
+    currentUrl.searchParams.delete("verifyEmail");
+    currentUrl.searchParams.delete("email");
+    window.history.replaceState({}, "", currentUrl.pathname + currentUrl.search + currentUrl.hash);
   }
 
   async function completePasswordReset(token: string, newPassword: string, code: string) {
@@ -692,6 +740,10 @@ export default function App() {
         twoFactorChallenge={twoFactorChallenge}
         onCompleteTwoFactor={(challengeId, code) => void completeTwoFactor(challengeId, code)}
         onPasskeyAuthenticate={() => void authenticateWithPasskey()}
+        emailVerificationPending={Boolean(emailVerificationPendingEmail)}
+        onVerifyEmail={(emailAddress, code) => void verifyEmailAddress(emailAddress, code)}
+        onResendEmailVerification={(emailAddress) => void resendEmailVerification(emailAddress)}
+        onCancelEmailVerification={cancelEmailVerification}
         passwordResetToken={passwordResetToken}
         onRequestPasswordReset={(emailAddress) => void requestPasswordReset(emailAddress)}
         onResetPassword={(token, newPassword, code) => void completePasswordReset(token, newPassword, code)}

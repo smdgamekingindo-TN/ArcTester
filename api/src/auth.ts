@@ -220,7 +220,7 @@ const CONSENT_NOTICE_VERSION = "2026-11-27-v3";
 const AGE_GATE_VERSION = "2026-11-27-v3";
 
 export const RegisterSchema = z.object({
-  adultAttestation: z.boolean(),
+  adultAttestation: z.boolean().optional(),
   termsAccepted: z.literal(true),
   privacyConsent: z.literal(true),
   termsVersion: z.literal(TERMS_VERSION),
@@ -689,7 +689,7 @@ export function authRouter(db: PrismaClient): Router {
             privacyNoticeVersion: input.privacyNoticeVersion,
             consentNoticeVersion: input.consentNoticeVersion,
             ageGateVersion: input.ageGateVersion,
-            ageAttested: input.adultAttestation,
+            ageAttested: input.adultAttestation === true,
             source: nativeClient ? "mobile" : "web",
           },
         });
@@ -735,7 +735,7 @@ export function authRouter(db: PrismaClient): Router {
     try {
       const input = GoogleCredentialSchema.extend({
         profile: GoogleRegistrationSchema,
-        adultAttestation: z.boolean(),
+        adultAttestation: z.boolean().optional(),
         termsAccepted: z.literal(true),
         privacyConsent: z.literal(true),
         termsVersion: z.literal(TERMS_VERSION),
@@ -776,7 +776,7 @@ export function authRouter(db: PrismaClient): Router {
             privacyNoticeVersion: input.privacyNoticeVersion,
             consentNoticeVersion: input.consentNoticeVersion,
             ageGateVersion: input.ageGateVersion,
-            ageAttested: input.adultAttestation,
+            ageAttested: input.adultAttestation === true,
             source: "google-web",
           },
         });

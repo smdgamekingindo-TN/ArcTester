@@ -733,6 +733,7 @@ export function authRouter(db: PrismaClient): Router {
       const user = await db.user.findUnique({ where: { email: identity.email } });
       if (!user) return res.json({ ok: true, newAccount: true, email: identity.email, fullName: identity.name });
       if (user.role !== "STUDENT") return next(forbidden("Google student sign-in is only available for student accounts."));
+      if (!user.emailVerifiedAt) await db.user.update({ where: { id: user.id }, data: { emailVerifiedAt: new Date() } });
       if (user.accessStatus !== "APPROVED") {
         await recordLoginEvent(db, req, identity.email, user.id, "blocked", "google");
         return next(forbidden(user.accessStatus === "REJECTED" ? "Your account was not approved. Contact your administrator." : "Your account is waiting for administrator approval."));
@@ -776,6 +777,7 @@ export function authRouter(db: PrismaClient): Router {
         const created = await tx.user.create({
           data: {
             email: identity.email,
+            emailVerifiedAt: new Date(),
             passwordHash,
             role: "STUDENT",
             accessStatus: "PENDING",
@@ -1006,6 +1008,7 @@ export function authRouter(db: PrismaClient): Router {
         return next(badRequest("Invalid email or password."));
       }
       await clearLoginFailures(db, ip, input.email);
+      if (!user.emailVerifiedAt) return next(forbidden("Verify your email first. Enter the 6-digit code sent to your inbox."));
       if (user.accessStatus !== "APPROVED") { await recordLoginEvent(db, req, input.email, user.id, "blocked"); return next(forbidden(user.accessStatus === "REJECTED" ? "Your account was not approved. Contact your administrator." : "Your account is waiting for administrator approval.")); }
       const totp = await db.totpCredential.findUnique({ where: { userId: user.id }, select: { enabledAt: true } });
       if (totp?.enabledAt) {
@@ -1041,6 +1044,7 @@ export function authRouter(db: PrismaClient): Router {
         return next(badRequest("Invalid email or password."));
       }
       await clearLoginFailures(db, ip, input.email);
+      if (!user.emailVerifiedAt) return next(forbidden("Verify your email first. Enter the 6-digit code sent to your inbox."));
       if (user.accessStatus !== "APPROVED") { await recordLoginEvent(db, req, input.email, user.id, "blocked"); return next(forbidden(user.accessStatus === "REJECTED" ? "Your account was not approved. Contact your administrator." : "Your account is waiting for administrator approval.")); }
       await recordLoginEvent(db, req, input.email, user.id, "success", "password");
       const { token } = await createAuthSession(db, req, user, "password");

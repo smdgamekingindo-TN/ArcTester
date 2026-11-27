@@ -9,6 +9,7 @@ type PracticeRun = { id: string; titleSnapshot: string; totalQuestions: number; 
 
 const scopes = ["questions:read", "questions:write", "practice:read", "practice:write"];
 const endpoint = API + "/mcp/student";
+type ReauthMethods = { passkeyAvailable: boolean; authenticatorEnabled: boolean };
 function fromBase64Url(value:string):Uint8Array{const base=value.replace(/-/g,"+").replace(/_/g,"/");const padded=base+"=".repeat((4-base.length%4)%4);return Uint8Array.from(atob(padded),ch=>ch.charCodeAt(0));}
 function toBufferSource(value:Uint8Array):ArrayBuffer{const buffer=new ArrayBuffer(value.byteLength);new Uint8Array(buffer).set(value);return buffer;}
 function toBase64Url(value:ArrayBuffer):string{const bytes=new Uint8Array(value);let binary="";bytes.forEach(byte=>binary+=String.fromCharCode(byte));return btoa(binary).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/g,"");}
@@ -21,6 +22,8 @@ export default function StudentMcpAssistant() {
   const [name, setName] = useState("My AI study assistant");
   const [reauthPassword, setReauthPassword] = useState("");
   const [reauthCode, setReauthCode] = useState("");
+  const [connectFlowActive, setConnectFlowActive] = useState(false);
+  const [reauthMethods, setReauthMethods] = useState<ReauthMethods | null>(null);
   const [secret, setSecret] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -55,6 +58,23 @@ export default function StudentMcpAssistant() {
     setSecret(result.key.secret);
     setNotice("MCP key created. Copy it now; the secret is shown only once.");
     await refresh();
+  }
+  async function beginConnection() {
+    setBusy(true); setError(""); setNotice(""); setSecret("");
+    try {
+      const methods = await request<ReauthMethods>("/auth/reauthenticate/methods");
+      setReauthMethods(methods);
+      setConnectFlowActive(true);
+      if (methods.passkeyAvailable) {
+        setNotice("Passkey found. Confirm with your device to connect ArcTester.");
+        await createKeyWithPasskey();
+      } else if (methods.authenticatorEnabled) {
+        setNotice("Enter your authenticator code or an unused recovery code to connect.");
+      } else {
+        setNotice("Confirm your ArcTester password to connect this account.");
+      }
+    } catch (e) { setError((e as Error).message); }
+    finally { setBusy(false); }
   }
   async function createKey() {
     setBusy(true); setError(""); setNotice(""); setSecret("");
@@ -136,15 +156,19 @@ export default function StudentMcpAssistant() {
         {questions.slice(0, 8).map((q) => <div className="mcp-question-row" key={q.id}><strong>{q.subject} / {q.topic}</strong><p>{q.text}</p><button type="button" className="danger" disabled={busy} onClick={async () => { try { await request("/student/private-questions/" + encodeURIComponent(q.id), { method: "DELETE" }); await refresh(); } catch (e) { setError((e as Error).message); } }}>Delete</button></div>)}
       </article>
       <article className="card student-mcp-card">
-        <h2>Connect your AI</h2>
+        <h2>Connect ArcTester</h2>
+        <p>Already signed in? Connect directly from this account. If you are not signed in, log in first and return here. ArcTester checks your registered security method before creating a student-scoped connection.</p>
+        {!connectFlowActive && !secret && <button type="button" className="primary" disabled={busy} onClick={() => void beginConnection()}>{busy ? "Checking account…" : "Connect ArcTester"}</button>}
+        <p className="muted">Your production API endpoint is preconfigured. Only your student connection credential is created after identity verification.</p>
+        <h3>Connection details</h3>
         <p>Create a personal key, then add the MCP endpoint to an AI client that supports remote Streamable HTTP MCP servers.</p>
-        <label>Key name<input value={name} maxLength={80} onChange={(e) => setName(e.target.value)} /></label>
+        {connectFlowActive && <label>Connection name<input value={name} maxLength={80} onChange={(e) => setName(e.target.value)} /></label> }
         <div className="mcp-scope-list">{scopes.map((scope) => <span key={scope}>{scope}</span>)}</div>
-        <label>Confirm account password<input type="password" autoComplete="current-password" value={reauthPassword} onChange={e => setReauthPassword(e.target.value)} required /></label>
-        <label>Authenticator or recovery code (if enabled)<input autoComplete="one-time-code" value={reauthCode} onChange={e => setReauthCode(e.target.value)} maxLength={32} /></label>
-        <p className="muted">Confirm with your password or authenticator/recovery code. You can also use a registered passkey.</p>
-        <button type="button" className="primary" disabled={busy || name.trim().length < 2 || (!reauthPassword && !reauthCode.trim())} onClick={() => void createKey()}>Confirm and create student MCP key</button>
-        <button type="button" className="ghost" disabled={busy || name.trim().length < 2} onClick={() => void createKeyWithPasskey()}>Use passkey instead</button>
+        {connectFlowActive && !secret && reauthMethods?.authenticatorEnabled && <label>Authenticator or recovery code<input autoComplete="one-time-code" value={reauthCode} onChange={e => setReauthCode(e.target.value)} maxLength={32} placeholder="6-digit code or recovery code" /></label>}
+        {connectFlowActive && !secret && !reauthMethods?.authenticatorEnabled && <label>Confirm account password<input type="password" autoComplete="current-password" value={reauthPassword} onChange={e => setReauthPassword(e.target.value)} /></label>}
+        {connectFlowActive && !secret && reauthMethods?.passkeyAvailable && <button type="button" className="ghost" disabled={busy || name.trim().length < 2} onClick={() => void createKeyWithPasskey()}>Use passkey instead</button>}
+        {connectFlowActive && !secret && <button type="button" className="primary" disabled={busy || name.trim().length < 2 || (reauthMethods?.authenticatorEnabled ? !reauthCode.trim() : !reauthPassword)} onClick={() => void createKey()}>{busy ? "Verifying…" : "Verify and connect"}</button>}
+        {connectFlowActive && !secret && <button type="button" className="ghost" disabled={busy} onClick={() => { setConnectFlowActive(false); setReauthMethods(null); setReauthPassword(""); setReauthCode(""); }}>Cancel connection</button>}
         {secret && <div className="mcp-secret-box"><strong>Copy this key now — it will not be shown again.</strong><textarea readOnly rows={3} value={secret} /><button type="button" className="ghost" onClick={() => void copy(secret)}>Copy key</button></div>}
         <label>MCP endpoint<input readOnly value={endpoint} /></label>
         <label>Connection details<textarea readOnly rows={5} value={config} /></label>

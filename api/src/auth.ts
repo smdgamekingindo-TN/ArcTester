@@ -422,7 +422,7 @@ export async function requireAuth(req: AuthedRequest, _res: Response, next: Next
   try {
     const user = await db.user.findUnique({
       where: { id },
-      select: { email: true, sessionVersion: true, accessStatus: true },
+      select: { id: true, email: true, role: true, emailVerifiedAt: true, sessionVersion: true, accessStatus: true },
     });
     if (!user || user.email !== email || user.sessionVersion !== sessionVersion) {
       return next(forbidden("This session has been revoked. Sign in again."));

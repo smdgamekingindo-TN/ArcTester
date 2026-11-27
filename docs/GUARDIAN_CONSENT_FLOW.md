@@ -13,6 +13,8 @@ Set API_BASE_URL on the API service to the public root URL of the deployed API (
 
 Apply the GuardianConsent Prisma migration before deploying the API. The production deployment must be checked after migration and email credentials are configured.
 
+Legal acceptance version 2026-11-27-v3 now reflects this guardian-consent workflow in the Terms and Privacy Notice.
+
 ## Important
 
 This is an implementation of email-based guardian confirmation and an access gate. It is not a legal certification of DPDP compliance or a substitute for legal review of the applicable child-data requirements, consent language, retention, and withdrawal process.

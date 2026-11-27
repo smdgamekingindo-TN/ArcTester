@@ -95,10 +95,18 @@ export async function sendEmail(to: string, subject: string, text: string, html?
 }
 
 export async function sendPasswordResetEmail(to: string, resetUrl: string): Promise<void> {
-  const text = "We received a request to reset your ArcTester password. Use this link within 30 minutes:\n\n" +
-    resetUrl + "\n\nIf you did not request this, you can ignore this email.";
-  const html = "<p>We received a request to reset your ArcTester password.</p><p><a href=\"" +
-    resetUrl.replace(/&/g, "&amp;").replace(/"/g, "&quot;") +
-    "\">Reset your password</a></p><p>This link expires in 30 minutes. If you did not request this, you can ignore this email.</p>";
+  const safeUrl = resetUrl.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+  const text = "Reset your ArcTester password\n\nWe received a request to reset your password. This secure link expires in 30 minutes:\n\n" +
+    resetUrl + "\n\nIf you did not request this, ignore this email. Your password will not change.";
+  const html = `<!doctype html><html><body style="margin:0;background:#f3f6fb;font-family:Arial,Helvetica,sans-serif;color:#172033">
+  <div style="padding:32px 12px"><div style="max-width:560px;margin:0 auto;background:#fff;border:1px solid #e3e8f1;border-radius:18px;overflow:hidden">
+    <div style="padding:24px 28px;background:#3159d8;color:#fff"><div style="font-size:12px;font-weight:700;letter-spacing:2px;opacity:.85">ARCTESTER</div><h1 style="margin:12px 0 0;font-size:24px;line-height:1.25">Reset your password</h1></div>
+    <div style="padding:28px"><p style="margin:0 0 14px;font-size:15px;line-height:1.7">We received a request to reset the password for your ArcTester account.</p>
+      <p style="margin:0 0 22px;font-size:14px;line-height:1.7;color:#526078">Use the secure button below to choose a new password. This link expires in <strong>30 minutes</strong> and can only be used once.</p>
+      <p style="margin:0 0 24px"><a href="${safeUrl}" style="display:inline-block;padding:14px 24px;background:#3159d8;color:#fff;text-decoration:none;font-size:14px;font-weight:700;border-radius:10px">Reset password</a></p>
+      <p style="margin:0 0 8px;font-size:12px;line-height:1.6;color:#65738a">If the button does not work, copy and paste this link into your browser:</p><p style="margin:0 0 24px;font-size:12px;line-height:1.6;word-break:break-all"><a href="${safeUrl}" style="color:#3159d8">${safeUrl}</a></p>
+      <div style="padding:14px 16px;background:#f6f8fc;border-radius:10px;font-size:12px;line-height:1.6;color:#65738a">If you did not request a password reset, you can safely ignore this email. Your password will not change.</div>
+    </div><div style="padding:16px 28px;border-top:1px solid #edf0f5;font-size:11px;color:#8792a5">ArcTester · Focused exam practice</div>
+  </div></div></body></html>`;
   await sendEmail(to, "Reset your ArcTester password", text, html);
 }

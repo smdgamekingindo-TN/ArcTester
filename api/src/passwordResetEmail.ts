@@ -5,8 +5,9 @@ type SmtpReply = { code: number; lines: string[] };
 function readReply(socket: ReturnType<typeof connect>): Promise<SmtpReply> {
   return new Promise((resolve, reject) => {
     let buffer = "";
-    const cleanup = () => { socket.off("data", onData); socket.off("error", onError); };
+    const cleanup = () => { socket.off("data", onData); socket.off("error", onError); socket.off("close", onClose); };
     const onError = (error: Error) => { cleanup(); reject(error); };
+    const onClose = () => { cleanup(); reject(new Error("Gmail SMTP connection closed before a reply.")); };
     const onData = (chunk: Buffer) => {
       buffer += chunk.toString("utf8");
       const lines = buffer.split("\r\n");
@@ -19,6 +20,7 @@ function readReply(socket: ReturnType<typeof connect>): Promise<SmtpReply> {
     };
     socket.on("data", onData);
     socket.on("error", onError);
+    socket.on("close", onClose);
   });
 }
 

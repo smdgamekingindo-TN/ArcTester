@@ -37,7 +37,7 @@ async function request(
 
 async function createSession(email: string, role: "ADMIN" | "STUDENT"): Promise<string> {
   await server.db.user.create({
-    data: { email, passwordHash: hashPassword("exam-test-password-123"), role },
+    data: { email, passwordHash: hashPassword("exam-test-password-123"), role, emailVerifiedAt: new Date() },
   });
   const response = await fetch(`${server.baseUrl}/auth/login`, {
     method: "POST",

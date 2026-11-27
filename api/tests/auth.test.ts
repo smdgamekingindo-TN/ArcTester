@@ -392,9 +392,12 @@ describe("auth", () => {
     expect(response.status).toBe(409);
     expect((await response.json() as { error: string }).error).toContain("already connected");
   });
-  it("denies academic profile edits for accounts that are not approved students", async () => {
+  it("denies academic profile edits for unverified pending students", async () => {
     const email = "profile-pending@example.com";
     await postJsonWithCookie(`${server.baseUrl}/auth/register`, { ...STUDENT_PROFILE, email, password: "profile-password-123" });
+    // Test-mode registration may mark email as verified; this case specifically
+    // exercises the unverified pending-account guard before auto-activation.
+    await server.db.user.update({ where: { email }, data: { emailVerifiedAt: null, accessStatus: "PENDING" } });
     const pending = await server.db.user.findUnique({ where: { email }, select: { id: true, email: true, sessionVersion: true, fullName: true } });
     expect(pending).toBeTruthy();
     const before = { fullName: pending!.fullName, sessionVersion: pending!.sessionVersion };

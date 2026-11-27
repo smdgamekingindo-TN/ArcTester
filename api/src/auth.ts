@@ -930,13 +930,14 @@ export function authRouter(db: PrismaClient): Router {
 
   router.post("/reauthenticate", requireAuth, async (req: AuthedRequest, res, next) => {
     try {
-      const input = z.object({ password: z.string().min(1).max(128), code: z.string().trim().max(32).optional() }).parse(req.body);
+      const input = z.object({ password: z.string().trim().min(1).max(128).optional(), code: z.string().trim().max(32).optional() }).parse(req.body);
+      if (!input.password && !input.code) return next(badRequest("Enter your password, authenticator code, or use a passkey."));
       const user = await db.user.findUnique({
         where: { id: req.user!.id },
         select: { id: true, email: true, sessionVersion: true, passwordHash: true, accessStatus: true },
       });
       if (!user || user.accessStatus !== "APPROVED") return next(forbidden("Your account is not approved for security changes."));
-      if (!await verifyPasswordAsync(input.password, user.passwordHash)) return next(forbidden("Password is incorrect."));
+      if (input.password && !await verifyPasswordAsync(input.password, user.passwordHash)) return next(forbidden("Password is incorrect."));
 
       const credential = await db.totpCredential.findUnique({
         where: { userId: user.id },
@@ -944,23 +945,27 @@ export function authRouter(db: PrismaClient): Router {
       });
       if (credential?.enabledAt) {
         const submitted = input.code?.trim() ?? "";
-        const counter = /^\d{6}$/.test(submitted) ? verifyTotp(decryptTotpSecret(credential.secretEncrypted), submitted) : null;
+        if (!submitted) return next(forbidden("Enter your current authenticator code or use a passkey."));
+        const counter = /^\d{6}$/.test(submitted) ? verifyTotp(decryptTotpSecret(credential.secretEncrypted), submitted, Date.now(), credential.lastUsedCounter) : null;
         if (counter !== null) {
-          if (counter <= credential.lastUsedCounter) return next(forbidden("That authenticator code was already used. Wait for the next code."));
-          await db.totpCredential.update({ where: { userId: user.id }, data: { lastUsedCounter: counter } });
+          const consumed = await db.totpCredential.updateMany({ where: { userId: user.id, lastUsedCounter: { lt: counter } }, data: { lastUsedCounter: counter } });
+          if (consumed.count !== 1) return next(forbidden("That authenticator code was already used. Wait for the next code."));
         } else {
           const recoveryHashes = JSON.parse(credential.recoveryCodesJson) as string[];
           const recoveryHash = hashRecoveryCode(submitted);
           const recoveryIndex = recoveryHashes.indexOf(recoveryHash);
-          if (!submitted || recoveryIndex < 0) return next(forbidden("Enter your current authenticator code or an unused recovery code."));
+          if (recoveryIndex < 0) return next(forbidden("Authenticator or recovery code is incorrect."));
           recoveryHashes.splice(recoveryIndex, 1);
-          await db.totpCredential.update({ where: { userId: user.id }, data: { recoveryCodesJson: JSON.stringify(recoveryHashes) } });
+          const consumed = await db.totpCredential.updateMany({ where: { userId: user.id, recoveryCodesJson: credential.recoveryCodesJson }, data: { recoveryCodesJson: JSON.stringify(recoveryHashes) } });
+          if (consumed.count !== 1) return next(forbidden("That recovery code was already used."));
         }
+      } else if (!input.password) {
+        return next(forbidden("Authenticator codes are not enabled for this account. Use your password or passkey."));
       }
 
       const oldToken = readSessionToken(req);
       const oldPayload = oldToken ? verifyJwt(oldToken) : {};
-      const { token } = await createAuthSession(db, req, user, "reauthentication");
+      const { token } = await createAuthSession(db, req, user, input.password ? "reauthentication" : "reauthentication-totp");
       if (typeof oldPayload.sid === "string") {
         await db.authSession.updateMany({
           where: { id: oldPayload.sid, userId: user.id, revokedAt: null },
@@ -969,6 +974,46 @@ export function authRouter(db: PrismaClient): Router {
       }
       setSessionCookie(res, token);
       await recordLoginEvent(db, req, user.email, user.id, "reauthenticated", "password");
+      res.json({ ok: true, reauthenticated: true, expiresIn: JWT_TTL_SECONDS });
+    } catch (error) { next(error); }
+  });
+
+  router.post("/reauthenticate/passkey/options", requireAuth, async (req: AuthedRequest, res, next) => {
+    try {
+      const { rpId } = passkeyOrigin(req);
+      const credentials = await db.passkeyCredential.findMany({ where: { userId: req.user!.id }, select: { credentialId: true, transports: true } });
+      if (!credentials.length) return next(badRequest("No passkey is registered for this account."));
+      const challenge = createWebAuthnChallenge();
+      await db.authChallenge.create({ data: { userId: req.user!.id, challenge: sha256(challenge), purpose: "mcp-key-reauth", expiresAt: new Date(Date.now() + 5 * 60 * 1000) } });
+      res.json({ ok: true, challengeId: challenge, publicKey: { challenge, rpId, allowCredentials: credentials.map(item => ({ type: "public-key", id: item.credentialId, transports: JSON.parse(item.transports) as string[] })), timeout: 300000, userVerification: "required" } });
+    } catch (error) { next(error); }
+  });
+
+  router.post("/reauthenticate/passkey/verify", requireAuth, async (req: AuthedRequest, res, next) => {
+    try {
+      const input = z.object({ challengeId: z.string().min(20).max(100), credentialId: z.string().min(8), clientDataJSON: z.string().min(20), authenticatorData: z.string().min(20), signature: z.string().min(8) }).parse(req.body);
+      const { origin, rpId } = passkeyOrigin(req);
+      const challenge = await db.authChallenge.findUnique({ where: { challenge: sha256(input.challengeId) } });
+      if (!challenge || challenge.userId !== req.user!.id || challenge.purpose !== "mcp-key-reauth" || challenge.expiresAt <= new Date() || challenge.attempts >= 5) return next(forbidden("Passkey confirmation expired. Start again."));
+      const attempt = await db.authChallenge.updateMany({ where: { id: challenge.id, userId: req.user!.id, purpose: "mcp-key-reauth", attempts: { lt: 5 }, expiresAt: { gt: new Date() } }, data: { attempts: { increment: 1 } } });
+      if (attempt.count !== 1) return next(forbidden("Passkey confirmation expired. Start again."));
+      const credential = await db.passkeyCredential.findUnique({ where: { credentialId: input.credentialId } });
+      if (!credential || credential.userId !== req.user!.id) return next(forbidden("This passkey does not belong to the signed-in account."));
+      verifyClientData(input.clientDataJSON, input.challengeId, origin, "webauthn.get");
+      const counter = verifyPasskeyAssertion({ authenticatorData: input.authenticatorData, clientDataJSON: input.clientDataJSON, signature: input.signature, publicKey: credential.publicKey, expectedChallenge: input.challengeId, expectedOrigin: origin, rpId });
+      if ((credential.signCount > 0 || counter > 0) && counter <= credential.signCount) return next(forbidden("Passkey counter did not advance. Try another passkey."));
+      const updated = await db.passkeyCredential.updateMany({ where: { id: credential.id, signCount: credential.signCount }, data: { signCount: counter, lastUsedAt: new Date() } });
+      if (updated.count !== 1) return next(forbidden("Passkey was used concurrently. Start again."));
+      const consumed = await db.authChallenge.deleteMany({ where: { id: challenge.id, userId: req.user!.id, purpose: "mcp-key-reauth", expiresAt: { gt: new Date() } } });
+      if (consumed.count !== 1) return next(forbidden("Passkey confirmation was already used."));
+      const user = await db.user.findUnique({ where: { id: req.user!.id }, select: { id: true, email: true, sessionVersion: true, accessStatus: true } });
+      if (!user || user.accessStatus !== "APPROVED") return next(forbidden("Your account is not approved for security changes."));
+      const oldToken = readSessionToken(req);
+      const oldPayload = oldToken ? verifyJwt(oldToken) : {};
+      const { token } = await createAuthSession(db, req, user, "reauthentication-passkey");
+      if (typeof oldPayload.sid === "string") await db.authSession.updateMany({ where: { id: oldPayload.sid, userId: user.id, revokedAt: null }, data: { revokedAt: new Date() } });
+      setSessionCookie(res, token);
+      await recordLoginEvent(db, req, user.email, user.id, "reauthenticated", "passkey");
       res.json({ ok: true, reauthenticated: true, expiresIn: JWT_TTL_SECONDS });
     } catch (error) { next(error); }
   });

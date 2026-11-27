@@ -3,7 +3,7 @@ import express, { Router, type Request, type Response, type NextFunction } from 
 import { z } from "zod";
 import type { PrismaClient } from "@prisma/client";
 import { forbidden, badRequest, notFound } from "./errors.js";
-import { requireAuth, requireAdmin, type AuthedRequest } from "./auth.js";
+import { requireAuth, requireAdmin, requireRecentReauthentication, type AuthedRequest } from "./auth.js";
 import { importFromCsv, importFromJson } from "./importService.js";
 import { QuestionInputSchema, hashQuestion, encodeOptions } from "./questions.js";
 import { evaluateModelArtifacts, predictActiveModel } from "./modelInference.js";
@@ -56,7 +56,7 @@ export function adminMcpRouter(db: PrismaClient): Router {
       res.json({ ok: true, keys });
     } catch (error) { next(error); }
   });
-  router.post("/admin/mcp-keys", requireAuth, requireAdmin(db), async (req: AuthedRequest, res, next) => {
+  router.post("/admin/mcp-keys", requireAuth, requireAdmin(db), requireRecentReauthentication(), async (req: AuthedRequest, res, next) => {
     try {
       const input = z.object({ name: z.string().trim().min(2).max(80), scopes: z.array(z.enum(SCOPES)).min(1).max(SCOPES.length) }).parse(req.body);
       const active = await db.adminMcpKey.count({ where: { userId: req.user!.id, revokedAt: null } });

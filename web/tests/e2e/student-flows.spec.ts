@@ -86,8 +86,8 @@ async function setupStudent(page: Page) {
   if (register.status !== 201) throw new Error(`E2E student registration failed: ${JSON.stringify(register.json)}`);
   const studentId = register.json.user?.id;
   if (!Number.isSafeInteger(studentId)) throw new Error("E2E registration did not return the student ID.");
-  const approval = await apiRequest(page, `/admin/students/${studentId}/access`, "PATCH", { accessStatus: "APPROVED" }, adminCookie);
-  if (approval.status !== 200) throw new Error(`E2E student approval failed: ${JSON.stringify(approval.json)}`);
+  const verification = await apiRequest(page, "/email-verification/verify", "POST", { email: studentEmail, code: "123456" });
+  if (verification.status !== 200) throw new Error(`E2E email verification failed: ${JSON.stringify(verification.json)}`);
   await loginApi(page, studentEmail, E2E_STUDENT_PASSWORD);
   return { studentEmail, subjectName: question.subject };
 }

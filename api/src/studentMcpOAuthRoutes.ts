@@ -1,4 +1,4 @@
-import express, { Router, type Request, type Response } from "express";
+import express, { Router, type Request } from "express";
 import { createHash, randomBytes } from "node:crypto";
 import { z } from "zod";
 import type { PrismaClient } from "@prisma/client";
@@ -106,15 +106,6 @@ function appAuthorizationUrl(request: OAuthRequest): string {
   const encoded = base64url(Buffer.from(JSON.stringify(request), "utf8"));
   return WEB_APP + "/?connectArcTester=1&oauthRequest=" + encodeURIComponent(encoded);
 }
-function redirectWithOAuthError(res: Response, redirectUri: string, state: string | undefined, error: string, description: string): void {
-  const target = new URL(redirectUri);
-  target.searchParams.set("error", error);
-  target.searchParams.set("error_description", description.slice(0, 200));
-  if (state) target.searchParams.set("state", state);
-  target.searchParams.set("iss", ISSUER);
-  res.redirect(302, target.toString());
-}
-
 export function studentMcpOAuthRouter(db: PrismaClient): Router {
   const router = Router();
 

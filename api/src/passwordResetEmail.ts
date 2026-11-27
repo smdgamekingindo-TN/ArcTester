@@ -23,11 +23,14 @@ function readReply(socket: ReturnType<typeof connect>): Promise<SmtpReply> {
 }
 
 function command(socket: ReturnType<typeof connect>, value: string): Promise<SmtpReply> {
-  return new Promise((resolve, reject) => {
-    socket.write(value + "\r\n", error => {
-      if (error) reject(error);
-      else readReply(socket).then(resolve, reject);
-    });
+  // Start listening before writing: SMTP servers can reply before the write
+  // callback runs, and attaching the reader afterward can lose the response.
+  const response = readReply(socket);
+  return new Promise<void>((resolve, reject) => {
+    socket.write(value + "\\r\\n", error => error ? reject(error) : resolve());
+  }).then(() => response).catch(error => {
+    socket.destroy();
+    throw error;
   });
 }
 

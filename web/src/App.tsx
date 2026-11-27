@@ -113,7 +113,7 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  const [activePage, setActivePage] = useState<StudentPage>("dashboard");
+  const [activePage, setActivePage] = useState<StudentPage>(() => new URLSearchParams(window.location.search).get("connectArcTester") === "1" ? "ai-practice" : "dashboard");
   const {
     activeAnnouncements,
     notifications: studentNotifications,

@@ -38,6 +38,43 @@ const API = (import.meta.env.PROD ? "/api" : import.meta.env.VITE_API_URL || "ht
 const request = createApiClient(API);
 function loadRegistrationCaptcha(){return request<{svg:string;token:string}>("/auth/captcha/challenge")}
 type User = { id: number; email: string; role: "ADMIN" | "STUDENT"; fullName?: string | null; collegeName?: string | null; collegeCode?: string | null; postalPin?: string | null; branchName?: string | null; branchCode?: string | null; registrationNumber?: string | null };
+type OAuthRequestData = {
+  client_id: string;
+  redirect_uri: string;
+  response_type: "code";
+  code_challenge: string;
+  code_challenge_method: "S256";
+  scope?: string;
+  state?: string;
+  resource?: string;
+  clientName?: string;
+};
+function readOAuthRequestFromLocation(): OAuthRequestData | null {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("connectArcTester") !== "1") return null;
+  const encoded = params.get("oauthRequest");
+  if (!encoded || encoded.length > 12000) return null;
+  try {
+    const decoded = new TextDecoder().decode(base64UrlToBytes(encoded));
+    const value = JSON.parse(decoded) as Partial<OAuthRequestData>;
+    if (
+      typeof value.client_id !== "string" ||
+      typeof value.redirect_uri !== "string" ||
+      value.response_type !== "code" ||
+      typeof value.code_challenge !== "string" ||
+      value.code_challenge_method !== "S256"
+    ) return null;
+    return value as OAuthRequestData;
+  } catch { return null; }
+}
+function safeChatGptRedirect(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" &&
+      (url.hostname === "chatgpt.com" || url.hostname.endsWith(".chatgpt.com") || url.hostname === "chat.openai.com");
+  } catch { return false; }
+}
+
 type Bank = { total: number; practiceTotal?: number; subjects: { subject: string; count: number; practiceCount?: number; topics?: { topic: string; count: number; practiceCount?: number }[] }[] };
 type Test = PracticeSessionTest;
 type RestoredTest = Omit<Test, "warnings"> & { warnings?: string[]; serverNow: string; saved: { questionId: number; selectedIndex: number | null; response?: unknown }[] };
@@ -113,7 +150,13 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  const [activePage, setActivePage] = useState<StudentPage>(() => new URLSearchParams(window.location.search).get("connectArcTester") === "1" ? "ai-practice" : "dashboard");
+  const [oauthRequest] = useState<OAuthRequestData | null>(() => readOAuthRequestFromLocation());
+  const oauthMode = new URLSearchParams(window.location.search).get("connectArcTester") === "1";
+  const [oauthWorking, setOauthWorking] = useState(false);
+  const [oauthError, setOauthError] = useState("");
+  const [oauthPassword, setOauthPassword] = useState("");
+  const [oauthCode, setOauthCode] = useState("");
+  const [activePage, setActivePage] = useState<StudentPage>(() => "dashboard");
   const {
     activeAnnouncements,
     notifications: studentNotifications,
@@ -720,7 +763,59 @@ export default function App() {
     clearLocalAuthenticatedState();
   }
 
+  async function denyOAuthConnection() {
+    if (!oauthRequest) return;
+    setOauthWorking(true);
+    setOauthError("");
+    try {
+      const result = await request<{ redirectUrl: string }>("/oauth/authorize/deny", {
+        method: "POST",
+        body: JSON.stringify({ ...oauthRequest, approved: false }),
+      });
+      if (!safeChatGptRedirect(result.redirectUrl)) throw new Error("ArcTester rejected an unsafe OAuth redirect.");
+      window.location.assign(result.redirectUrl);
+    } catch (cause) {
+      setOauthError((cause as Error).message || "Unable to cancel this connection safely.");
+      setOauthWorking(false);
+    }
+  }
+
+  async function approveOAuthConnection() {
+    if (!oauthRequest) return;
+    if (!oauthPassword.trim()) {
+      setOauthError("Enter your ArcTester password to confirm this connection.");
+      return;
+    }
+    setOauthWorking(true);
+    setOauthError("");
+    try {
+      await request("/reauthenticate", {
+        method: "POST",
+        body: JSON.stringify({ password: oauthPassword, ...(oauthCode.trim() ? { code: oauthCode.trim() } : {}) }),
+      });
+      const result = await request<{ redirectUrl: string }>("/oauth/authorize/approve", {
+        method: "POST",
+        body: JSON.stringify({ ...oauthRequest, approved: true }),
+      });
+      if (!safeChatGptRedirect(result.redirectUrl)) throw new Error("ArcTester rejected an unsafe OAuth redirect.");
+      window.location.assign(result.redirectUrl);
+    } catch (cause) {
+      setOauthError((cause as Error).message || "Unable to authorize this connection.");
+      setOauthWorking(false);
+    }
+  }
+
   if (sessionRestoring) return <AppSplash visible />;
+
+  if (oauthMode && !oauthRequest) {
+    return <div className="app-shell" style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 24 }}>
+      <section className="panel" style={{ width: "min(100%, 520px)", padding: 28 }}>
+        <p className="eyebrow">SECURE CONNECTION</p>
+        <h1>Invalid connection request</h1>
+        <p>This ArcTester OAuth request is missing required details or has been changed. Return to ChatGPT and start connecting again.</p>
+      </section>
+    </div>;
+  }
 
   if (!user) {
     return (
@@ -755,6 +850,37 @@ export default function App() {
         onGoogleProfileClose={closeGoogleProfileCompletion}
       />
     );
+  }
+
+  if (oauthRequest) {
+    const expectedRole = oauthRequest.resource === "https://arctester.onrender.com/mcp/admin" ? "ADMIN" : "STUDENT";
+    const roleMatches = user.role === expectedRole;
+    const scopes = (oauthRequest.scope || "").split(/\\s+/).filter(Boolean);
+    let clientLabel = "ChatGPT";
+    try { clientLabel = new URL(oauthRequest.client_id).hostname; } catch { /* Server validates client metadata before approval. */ }
+    return <div className="app-shell" style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 24 }}>
+      <main className="panel" style={{ width: "min(100%, 560px)", padding: 28, boxSizing: "border-box" }}>
+        <p className="eyebrow">ARCTESTER · SECURE CONNECTION</p>
+        <h1 style={{ marginTop: 8 }}>Connect ArcTester to ChatGPT</h1>
+        <p><strong>{clientLabel}</strong> is requesting access to your {expectedRole === "ADMIN" ? "administrator" : "student"} ArcTester account.</p>
+        {!roleMatches ? <div className="error" role="alert" style={{ padding: 12, margin: "16px 0" }}>This connection requires an approved {expectedRole.toLowerCase()} account. You are signed in as {user.role.toLowerCase()}. Switch accounts or cancel.</div> : null}
+        <section style={{ margin: "20px 0", padding: 16, border: "1px solid var(--border, #d1d5db)", borderRadius: 12 }}>
+          <h2 style={{ fontSize: 18, marginTop: 0 }}>Requested permissions</h2>
+          {scopes.length ? <ul style={{ paddingLeft: 22, marginBottom: 0 }}>{scopes.map(scope => <li key={scope} style={{ margin: "7px 0", overflowWrap: "anywhere" }}>{scope.replace(/:/g, " · ")}</li>)}</ul> : <p>No permissions were listed. The server will validate the request before granting access.</p>}
+        </section>
+        <p className="muted">Confirm your identity before allowing access. If authenticator verification is enabled on your account, enter the current code too.</p>
+        <label htmlFor="oauth-password" style={{ display: "block", fontWeight: 600, marginTop: 16 }}>ArcTester password</label>
+        <input id="oauth-password" type="password" autoComplete="current-password" value={oauthPassword} onChange={event => setOauthPassword(event.target.value)} disabled={oauthWorking} style={{ width: "100%", boxSizing: "border-box", marginTop: 6 }} />
+        <label htmlFor="oauth-code" style={{ display: "block", fontWeight: 600, marginTop: 12 }}>Authenticator code (if enabled)</label>
+        <input id="oauth-code" inputMode="numeric" autoComplete="one-time-code" value={oauthCode} onChange={event => setOauthCode(event.target.value)} disabled={oauthWorking} style={{ width: "100%", boxSizing: "border-box", marginTop: 6 }} />
+        {oauthError ? <p className="error" role="alert" style={{ marginTop: 14 }}>{oauthError}</p> : null}
+        <div style={{ display: "flex", gap: 12, marginTop: 22, flexWrap: "wrap" }}>
+          <button className="primary" type="button" disabled={oauthWorking || !roleMatches || !oauthPassword.trim()} onClick={() => void approveOAuthConnection()}>{oauthWorking ? "Confirming…" : "Confirm identity & Allow"}</button>
+          <button type="button" disabled={oauthWorking} onClick={() => void denyOAuthConnection()}>Cancel</button>
+        </div>
+        <p className="muted" style={{ fontSize: 13, marginTop: 18 }}>You can revoke this connection later from ArcTester’s MCP connections or key management.</p>
+      </main>
+    </div>;
   }
 
   if (user.role === "ADMIN") {

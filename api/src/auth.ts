@@ -432,6 +432,28 @@ export function requireRecentAuth(maxAgeSeconds = 5 * 60) {
   };
 }
 
+/** Require a password/TOTP reauthentication session, not merely a recently signed-in session. */
+export function requireRecentReauthentication(maxAgeSeconds = 5 * 60) {
+  return (req: AuthedRequest, _res: Response, next: NextFunction): void => {
+    const token = readSessionToken(req);
+    if (!token) return next(forbidden("Re-enter your password and authenticator code to create an MCP key."));
+    try {
+      const payload = verifyJwt(token);
+      const issuedAt = payload.iat;
+      if (payload.amr !== "reauthentication" || !Number.isSafeInteger(issuedAt)) {
+        return next(forbidden("Re-enter your password and authenticator code to create an MCP key."));
+      }
+      const ageSeconds = nowSeconds() - (issuedAt as number);
+      if (ageSeconds < -60 || ageSeconds > maxAgeSeconds) {
+        return next(forbidden("Your security confirmation expired. Reauthenticate and try again."));
+      }
+      next();
+    } catch {
+      next(forbidden("Your security confirmation expired. Reauthenticate and try again."));
+    }
+  };
+}
+
 export function requireAdmin(db: PrismaClient) {
   return async (req: AuthedRequest, _res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -534,7 +556,7 @@ async function createAuthSession(db: PrismaClient, req: Request, user: { id: num
       // Security alerts are best-effort; a notification failure must not block login.
     }
   }
-  const token = signJwt({ sub: String(user.id), email: user.email, sv: user.sessionVersion, sid: session.id });
+  const token = signJwt({ sub: String(user.id), email: user.email, sv: user.sessionVersion, sid: session.id, amr: method });
   return { token, sessionId: session.id };
 }
 

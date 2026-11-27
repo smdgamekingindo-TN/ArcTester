@@ -67,7 +67,10 @@ describe("password reset email delivery", () => {
     expect(socket.writes.some(write => write.startsWith("EHLO "))).toBe(true);
     expect(socket.writes.some(write => write.includes("MAIL FROM:<smdgameking@gmail.com>"))).toBe(true);
     expect(socket.writes.some(write => write.includes("RCPT TO:<student@example.test>"))).toBe(true);
-    expect(socket.writes.some(write => write.includes(Buffer.from(resetUrl).toString("base64").slice(0, 40)))).toBe(true);
+    const message = socket.writes.find(write => write.includes("Content-Type: multipart/alternative"));
+    expect(message).toBeDefined();
+    const decoded = message!.split("\\r\\n").filter(line => /^[A-Za-z0-9+/=]{20,}$/.test(line)).map(line => Buffer.from(line, "base64").toString("utf8")).join("");
+    expect(decoded).toContain(resetUrl);
     expect(socket.writes.some(write => write.trim() === "QUIT")).toBe(true);
   });
 });

@@ -16,6 +16,10 @@ function safeHeader(value: string): string {
   return value.replace(/[\r\n]/g, " ").trim();
 }
 
+function mimeBase64(value: string): string {
+  return Buffer.from(value, "utf8").toString("base64").replace(/.{1,76}/g, "$&\r\n").trimEnd();
+}
+
 async function getGmailAccessToken(): Promise<string> {
   const clientId = requiredEnv("GMAIL_CLIENT_ID");
   const clientSecret = requiredEnv("GMAIL_CLIENT_SECRET");
@@ -59,16 +63,16 @@ function buildRawMessage(to: string, subject: string, text: string, html?: strin
       "--" + boundary,
       "Content-Type: text/plain; charset=UTF-8",
       "Content-Transfer-Encoding: base64", "",
-      mimeBase64(text).trimEnd(),
+      mimeBase64(text),
       "--" + boundary,
       "Content-Type: text/html; charset=UTF-8",
       "Content-Transfer-Encoding: base64", "",
-      mimeBase64(html).trimEnd(),
+      mimeBase64(html),
       "--" + boundary + "--");
   } else {
     parts.push("Content-Type: text/plain; charset=UTF-8",
       "Content-Transfer-Encoding: base64", "",
-      Buffer.from(text, "utf8").toString("base64"));
+      mimeBase64(text));
   }
   return encodeBase64Url(parts.join("\r\n"));
 }
@@ -85,7 +89,7 @@ export async function sendEmail(to: string, subject: string, text: string, html?
     body: JSON.stringify({ raw }),
   });
   if (!response.ok) {
-    // Keep provider response bodies and OAuth credentials out of user-facing errors/logs.
+    // Keep provider response bodies and OAuth credentials out of user-facing errors.
     throw new Error("Gmail API message delivery failed (HTTP " + response.status + ").");
   }
 }

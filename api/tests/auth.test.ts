@@ -183,6 +183,7 @@ describe("auth", () => {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         ...STUDENT_PROFILE,
+        registrationNumber: "24999-CM-054",
         email: "student-under-18@example.com",
         password: "secret1234",
         termsAccepted: true,

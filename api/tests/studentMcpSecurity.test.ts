@@ -85,7 +85,7 @@ describe("student MCP authorization and ownership", () => {
   it("enforces per-key scopes and re-checks current account role", async () => {
     await server.db.studentMcpKey.update({ where: { id: keyId }, data: { scopes: ["questions:read"] } });
     const denied = await rpc("create_my_questions", { questions: [{ subject: "Math", text: "Should be denied", options: ["A", "B"], correctIndex: 0 }] });
-    expect(denied.body, JSON.stringify(denied.body)).toMatchObject({ error: { code: -32003 } });
+    expect(denied.body, JSON.stringify(denied.body)).toMatchObject({ result: { isError: true, content: [{ text: expect.stringContaining("Missing questions:write scope.") }] } });
 
     await server.db.user.update({ where: { id: studentId }, data: { role: "ADMIN" } });
     const demotedOrWrongRole = await rpc("list_my_questions", { limit: 10 });
@@ -107,6 +107,46 @@ describe("student MCP authorization and ownership", () => {
     });
     expect(response.status).toBe(401);
     expect(response.headers.get("www-authenticate")).toContain("oauth-protected-resource");
+  });
+
+  it("advertises the admin OAuth resource and accepts admin-resource OAuth tokens only for admins", async () => {
+    const metadata = await fetch(server.baseUrl + "/.well-known/oauth-protected-resource/mcp/admin");
+    expect(metadata.status).toBe(200);
+    expect(await metadata.json()).toMatchObject({
+      resource: "https://arctester.onrender.com/mcp/admin",
+      authorization_servers: ["https://arctester.onrender.com"],
+    });
+
+    const admin = await server.db.user.create({
+      data: { email: "admin-mcp-oauth@arctester.test", passwordHash: "test-only", role: "ADMIN", accessStatus: "APPROVED" },
+    });
+    const token = signJwt({
+      sub: String(admin.id),
+      email: admin.email,
+      sv: admin.sessionVersion,
+      mcp_oauth: true,
+      resource: "https://arctester.onrender.com/mcp/admin",
+      scope: "models:read",
+    }, 3600);
+    await server.db.adminMcpKey.create({
+      data: { userId: admin.id, name: "Admin OAuth test", keyHash: digest(token), scopes: ["models:read"] },
+    });
+
+    const response = await fetch(server.baseUrl + "/mcp/admin", {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: "Bearer " + token },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize" }),
+    });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ result: { serverInfo: { name: "arctester-admin-mcp" } } });
+
+    await server.db.user.update({ where: { id: admin.id }, data: { role: "STUDENT" } });
+    const revokedRole = await fetch(server.baseUrl + "/mcp/admin", {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: "Bearer " + token },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 2, method: "initialize" }),
+    });
+    expect(revokedRole.status).toBe(403);
   });
 
   it("accepts a short-lived OAuth access token linked to a student key record", async () => {

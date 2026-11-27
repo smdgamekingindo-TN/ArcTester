@@ -59,11 +59,11 @@ function buildRawMessage(to: string, subject: string, text: string, html?: strin
       "--" + boundary,
       "Content-Type: text/plain; charset=UTF-8",
       "Content-Transfer-Encoding: base64", "",
-      Buffer.from(text, "utf8").toString("base64"),
+      mimeBase64(text).trimEnd(),
       "--" + boundary,
       "Content-Type: text/html; charset=UTF-8",
       "Content-Transfer-Encoding: base64", "",
-      Buffer.from(html, "utf8").toString("base64"),
+      mimeBase64(html).trimEnd(),
       "--" + boundary + "--");
   } else {
     parts.push("Content-Type: text/plain; charset=UTF-8",

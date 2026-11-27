@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { buildApp } from "../src/index.js";
+import { signJwt } from "../src/auth.js";
 import { startTestServer, type TestServer } from "./server.js";
 
 let server: TestServer;
@@ -92,9 +93,39 @@ describe("student MCP authorization and ownership", () => {
     await server.db.user.update({ where: { id: studentId }, data: { role: "STUDENT" } });
   });
 
+  it("advertises OAuth resource metadata and challenges unlinked clients", async () => {
+    const metadata = await fetch(server.baseUrl + "/.well-known/oauth-protected-resource/mcp/student");
+    expect(metadata.status).toBe(200);
+    expect(await metadata.json()).toMatchObject({
+      resource: "https://arctester.onrender.com/mcp/student",
+      authorization_servers: ["https://arctester.onrender.com"],
+    });
+    const response = await fetch(server.baseUrl + "/mcp/student", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }),
+    });
+    expect(response.status).toBe(401);
+    expect(response.headers.get("www-authenticate")).toContain("oauth-protected-resource");
+  });
+
+  it("accepts a short-lived OAuth access token linked to a student key record", async () => {
+    const user = await server.db.user.findUnique({ where: { id: studentId }, select: { id: true, email: true, sessionVersion: true } });
+    expect(user).toBeTruthy();
+    const oauthToken = signJwt({ sub: String(user!.id), email: user!.email, sv: user!.sessionVersion, mcp_oauth: true, scope: "questions:read practice:read" }, 3600);
+    await server.db.studentMcpKey.create({
+      data: { userId: studentId, name: "OAuth test connection", keyHash: digest(oauthToken), scopes: ["questions:read", "practice:read"] },
+    });
+    const previous = bearer;
+    bearer = oauthToken;
+    const result = await rpc("list_my_questions", { limit: 10 });
+    bearer = previous;
+    expect(result.status).toBe(200);
+  });
+
   it("rejects revoked MCP keys immediately", async () => {
     await server.db.studentMcpKey.update({ where: { id: keyId }, data: { revokedAt: new Date() } });
     const revoked = await rpc("list_my_questions", { limit: 10 });
-    expect(revoked.status).toBe(403);
+    expect(revoked.status).toBe(401);
   });
 });

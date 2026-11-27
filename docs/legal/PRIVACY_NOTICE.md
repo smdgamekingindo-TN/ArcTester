@@ -1,13 +1,13 @@
 # ArcTester Privacy Notice
 
-**Version:** 2026-11-27-v1  
-**Status:** Draft — operator and deployment details must be completed before final publication.
+**Version:** 2026-11-27-v2  
+**Status:** Draft — production locations, retention periods and legal review remain outstanding.
 
-> **Publication blocker:** Complete and verify the operator's legal name, postal address, privacy/grievance contact, actual service-provider list, processing locations and production retention periods. This engineering draft is not legal advice or a compliance certification.
+> **Publication blocker:** Verify production processing locations and retention periods, and obtain qualified Indian legal review. This engineering draft is not legal advice or a compliance certification.
 
 ## 1. Operator and contact
 
-ArcTester is operated by the project operator. **[OPERATOR LEGAL NAME, ADDRESS AND PRIVACY CONTACT REQUIRED BEFORE FINAL PUBLICATION]**. Privacy requests and grievances must be directed to **[VERIFIED PRIVACY / GRIEVANCE EMAIL OR URL]**. Do not publish this notice as final while these fields remain unresolved.
+ArcTester is operated by its project operator remotely from India and has no public business premises. Privacy and grievance contact: **smdgameking@gmail.com** (email correspondence). A residential address is not published; correspondence is handled by email.
 
 ## 2. Data processed
 
@@ -32,11 +32,11 @@ Student-identifying information is excluded from model-training datasets by defa
 
 ## 5. Recipients and processors
 
-Authorized staff and contracted providers may process data to host, operate, secure, back up and support ArcTester. Before final publication, list the actual providers, purpose, processing locations and safeguards: **[VERIFIED PROVIDER AND DATA-LOCATION LIST REQUIRED]**. Do not claim a country of storage until production and backup locations are verified.
+Authorized staff and contracted providers may process data to host, operate, secure, back up and support ArcTester. Current providers: Vercel (web hosting/deployment), Render (API and PostgreSQL hosting), and Google (email service). Exact production and backup processing regions have not yet been independently verified and must be published after confirmation.
 
 ## 6. Retention
 
-Data is retained only as needed for the purposes above, account operation, academic records, security and applicable law. Current engineering documentation describes 365-day audit-event retention and pruning of certain expired session/login metadata; production configuration must be verified. Publish category-specific retention for account, academic, consent-evidence and backup records: **[VERIFIED RETENTION SCHEDULE REQUIRED]**. Deletion from live systems may not immediately remove immutable backup copies.
+Data is retained only as needed for the purposes above, account operation, academic records, security and applicable law. Current engineering documentation describes 365-day audit-event retention and pruning of certain expired session/login metadata; production configuration must be verified. Publish category-specific retention for account, academic, consent-evidence and backup records: **[VERIFIED RETENTION SCHEDULE AND BACKUP EXPIRY REQUIRED]**. Deletion from live systems may not immediately remove immutable backup copies.
 
 ## 7. Rights and choices
 
@@ -48,7 +48,7 @@ ArcTester uses safeguards including password hashing, server-side role checks, s
 
 ## 9. Children and age eligibility
 
-ArcTester registration currently requires an adult age attestation. Students under 18 must not register until a verified parent/guardian consent workflow and applicable child-data safeguards are implemented and reviewed. A checkbox or a student's self-attestation is not verifiable parental consent. The adult attestation is a gating control, not proof of age or a compliance certification.
+ArcTester is intended for students, including diploma students who may be under 18. Registration is currently restricted to users aged 18 or older because a verified parent/legal-guardian consent workflow and child-data safeguards are not yet available. A checkbox or student's self-attestation is not verifiable parental consent. A parent/legal guardian would provide consent through a future verified workflow and would not become the project operator.
 
 ## 10. Changes
 

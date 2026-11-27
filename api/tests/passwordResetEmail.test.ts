@@ -20,17 +20,17 @@ class FakeSmtpSocket extends EventEmitter {
     const text = value.toString();
     this.writes.push(text);
     let reply = "";
-    if (text.includes("\\r\\n.\\r\\n")) reply = "250 2.0.0 Message queued\\r\\n";
+    if (text.includes("\r\n.\r\n")) reply = "250 2.0.0 Message queued\r\n";
     else {
       const command = text.trim();
-      if (command.startsWith("EHLO ")) reply = "250-smtp.gmail.com\\r\\n250-AUTH LOGIN PLAIN\\r\\n250 OK\\r\\n";
-      else if (command === "AUTH LOGIN") reply = "334 VXNlcm5hbWU6\\r\\n";
-      else if (command === Buffer.from("smdgameking@gmail.com").toString("base64")) reply = "334 UGFzc3dvcmQ6\\r\\n";
-      else if (command === Buffer.from("app-password-fixture").toString("base64")) reply = "235 2.7.0 Authentication successful\\r\\n";
-      else if (command.startsWith("MAIL FROM:")) reply = "250 2.1.0 Sender OK\\r\\n";
-      else if (command.startsWith("RCPT TO:")) reply = "250 2.1.5 Recipient OK\\r\\n";
-      else if (command === "DATA") reply = "354 End data with <CR><LF>.<CR><LF>\\r\\n";
-      else if (command === "QUIT") reply = "221 2.0.0 Bye\\r\\n";
+      if (command.startsWith("EHLO ")) reply = "250-smtp.gmail.com\r\n250-AUTH LOGIN PLAIN\r\n250 OK\r\n";
+      else if (command === "AUTH LOGIN") reply = "334 VXNlcm5hbWU6\r\n";
+      else if (command === Buffer.from("smdgameking@gmail.com").toString("base64")) reply = "334 UGFzc3dvcmQ6\r\n";
+      else if (command === Buffer.from("app-password-fixture").toString("base64")) reply = "235 2.7.0 Authentication successful\r\n";
+      else if (command.startsWith("MAIL FROM:")) reply = "250 2.1.0 Sender OK\r\n";
+      else if (command.startsWith("RCPT TO:")) reply = "250 2.1.5 Recipient OK\r\n";
+      else if (command === "DATA") reply = "354 End data with <CR><LF>.<CR><LF>\r\n";
+      else if (command === "QUIT") reply = "221 2.0.0 Bye\r\n";
       else throw new Error("Unexpected SMTP command in test: " + command);
     }
     // Emit the reply before the write callback to reproduce the real SMTP race.
@@ -57,7 +57,7 @@ describe("password reset email delivery", () => {
     connectMock.mockImplementation(() => {
       queueMicrotask(() => {
         socket.emit("secureConnect");
-        queueMicrotask(() => socket.emit("data", Buffer.from("220 smtp.gmail.com ESMTP ready\\r\\n")));
+        queueMicrotask(() => socket.emit("data", Buffer.from("220 smtp.gmail.com ESMTP ready\r\n")));
       });
       return socket;
     });

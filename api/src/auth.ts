@@ -1,6 +1,6 @@
 // Authentication uses HMAC-SHA256 JWTs and Node's built-in scrypt password hashing.
-// Student accounts self-register and require administrator approval. Privileged
-// operations re-check the current database role instead of trusting client claims.
+// Student accounts self-register and activate after email verification. Admin roles
+// remain privileged and are re-checked from the database for protected operations.
 
 import type { NextFunction, Request, Response } from "express";
 import { Router, urlencoded } from "express";
@@ -438,7 +438,7 @@ export async function requireAuth(req: AuthedRequest, _res: Response, next: Next
       if (legacySession && (legacySession.revokedAt || legacySession.expiresAt <= new Date())) return next(forbidden("This legacy session has been revoked. Sign in again."));
     }
     if (user.accessStatus !== "APPROVED") {
-      return next(forbidden(user.accessStatus === "REJECTED" ? "Your account was not approved. Contact your administrator." : "Your account is waiting for administrator approval."));
+      return next(forbidden(user.accessStatus === "REJECTED" ? "Your account was not approved. Contact your administrator." : "Verify your email to activate your student account."));
     }
     req.user = { id, email };
     next();
@@ -719,7 +719,7 @@ export function authRouter(db: PrismaClient): Router {
         return created;
       });
       try { await sendEmailVerificationCode(user.email, verificationCode); } catch (deliveryError) { console.error("ArcTester email-verification delivery failed:", deliveryError instanceof Error ? deliveryError.message : "unknown delivery error"); }
-      res.status(201).json({ ok: true, emailVerificationRequired: true, message: "We sent a 6-digit verification code to your email. Verify it before signing in; administrator approval is still required.", user });
+      res.status(201).json({ ok: true, emailVerificationRequired: true, message: "We sent a 6-digit verification code to your email. Verify it to activate your student account.", user });
     } catch (error) {
       if (error && typeof error === "object" && "code" in error && error.code === "P2002") return next(conflict("An account with this email already exists."));
       next(error);
@@ -733,7 +733,10 @@ export function authRouter(db: PrismaClient): Router {
       const user = await db.user.findUnique({ where: { email: identity.email } });
       if (!user) return res.json({ ok: true, newAccount: true, email: identity.email, fullName: identity.name });
       if (user.role !== "STUDENT") return next(forbidden("Google student sign-in is only available for student accounts."));
-      if (!user.emailVerifiedAt) await db.user.update({ where: { id: user.id }, data: { emailVerifiedAt: new Date() } });
+      if (!user.emailVerifiedAt || user.accessStatus === "PENDING") {
+        await db.user.update({ where: { id: user.id }, data: { emailVerifiedAt: user.emailVerifiedAt ?? new Date(), accessStatus: user.accessStatus === "REJECTED" ? "REJECTED" : "APPROVED" } });
+        if (user.accessStatus === "PENDING") user.accessStatus = "APPROVED";
+      }
       if (user.accessStatus !== "APPROVED") {
         await recordLoginEvent(db, req, identity.email, user.id, "blocked", "google");
         return next(forbidden(user.accessStatus === "REJECTED" ? "Your account was not approved. Contact your administrator." : "Your account is waiting for administrator approval."));
@@ -780,7 +783,7 @@ export function authRouter(db: PrismaClient): Router {
             emailVerifiedAt: new Date(),
             passwordHash,
             role: "STUDENT",
-            accessStatus: "PENDING",
+            accessStatus: "APPROVED",
             fullName: profile.fullName,
             collegeName: profile.collegeName,
             collegeCode: identityParts.collegeCode,
@@ -804,7 +807,7 @@ export function authRouter(db: PrismaClient): Router {
         });
         return created;
       });
-      res.status(201).json({ ok: true, submitted: true, message: "Your Google account and academic details were submitted. ArcTester access starts after administrator approval.", user });
+      res.status(201).json({ ok: true, submitted: true, message: "Your Google account and academic details are verified. Your student account is ready to use.", user });
     } catch (error) {
       if (error && typeof error === "object" && "code" in error && error.code === "P2002") return next(conflict("This Google email or diploma registration number is already connected to an account."));
       next(error);
@@ -832,7 +835,7 @@ export function authRouter(db: PrismaClient): Router {
       const result = await db.guardianConsent.updateMany({ where: { tokenHash: sha256(input.token), consentedAt: null, expiresAt: { gt: now } }, data: { verifiedAt: now, consentedAt: now } });
       if (result.count !== 1) return res.status(400).type("html").send("<h1>Consent link expired or already used</h1><p>Contact ArcTester support if you still need to confirm consent.</p>");
       res.setHeader("Cache-Control", "no-store");
-      res.type("html").send("<h1>Guardian consent confirmed</h1><p>The student account can now continue through administrator approval.</p><p>You may close this page.</p>");
+      res.type("html").send("<h1>Guardian consent confirmed</h1><p>The student account can now continue through email verification.</p><p>You may close this page.</p>");
     } catch (error) { next(error); }
   });
 
@@ -952,9 +955,12 @@ export function authRouter(db: PrismaClient): Router {
   router.post("/email-verification/verify", async (req, res, next) => {
     try {
       const input = z.object({ email: z.string().email().trim().toLowerCase(), code: z.string().regex(/^\d{6}$/, "Enter the 6-digit code.") }).parse(req.body);
-      const user = await db.user.findUnique({ where: { email: input.email }, select: { id: true, emailVerifiedAt: true } });
+      const user = await db.user.findUnique({ where: { email: input.email }, select: { id: true, emailVerifiedAt: true, accessStatus: true } });
       if (!user) return next(forbidden("The verification code is invalid or expired."));
-      if (user.emailVerifiedAt) return res.json({ ok: true, message: "Your email is already verified. You can sign in." });
+      if (user.emailVerifiedAt) {
+        if (user.accessStatus === "PENDING") await db.user.update({ where: { id: user.id }, data: { accessStatus: "APPROVED" } });
+        return res.json({ ok: true, message: "Your email is already verified. You can sign in." });
+      }
       const challenge = await db.authChallenge.findFirst({ where: { userId: user.id, purpose: "email-verification" }, orderBy: { createdAt: "desc" } });
       if (!challenge || challenge.expiresAt <= new Date() || challenge.attempts >= 5) return next(forbidden("The verification code is invalid or expired. Request a new code."));
       const expected = sha256(user.id + ":email-verification:" + input.code);
@@ -965,12 +971,12 @@ export function authRouter(db: PrismaClient): Router {
       const verified = await db.$transaction(async (tx) => {
         const consumed = await tx.authChallenge.updateMany({ where: { id: challenge.id, challenge: expected, attempts: { lt: 5 }, expiresAt: { gt: new Date() } }, data: { attempts: { increment: 1 } } });
         if (consumed.count !== 1) return false;
-        await tx.user.update({ where: { id: user.id }, data: { emailVerifiedAt: new Date() } });
+        await tx.user.update({ where: { id: user.id }, data: { emailVerifiedAt: new Date(), accessStatus: user.accessStatus === "REJECTED" ? "REJECTED" : "APPROVED" } });
         await tx.authChallenge.deleteMany({ where: { userId: user.id, purpose: "email-verification" } });
         return true;
       });
       if (!verified) return next(forbidden("The verification code was already used or expired. Request a new code."));
-      res.json({ ok: true, message: "Email verified. You can sign in after administrator approval." });
+      res.json({ ok: true, message: "Email verified. Your student account is active. You can sign in." });
     } catch (error) { next(error); }
   });
 
@@ -1009,7 +1015,8 @@ export function authRouter(db: PrismaClient): Router {
       }
       await clearLoginFailures(db, ip, input.email);
       if (!user.emailVerifiedAt) return next(forbidden("Verify your email first. Enter the 6-digit code sent to your inbox."));
-      if (user.accessStatus !== "APPROVED") { await recordLoginEvent(db, req, input.email, user.id, "blocked"); return next(forbidden(user.accessStatus === "REJECTED" ? "Your account was not approved. Contact your administrator." : "Your account is waiting for administrator approval.")); }
+      if (user.accessStatus === "PENDING" && user.emailVerifiedAt) { await db.user.update({ where: { id: user.id }, data: { accessStatus: "APPROVED" } }); user.accessStatus = "APPROVED"; }
+       if (user.accessStatus !== "APPROVED") { await recordLoginEvent(db, req, input.email, user.id, "blocked"); return next(forbidden(user.accessStatus === "REJECTED" ? "Your account was not approved. Contact your administrator." : "Verify your email to activate your student account.")); }
       const totp = await db.totpCredential.findUnique({ where: { userId: user.id }, select: { enabledAt: true } });
       if (totp?.enabledAt) {
         const challenge = randomBytes(32).toString("base64url");

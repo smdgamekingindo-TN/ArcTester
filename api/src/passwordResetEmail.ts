@@ -9,11 +9,11 @@ function requiredEnv(name: string): string {
 }
 
 function encodeBase64Url(value: string): string {
-  return Buffer.from(value, "utf8").toString("base64").replace(/\\+/g, "-").replace(/\\//g, "_").replace(/=+$/g, "");
+  return Buffer.from(value, "utf8").toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
 }
 
 function safeHeader(value: string): string {
-  return value.replace(/[\\r\\n]/g, " ").trim();
+  return value.replace(/[\r\n]/g, " ").trim();
 }
 
 async function getGmailAccessToken(): Promise<string> {
@@ -43,7 +43,7 @@ function buildRawMessage(to: string, subject: string, text: string, html?: strin
   const fromName = safeHeader(process.env.GMAIL_FROM_NAME?.trim() || "ArcTester");
   const recipient = safeHeader(to);
   const safeSubject = safeHeader(subject);
-  if (!recipient || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(recipient)) {
+  if (!recipient || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient)) {
     throw new Error("A valid email recipient is required.");
   }
   if (!safeSubject) throw new Error("Email subject is required.");
@@ -70,7 +70,7 @@ function buildRawMessage(to: string, subject: string, text: string, html?: strin
       "Content-Transfer-Encoding: base64", "",
       Buffer.from(text, "utf8").toString("base64"));
   }
-  return encodeBase64Url(parts.join("\\r\\n"));
+  return encodeBase64Url(parts.join("\r\n"));
 }
 
 export async function sendEmail(to: string, subject: string, text: string, html?: string): Promise<void> {
@@ -91,10 +91,10 @@ export async function sendEmail(to: string, subject: string, text: string, html?
 }
 
 export async function sendPasswordResetEmail(to: string, resetUrl: string): Promise<void> {
-  const text = "We received a request to reset your ArcTester password. Use this link within 30 minutes:\\n\\n" +
-    resetUrl + "\\n\\nIf you did not request this, you can ignore this email.";
+  const text = "We received a request to reset your ArcTester password. Use this link within 30 minutes:\n\n" +
+    resetUrl + "\n\nIf you did not request this, you can ignore this email.";
   const html = "<p>We received a request to reset your ArcTester password.</p><p><a href=\"" +
-    resetUrl.replace(/&/g, "&amp;").replace(/\"/g, "&quot;") +
+    resetUrl.replace(/&/g, "&amp;").replace(/"/g, "&quot;") +
     "\">Reset your password</a></p><p>This link expires in 30 minutes. If you did not request this, you can ignore this email.</p>";
   await sendEmail(to, "Reset your ArcTester password", text, html);
 }

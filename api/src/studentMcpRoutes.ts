@@ -40,8 +40,8 @@ function hasScope(key: StudentKey, scope: string): boolean { return key.scopes.i
 
 async function authenticateMcp(db: PrismaClient, req: Request, res: Response, next: NextFunction): Promise<void> {
   const authorization = req.headers.authorization ?? "";
-  const keyMatch = authorization.match(/^Bearer\\s+(arc_student_[A-Za-z0-9_-]{32,})$/);
-  const oauthMatch = authorization.match(/^Bearer\\s+([A-Za-z0-9._~-]{20,4096})$/);
+  const keyMatch = authorization.match(/^Bearer\s+(arc_student_[A-Za-z0-9_-]{32,})$/);
+  const oauthMatch = authorization.match(/^Bearer\s+([A-Za-z0-9._~-]{20,4096})$/);
   if (!keyMatch && !oauthMatch) return next(forbidden("Connect an approved ArcTester student account or use a valid student MCP key."));
   try {
     if (keyMatch) {

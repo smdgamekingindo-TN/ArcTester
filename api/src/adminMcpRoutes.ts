@@ -131,6 +131,8 @@ export function adminMcpRouter(db: PrismaClient): Router {
         { name: "record_model_evaluation", description: "Record an admin-attested candidate-vs-baseline result on an attested verification dataset. Candidate must not regress on the primary metric.", inputSchema: { type: "object", required: ["modelId","candidateVersion","baselineVersion","datasetId","sampleCount","metrics","confirm"], properties: { modelId: { type: "string" }, candidateVersion: { type: "integer", minimum: 1 }, baselineVersion: { type: "integer", minimum: 1 }, datasetId: { type: "string" }, sampleCount: { type: "integer", minimum: 1 }, metrics: { type: "object" }, confirm: { type: "boolean" } } } },
         { name: "evaluate_registered_model", description: "Compute candidate and baseline predictions from registered native artifacts on an attested verification dataset. Records real accuracy or MAE; does not train or activate.", inputSchema: { type: "object", required: ["modelId","candidateVersion","baselineVersion","datasetId","confirm"], properties: { modelId: { type: "string" }, candidateVersion: { type: "integer", minimum: 1 }, baselineVersion: { type: "integer", minimum: 1 }, datasetId: { type: "string" }, confirm: { type: "boolean" } } } },
         { name: "activate_model_version", description: "Assign a registered version as active for its modelId only after a passing verification evaluation and explicit confirmation. This updates registry assignment; inference consumers must separately support the modelId.", inputSchema: { type: "object", required: ["modelId","version","confirm"], properties: { modelId: { type: "string" }, version: { type: "integer", minimum: 1 }, confirm: { type: "boolean" } } } },
+        { name: "inspect_exam_assignments", description: "Inspect every published version of an exam and the student assignment, session, and submission status. Use this to diagnose an exam a student says is missing. Requires papers:read.", inputSchema: { type: "object", required: ["examId"], properties: { examId: { type: "string", minLength: 1 }, studentId: { type: "integer", minimum: 1 } } } },
+        { name: "get_admin_system_health", description: "Read privacy-safe operational counts for students, question review, exams, assignments, sessions and submissions. Does not expose secrets or raw student answers. Requires activity:read.", inputSchema: { type: "object", properties: {} } },
       ] } });
     }
     if (body.method !== "tools/call") return res.json(rpcError(id, -32601, "Method not found."));
@@ -378,6 +380,60 @@ export function adminMcpRouter(db: PrismaClient): Router {
           ]);
           output = { examId: exam.id, versionId: version.id, status: "PUBLISHED", publishedAt }; summary = "published exam " + exam.id; break;
         }
+        case "inspect_exam_assignments": {
+          if (!scope(key, "papers:read")) return res.json(rpcError(id, -32003, "Missing papers:read scope."));
+          const input = z.object({ examId: z.string().min(1), studentId: z.number().int().positive().optional() }).parse(args);
+          const exam = await db.exam.findUnique({
+            where: { id: input.examId },
+            select: {
+              id: true, title: true, status: true,
+              versions: {
+                where: { publishedAt: { not: null } },
+                orderBy: { version: "desc" },
+                select: {
+                  id: true, version: true, publishedAt: true,
+                  assignments: {
+                    ...(input.studentId ? { where: { studentId: input.studentId } } : {}),
+                    orderBy: { assignedAt: "desc" },
+                    include: {
+                      student: { select: { id: true, fullName: true, email: true, registrationNumber: true, branchName: true, accessStatus: true } },
+                      submission: { select: { status: true, submittedAt: true, score: true, maximumScore: true } },
+                      session: { select: { status: true, startedAt: true, lastHeartbeatAt: true } },
+                    },
+                  },
+                },
+              },
+            },
+          });
+          if (!exam) return res.json(rpcError(id, -32004, "Exam not found."));
+          output = { exam, assignmentCount: exam.versions.reduce((total, version) => total + version.assignments.length, 0) };
+          summary = "inspected assignments for exam " + exam.id; break;
+        }
+        case "get_admin_system_health": {
+          if (!scope(key, "activity:read")) return res.json(rpcError(id, -32003, "Missing activity:read scope."));
+          const started = Date.now();
+          const [approvedStudents, pendingStudents, rejectedStudents, approvedQuestions, draftQuestions, rejectedQuestions, exams, assignments, activeSessions, submissions] = await Promise.all([
+            db.user.count({ where: { role: "STUDENT", accessStatus: "APPROVED", NOT: { email: { endsWith: ".deleted.invalid" } } } }),
+            db.user.count({ where: { role: "STUDENT", accessStatus: "PENDING", NOT: { email: { endsWith: ".deleted.invalid" } } } }),
+            db.user.count({ where: { role: "STUDENT", accessStatus: "REJECTED", NOT: { email: { endsWith: ".deleted.invalid" } } } }),
+            db.question.count({ where: { reviewStatus: "APPROVED" } }),
+            db.question.count({ where: { reviewStatus: "DRAFT" } }),
+            db.question.count({ where: { reviewStatus: "REJECTED" } }),
+            db.exam.count(),
+            db.examAssignment.count(),
+            db.examSession.count({ where: { status: "ACTIVE" } }),
+            db.examSubmission.count(),
+          ]);
+          output = {
+            status: "ok", checkedAt: new Date().toISOString(), databaseQueryMs: Date.now() - started,
+            students: { approved: approvedStudents, pending: pendingStudents, rejected: rejectedStudents },
+            questions: { approved: approvedQuestions, draft: draftQuestions, rejected: rejectedQuestions },
+            exams: { total: exams }, assignments: { total: assignments },
+            sessions: { active: activeSessions }, submissions: { total: submissions },
+            note: "Counts only; no emails, answer content, environment variables, tokens, or secrets are returned.",
+          };
+          summary = "read admin system health counters"; break;
+        }
         case "assign_question_paper": {
           if (!scope(key, "exams:assign")) return res.json(rpcError(id, -32003, "Missing exams:assign scope."));
           const input = z.object({ examId: z.string().min(1), studentIds: z.array(z.number().int().positive()).min(1).max(1000), availableFrom: z.string().datetime().optional(), dueAt: z.string().datetime().optional(), confirm: z.literal(true) }).refine(v => new Set(v.studentIds).size === v.studentIds.length, { message: "Student IDs must be unique." }).refine(v => !v.availableFrom || !v.dueAt || new Date(v.dueAt) > new Date(v.availableFrom), { message: "Due date must be after availability date." }).parse(args);
@@ -392,7 +448,7 @@ export function adminMcpRouter(db: PrismaClient): Router {
             let skipped = 0;
             for (const studentId of input.studentIds) {
               const existing = await tx.examAssignment.findUnique({ where: { examVersionId_studentId: { examVersionId: version.id, studentId } }, select: { id: true } });
-              if (existing) { skipped += 1; continue; }
+              if (existing) { skipped += 1; alreadyAssignedStudentIds.push(studentId); continue; }
               const assignment = await tx.examAssignment.create({ data: {
                 examVersionId: version.id, studentId, assignedById: key.userId,
                 availableFrom: input.availableFrom ? new Date(input.availableFrom) : null,

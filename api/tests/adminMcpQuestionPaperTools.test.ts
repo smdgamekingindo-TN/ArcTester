@@ -96,6 +96,9 @@ describe("administrator MCP question and exam paper intelligence", () => {
     const audit = await callTool("analyze_question_paper", { examId: exam.id, version: 1 });
     expect(audit).toMatchObject({ version: { number: 1, questionCount: 2 }, quality: { totalMarks: 4, totalNegativeMarks: 1, missingExplanation: 1, duplicatePromptGroups: 1, durationMayBeTight: true }, delivery: { assignments: 1, assignmentStatuses: { ASSIGNED: 1 } } });
 
+    await server.db.examAssignment.deleteMany({ where: { examVersionId: version.id } });
+    await server.db.examVersionQuestion.deleteMany({ where: { examVersionId: version.id } });
+    await server.db.examVersion.delete({ where: { id: version.id } });
     await server.db.exam.delete({ where: { id: exam.id } });
     await server.db.user.delete({ where: { id: student.id } });
     await server.db.question.deleteMany({ where: { id: { in: questions.map(q => q.id) } } });

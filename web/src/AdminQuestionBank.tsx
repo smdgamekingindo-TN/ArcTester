@@ -56,7 +56,7 @@ export default function AdminQuestionBank({ questions, total, page, query, subje
 
   function confirmDeleteSelected() {
     if (!selected.length) return;
-    if (!window.confirm(`Delete ${selected.length} selected question(s)? Questions used in historical attempts will be protected.`)) return;
+    if (!window.confirm(reviewStatus === "DELETED" ? `Permanently delete ${selected.length} question(s) from Trash? This cannot be undone, and questions with linked history will be blocked.` : `Move ${selected.length} selected question(s) to Trash? You can restore them later.`)) return;
     onDeleteSelected();
   }
   return (
@@ -85,7 +85,7 @@ export default function AdminQuestionBank({ questions, total, page, query, subje
             <option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option>
           </select>
           <button className="ghost" disabled={!selected.length || busy} onClick={() => onBulkDifficultyChange(bulkDifficulty)}>Update difficulty ({selected.length})</button><button className="ghost" title="Every selected question needs a real source. Select questions on this page and fill their source fields." disabled={!bulkReviewReady || busy} onClick={() => onBulkReview("APPROVED", bulkReviewSources)}>Approve selected</button><button className="ghost" disabled={!selected.length || busy} onClick={() => onBulkReview("REJECTED", bulkReviewSources.filter((item) => item.source))}>Reject selected</button>
-          <button className="ghost danger-button" disabled={!selected.length || busy} onClick={confirmDeleteSelected}>Delete selected ({selected.length})</button>
+          <button className="ghost danger-button" disabled={!selected.length || busy} onClick={confirmDeleteSelected}>{reviewStatus === "DELETED" ? "Permanently delete selected" : "Move selected to Trash"} ({selected.length})</button>
         </div></div>
         {questions.length === 0 ? <div className="empty-state"><b>No questions match these filters</b><span>Upload a question set or add the first question.</span></div> : questions.map((question) => (
           <article className="bank-question" key={question.id}>

@@ -499,12 +499,12 @@ describe("versioned exam management", () => {
 
     const deleted = await request(`/admin/questions/${source.id}`, "DELETE", undefined, adminCookie);
     expect(deleted.status).toBe(200);
-    expect(await server.db.question.findUnique({ where: { id: source.id } })).toBeNull();
+    expect(await server.db.question.findUnique({ where: { id: source.id } })).toMatchObject({ reviewStatus: "DELETED" });
     const snapshot = await server.db.examVersionQuestion.findFirstOrThrow({
       where: { examVersionId: version.id },
     });
     expect(snapshot).toMatchObject({
-      sourceQuestionId: null,
+      sourceQuestionId: source.id,
       text: source.text,
       options: JSON.stringify(options),
       correctIndex: 2,
@@ -516,10 +516,21 @@ describe("versioned exam management", () => {
   });
 
   describe("PostgreSQL formal exam lifecycle", () => {
-    let fixture!: { examId: string; assignments: Array<{ id: string; studentId: number }>; studentIds: number[]; cookies: string[]; questionSnapshotId: string; lateAssignmentId?: string };
+    let fixture!: { examId: string; assignments: Array<{ id: string; studentId: number }>; studentIds: number[]; cookies: string[]; questionSnapshotId: string; questionId: number; lateAssignmentId?: string };
     const emails = ["lifecycle-a@arctester.test", "lifecycle-b@arctester.test", "lifecycle-c@arctester.test", "lifecycle-d@arctester.test", "lifecycle-race@arctester.test"];
     beforeAll(async () => {
-      const question = await server.db.question.findFirstOrThrow({ where: { text: "Which structure follows FIFO?" } });
+      const existingQuestion = await server.db.question.findFirstOrThrow();
+      const question = await server.db.question.create({ data: {
+        subjectId: existingQuestion.subjectId,
+        text: "Formal lifecycle isolated FIFO fixture " + randomUUID(),
+        options: JSON.stringify(["Queue", "Stack", "Tree", "Graph"]),
+        correctIndex: 0,
+        explanation: "A queue follows FIFO.",
+        source: "Formal lifecycle integration fixture",
+        difficulty: "easy",
+        reviewStatus: "APPROVED",
+        questionHash: "formal-lifecycle-" + randomUUID(),
+      } });
       const cookies = await Promise.all(emails.map((email) => createSession(email, "STUDENT")));
       const studentIds = await Promise.all(emails.map(async (email) => (await server.db.user.findUniqueOrThrow({ where: { email }, select: { id: true } })).id));
       const created = await request("/admin/exams", "POST", { title: "PostgreSQL lifecycle integration", description: "End-to-end verification", instructions: "Select the correct answer.", durationMinutes: 1, shuffleQuestions: false, shuffleOptions: false, questions: [{ questionId: question.id, marks: 2, negativeMarks: 0 }] }, adminCookie);
@@ -531,7 +542,7 @@ describe("versioned exam management", () => {
       const assignments = assigned.json.assignments as Array<{ id: string; studentId: number }>;
       expect(assignments).toHaveLength(5);
       const snapshot = await server.db.examVersionQuestion.findFirstOrThrow({ where: { examVersion: { examId } } });
-      fixture = { examId, assignments, studentIds, cookies, questionSnapshotId: snapshot.id };
+      fixture = { examId, assignments, studentIds, cookies, questionSnapshotId: snapshot.id, questionId: question.id };
     });
     afterAll(async () => {
       if (!fixture) return;
@@ -542,6 +553,7 @@ describe("versioned exam management", () => {
       await server.db.examSession.deleteMany({ where: { assignmentId: { in: cleanupAssignmentIds } } });
       await server.db.examAssignment.deleteMany({ where: { id: { in: cleanupAssignmentIds } } });
       await server.db.exam.delete({ where: { id: fixture.examId } });
+      await server.db.question.deleteMany({ where: { id: fixture.questionId } });
       await server.db.user.deleteMany({ where: { id: { in: fixture.studentIds } } });
     });
     it("returns one server-authoritative session when two devices start the same assignment concurrently", async () => {

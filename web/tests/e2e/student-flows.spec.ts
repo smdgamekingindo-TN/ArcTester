@@ -108,6 +108,12 @@ test.describe("Student Practice Flow", () => {
     await page.getByRole("navigation", { name: "Student navigation" })
       .getByRole("button", { name: "Practice exams", exact: true }).click();
 
+    const library = page.locator('.saved-practice-exams');
+    await expect(library).toBeVisible();
+    const createCard = library.locator(':scope > article.panel').first();
+    expect(await createCard.evaluate((el) => parseFloat(getComputedStyle(el).paddingLeft))).toBeGreaterThanOrEqual(16);
+    expect(await createCard.locator('.row').evaluate((el) => getComputedStyle(el).flexDirection)).toBe('column');
+
     // Select a seeded subject and request one question so the test does not
     // depend on the size or distribution of the CI starter question bank.
     const subjectChoices = page.locator(".practice-subject-choice");

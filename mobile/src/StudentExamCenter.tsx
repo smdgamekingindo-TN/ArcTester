@@ -129,7 +129,7 @@ export default function StudentExamCenter({ api, darkMode, disabled }: Props) {
   if (paper) {
     const question = paper.questions[index];
     const answered = Object.values(answers).filter(value => value !== null && value !== undefined).length;
-    return <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+    return <View style={[styles.examCard, { backgroundColor: colors.card, borderColor: colors.border }]}> 
       <View style={styles.top}><View style={{ flex: 1 }}><Text style={[styles.title, { color: colors.text }]}>{paper.title}</Text><Text style={[styles.muted, { color: colors.muted }]}>Question {index + 1} / {paper.questions.length}</Text></View><View style={[styles.timer, seconds < 60 && { backgroundColor: "#fee2e2" }]}><MaterialCommunityIcons name="timer-outline" size={17} color={seconds < 60 ? palette.red : palette.blue}/><Text style={{ color: seconds < 60 ? palette.red : palette.blue, fontWeight: "900" }}>{formatTime(seconds)}</Text></View></View>
       <View style={[styles.progress, { backgroundColor: colors.border }]}><View style={[styles.progressFill, { width: `${100 * answered / paper.questions.length}%` }]} /></View>
       <View style={[styles.questionNavigator, { borderColor: colors.border, backgroundColor: colors.surface }]}>
@@ -185,20 +185,21 @@ export default function StudentExamCenter({ api, darkMode, disabled }: Props) {
 
 const styles = StyleSheet.create({
   card: { borderWidth: 1, borderRadius: 16, padding: 16, marginTop: 12, gap: 10 },
+  examCard: { borderWidth: 1, borderRadius: 14, padding: 12, marginTop: 0, gap: 8, flexGrow: 1 },
   top: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
   title: { fontSize: 21, fontWeight: "900" },
   muted: { fontSize: 13, lineHeight: 19 },
   timer: { flexDirection: "row", alignItems: "center", gap: 5, borderRadius: 20, backgroundColor: "#eff6ff", paddingHorizontal: 10, paddingVertical: 8 },
-  progress: { height: 6, borderRadius: 8, overflow: "hidden", marginTop: 4 },
+  progress: { height: 5, borderRadius: 8, overflow: "hidden", marginTop: 2 },
   progressFill: { height: "100%", backgroundColor: palette.blue, borderRadius: 8 },
-  questionNavigator: { borderWidth: 1, borderRadius: 12, marginTop: 6, overflow: "hidden" },
+  questionNavigator: { borderWidth: 1, borderRadius: 12, marginTop: 3, overflow: "hidden" },
   questionGridToggle: { minHeight: 44, flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 12, paddingVertical: 8 },
   questionGrid: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 0, paddingHorizontal: 10, paddingBottom: 10 },
   questionGridItem: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   meta: { fontSize: 11, fontWeight: "700", marginTop: 8 },
-  question: { fontSize: 17, lineHeight: 25, fontWeight: "800", marginTop: 10, marginBottom: 4 },
-  option: { borderWidth: 1.5, borderRadius: 12, padding: 14, minHeight: 48, marginTop: 10 },
-  actions: { flexDirection: "row", gap: 10, marginTop: 10 },
+  question: { fontSize: 16, lineHeight: 22, fontWeight: "800", marginTop: 6, marginBottom: 2 },
+  option: { borderWidth: 1.5, borderRadius: 12, padding: 10, minHeight: 44, marginTop: 7 },
+  actions: { flexDirection: "row", gap: 10, marginTop: 8 },
   primary: { flex: 1, backgroundColor: palette.blue, borderRadius: 10, minHeight: 44, alignItems: "center", justifyContent: "center", paddingHorizontal: 9, marginTop: 0 },
   primaryText: { color: "#fff", fontWeight: "800" },
   secondary: { borderWidth: 1, borderRadius: 10, minHeight: 44, alignItems: "center", justifyContent: "center", paddingHorizontal: 10, marginTop: 0 },

@@ -292,6 +292,7 @@ export default function StudentAssignedExams() {
     const goToQuestion = (index: number) => setActiveQuestionIndex(Math.max(0, Math.min(index, questions.length - 1)));
     return <ExamLayout
       title={active.exam.title}
+      fullscreen
       eyebrow={"ASSIGNED EXAM · VERSION " + active.assignment.version}
       meta={answered + "/" + questions.length + " answered · " + (saving ? "Saving answers…" : dirtyRef.current ? "Answer save pending" : "Answers saved")}
       headerActions={<span className={"exam-layout-timer" + ((remainingSeconds ?? 0) < 300 ? " timer-warning" : "")}><small>TIME LEFT</small><strong>{formatRemainingTime(remainingSeconds ?? 0)}</strong></span>}

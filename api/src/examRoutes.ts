@@ -383,6 +383,45 @@ export function examRouter(db: PrismaClient): Router {
     }
   });
 
+  router.get("/admin/exams/:id/assignments", requireAuth, requireAdmin(db), async (req, res, next) => {
+    try {
+      const exam = await db.exam.findUnique({
+        where: { id: req.params.id },
+        select: {
+          id: true, title: true, status: true,
+          versions: {
+            where: { publishedAt: { not: null } },
+            orderBy: { version: "desc" },
+            select: {
+              id: true, version: true, publishedAt: true,
+              assignments: {
+                orderBy: { assignedAt: "desc" },
+                include: {
+                  student: { select: { id: true, fullName: true, email: true, registrationNumber: true, branchName: true, branchCode: true, accessStatus: true } },
+                  submission: { select: { id: true, status: true, submittedAt: true, score: true, maximumScore: true } },
+                  session: { select: { status: true, startedAt: true, lastHeartbeatAt: true } },
+                },
+              },
+            },
+          },
+        },
+      });
+      if (!exam) return next(notFound("Exam not found."));
+      res.json({ ok: true, exam: {
+        id: exam.id, title: exam.title, status: exam.status,
+        versions: exam.versions.map(version => ({
+          id: version.id, version: version.version, publishedAt: version.publishedAt,
+          assignments: version.assignments.map(assignment => ({
+            id: assignment.id, studentId: assignment.studentId, assignedAt: assignment.assignedAt,
+            availableFrom: assignment.availableFrom, dueAt: assignment.dueAt, status: assignment.status,
+            student: assignment.student, submission: assignment.submission,
+            session: assignment.session,
+          })),
+        })),
+      } });
+    } catch (error) { next(error); }
+  });
+
   router.post("/admin/exams/:id/assign", requireAuth, requireAdmin(db), async (req: AuthedRequest, res, next) => {
     let requestedStudentIds: number[] = [];
     let assignedVersionId: string | null = null;
@@ -422,12 +461,13 @@ export function examRouter(db: PrismaClient): Router {
 
       const assignments = await db.$transaction(async (tx) => {
         const results = [];
+        const alreadyAssignedStudentIds: number[] = [];
         for (const studentId of input.studentIds) {
           const existing = await tx.examAssignment.findUnique({
             where: { examVersionId_studentId: { examVersionId: version.id, studentId } },
             select: { id: true },
           });
-          if (existing) continue;
+          if (existing) { alreadyAssignedStudentIds.push(studentId); continue; }
           const assignment = await tx.examAssignment.create({
             data: {
               examVersionId: version.id,
@@ -448,9 +488,9 @@ export function examRouter(db: PrismaClient): Router {
           }
           results.push(assignment);
         }
-        return results;
+        return { createdAssignments: results, alreadyAssignedStudentIds };
       });
-      res.status(201).json({ ok: true, created: assignments.length, assignments });
+      res.status(assignments.createdAssignments.length ? 201 : 200).json({ ok: true, created: assignments.createdAssignments.length, assignments: assignments.createdAssignments, alreadyAssignedStudentIds: assignments.alreadyAssignedStudentIds, alreadyAssigned: assignments.createdAssignments.length === 0 });
     } catch (error) {
       if (
         typeof error === "object" &&
@@ -467,7 +507,7 @@ export function examRouter(db: PrismaClient): Router {
             })
           : [];
         if (existing.length === requestedStudentIds.length && requestedStudentIds.length > 0) {
-          return res.status(200).json({ ok: true, created: 0, assignments: existing, alreadyAssigned: true });
+          return res.status(200).json({ ok: true, created: 0, assignments: existing, alreadyAssignedStudentIds: requestedStudentIds, alreadyAssigned: true });
         }
         return next(conflict("One or more students already have an assignment for this exam version. Refresh the assignment list before retrying."));
       }

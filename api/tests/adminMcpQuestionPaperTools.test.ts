@@ -90,7 +90,8 @@ describe("administrator MCP question and exam paper intelligence", () => {
     expect(bankQuality).toMatchObject({ scanned: 2, metrics: { missingSource: 1, missingExplanation: 1, duplicateGroups: 1 } });
 
     const paper = await callTool("get_question_paper_details", { examId: exam.id, version: 1 });
-    expect(paper.exam.versions[0]).toMatchObject({ questionCount: 2, assignmentCount: 1, assignmentStatuses: { ASSIGNED: 1 }, questions: [{ id: snapshots[0].id, correctIndex: 0 }] });
+    expect(paper.exam.versions[0]).toMatchObject({ questionCount: 2, assignmentCount: 1, assignmentStatuses: { ASSIGNED: 1 } });
+    expect(paper.exam.versions[0].questions).toEqual(expect.arrayContaining([expect.objectContaining({ id: snapshots[0].id, correctIndex: 0 })]));
 
     const audit = await callTool("analyze_question_paper", { examId: exam.id, version: 1 });
     expect(audit).toMatchObject({ version: { number: 1, questionCount: 2 }, quality: { totalMarks: 4, totalNegativeMarks: 1, missingExplanation: 1, duplicatePromptGroups: 1, durationMayBeTight: true }, delivery: { assignments: 1, assignmentStatuses: { ASSIGNED: 1 } } });

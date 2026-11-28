@@ -254,8 +254,8 @@ export function questionRouter(db: PrismaClient): Router {
     try {
       const input = z.object({ ids: z.array(z.number().int().positive()).min(1).max(500) }).parse(req.body);
       if (new Set(input.ids).size !== input.ids.length) return next(badRequest("Question IDs must be unique."));
-      const result = await db.question.deleteMany({ where: { id: { in: input.ids } } });
-      res.json({ ok: true, deleted: result.count });
+      const result = await db.question.updateMany({ where: { id: { in: input.ids }, reviewStatus: { not: "DELETED" } }, data: { reviewStatus: "DELETED" } });
+      res.json({ ok: true, movedToTrash: result.count });
     } catch (error) {
       const databaseError = error instanceof Error ? error.message : "";
       const errorCode = typeof error === "object" && error !== null && "code" in error
@@ -323,10 +323,11 @@ export function questionRouter(db: PrismaClient): Router {
     try {
       const id = Number(req.params.id);
       if (!Number.isInteger(id) || id < 1) return next(badRequest("Invalid question ID."));
-      const question = await db.question.findUnique({ where: { id }, select: { id: true } });
+      const question = await db.question.findUnique({ where: { id }, select: { id: true, reviewStatus: true } });
       if (!question) return next(notFound("Question not found."));
-      await db.question.delete({ where: { id } });
-      res.json({ ok: true, deleted: id });
+      if (question.reviewStatus === "DELETED") return next(conflict("Question is already in Trash."));
+      await db.question.update({ where: { id }, data: { reviewStatus: "DELETED" } });
+      res.json({ ok: true, movedToTrash: id });
     } catch (error) {
       const databaseError = error instanceof Error ? error.message : "";
       const errorCode = typeof error === "object" && error !== null && "code" in error

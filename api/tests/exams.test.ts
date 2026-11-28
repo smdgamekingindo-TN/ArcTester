@@ -324,6 +324,9 @@ describe("versioned exam management", () => {
       where: { studentId },
     });
     assignmentId = assignment.id;
+    const repeatedAssignment = await request(`/admin/exams/${examId}/assign`, "POST", { studentIds: [studentId] }, adminCookie);
+    expect(repeatedAssignment.status).toBe(200);
+    expect(repeatedAssignment.json).toMatchObject({ created: 0, alreadyAssigned: true, alreadyAssignedStudentIds: [studentId] });
     const assignmentAudit = await request(`/admin/exams/${examId}/assignments`, "GET", undefined, adminCookie);
     expect(assignmentAudit.status).toBe(200);
     const auditExam = assignmentAudit.json.exam as { versions: { version: number; assignments: { id: string; studentId: number; student: { email: string }; submission: unknown }[] }[] };

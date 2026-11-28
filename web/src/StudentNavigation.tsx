@@ -20,9 +20,10 @@ interface StudentNavigationProps {
   onSignOut: () => void;
 }
 
-type NavItem = { page: StudentPage; label: string; icon: string; group: "HOME" | "EXAMS" | "ACCOUNT" };
+type NavItem = { page: StudentPage; label: string; icon: string; group: "HOME" | "LEARNING" | "EXAMS" | "ACCOUNT" };
 const NAV_ITEMS: NavItem[] = [
   { page: "dashboard", label: "Dashboard", icon: "⌂", group: "HOME" },
+  { page: "materials", label: "Study materials", icon: "▤", group: "LEARNING" },
   { page: "practice", label: "Practice exams", icon: "✎", group: "EXAMS" },
   { page: "assignments", label: "Assigned / real exams", icon: "▣", group: "EXAMS" },
   { page: "analytics", label: "Performance analytics", icon: "▥", group: "EXAMS" },
@@ -34,6 +35,7 @@ const NAV_ITEMS: NavItem[] = [
 ];
 
 const GROUPS: { id: NavItem["group"]; label: string }[] = [
+  { id: "LEARNING", label: "Learning resources" },
   { id: "EXAMS", label: "Exams & results" },
   { id: "ACCOUNT", label: "Account" },
 ];

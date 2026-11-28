@@ -261,16 +261,26 @@ export function questionAdminRouter(db: PrismaClient): Router {
 
   router.post("/admin/questions/bulk-delete", async (req, res, next) => {
     try {
-      const { ids } = BulkSchema.parse(req.body);
-      const [answers, snapshots, stats] = await Promise.all([
-        db.attemptAnswer.findMany({ where: { questionId: { in: ids } }, select: { questionId: true }, distinct: ["questionId"] }),
-        db.examVersionQuestion.findMany({ where: { sourceQuestionId: { in: ids } }, select: { sourceQuestionId: true }, distinct: ["sourceQuestionId"] }),
-        db.stat.findMany({ where: { questionId: { in: ids } }, select: { questionId: true }, distinct: ["questionId"] }),
-      ]);
-      const blocked = new Set([...answers.map(x => x.questionId), ...stats.map(x => x.questionId), ...snapshots.map(x => x.sourceQuestionId).filter((x): x is number => x !== null)]);
-      const safeIds = ids.filter(id => !blocked.has(id));
-      const deleted = await db.question.deleteMany({ where: { id: { in: safeIds } } });
-      res.json({ ok: true, deleted: deleted.count, blocked: [...blocked] });
+      const input = z.object({ ids: z.array(z.number().int().positive()).min(1).max(500), permanent: z.boolean().default(false) }).parse(req.body);
+      if (new Set(input.ids).size !== input.ids.length) return next(badRequest("Question IDs must be unique."));
+      if (input.permanent) {
+        const rows = await db.question.findMany({ where: { id: { in: input.ids }, reviewStatus: "DELETED" }, select: { id: true } });
+        if (rows.length !== input.ids.length) return next(badRequest("Permanent deletion is allowed only for questions already in Trash."));
+        const [answers, snapshots, stats, lessons, pathAnswers, reviews] = await Promise.all([
+          db.attemptAnswer.findMany({ where: { questionId: { in: input.ids } }, select: { questionId: true }, distinct: ["questionId"] }),
+          db.examVersionQuestion.findMany({ where: { sourceQuestionId: { in: input.ids } }, select: { sourceQuestionId: true }, distinct: ["sourceQuestionId"] }),
+          db.stat.findMany({ where: { questionId: { in: input.ids } }, select: { questionId: true }, distinct: ["questionId"] }),
+          db.lessonQuestion.findMany({ where: { questionId: { in: input.ids } }, select: { questionId: true }, distinct: ["questionId"] }),
+          db.pathAnswer.findMany({ where: { questionId: { in: input.ids } }, select: { questionId: true }, distinct: ["questionId"] }),
+          db.userQuestionReview.findMany({ where: { questionId: { in: input.ids } }, select: { questionId: true }, distinct: ["questionId"] }),
+        ]);
+        const referenced = new Set([...answers.map(x=>x.questionId), ...snapshots.map(x=>x.sourceQuestionId), ...stats.map(x=>x.questionId), ...lessons.map(x=>x.questionId), ...pathAnswers.map(x=>x.questionId), ...reviews.map(x=>x.questionId)].filter((x): x is number => x !== null));
+        if (referenced.size) return next(conflict("Permanent deletion blocked because questions are referenced by attempts, exam snapshots, statistics, lessons, learning paths or reviews. Keep them in Trash to preserve history. IDs: " + [...referenced].join(", ") + "."));
+        const deleted = await db.question.deleteMany({ where: { id: { in: input.ids }, reviewStatus: "DELETED" } });
+        return res.json({ ok: true, deleted: deleted.count, permanent: true, blocked: [] });
+      }
+      const moved = await db.question.updateMany({ where: { id: { in: input.ids }, reviewStatus: { not: "DELETED" } }, data: { reviewStatus: "DELETED" } });
+      res.json({ ok: true, movedToTrash: moved.count, permanent: false, blocked: [] });
     } catch (error) { next(error); }
   });
 

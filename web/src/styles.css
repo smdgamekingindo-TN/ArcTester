@@ -1879,7 +1879,7 @@ html[data-admin-density="compact"] .bank-question{padding:12px 16px}
 @media(max-width:720px){.question-import-audience{grid-template-columns:1fr;padding:14px}.question-import-audience-fields{grid-template-columns:1fr}.question-import-audience small{grid-column:auto}}
 
 /* Shared exam navigation: compact, in-flow controls rather than floating overlays */
-.exam-layout-question-navigation{display:grid;gap:10px;border:1px solid var(--border);border-radius:12px;padding:12px;background:var(--surface);min-width:0}
+.exam-layout-question-navigation{min-width:0}
 .exam-question-navigation-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px}
 .exam-question-navigation-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(40px,1fr));gap:8px}
 .exam-question-number{position:relative;min-width:0;min-height:38px;padding:5px;border:1px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text);font-size:12px;font-weight:800;cursor:pointer}

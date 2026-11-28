@@ -129,7 +129,7 @@ export default function StudentExamCenter({ api, darkMode, disabled }: Props) {
   if (paper) {
     const question = paper.questions[index];
     const answered = Object.values(answers).filter(value => value !== null && value !== undefined).length;
-    return <View style={[styles.examCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+    return <View style={[styles.examCard, { backgroundColor: colors.card, borderColor: colors.border }]}> 
       <View style={styles.top}><View style={{ flex: 1 }}><Text style={[styles.title, { color: colors.text }]}>{paper.title}</Text><Text style={[styles.muted, { color: colors.muted }]}>Question {index + 1} / {paper.questions.length}</Text></View><View style={[styles.timer, seconds < 60 && { backgroundColor: "#fee2e2" }]}><MaterialCommunityIcons name="timer-outline" size={17} color={seconds < 60 ? palette.red : palette.blue}/><Text style={{ color: seconds < 60 ? palette.red : palette.blue, fontWeight: "900" }}>{formatTime(seconds)}</Text></View></View>
       <View style={[styles.progress, { backgroundColor: colors.border }]}><View style={[styles.progressFill, { width: `${100 * answered / paper.questions.length}%` }]} /></View>
       <View style={[styles.questionNavigator, { borderColor: colors.border, backgroundColor: colors.surface }]}>

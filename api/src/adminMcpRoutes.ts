@@ -131,6 +131,10 @@ export function adminMcpRouter(db: PrismaClient): Router {
         { name: "record_model_evaluation", description: "Record an admin-attested candidate-vs-baseline result on an attested verification dataset. Candidate must not regress on the primary metric.", inputSchema: { type: "object", required: ["modelId","candidateVersion","baselineVersion","datasetId","sampleCount","metrics","confirm"], properties: { modelId: { type: "string" }, candidateVersion: { type: "integer", minimum: 1 }, baselineVersion: { type: "integer", minimum: 1 }, datasetId: { type: "string" }, sampleCount: { type: "integer", minimum: 1 }, metrics: { type: "object" }, confirm: { type: "boolean" } } } },
         { name: "evaluate_registered_model", description: "Compute candidate and baseline predictions from registered native artifacts on an attested verification dataset. Records real accuracy or MAE; does not train or activate.", inputSchema: { type: "object", required: ["modelId","candidateVersion","baselineVersion","datasetId","confirm"], properties: { modelId: { type: "string" }, candidateVersion: { type: "integer", minimum: 1 }, baselineVersion: { type: "integer", minimum: 1 }, datasetId: { type: "string" }, confirm: { type: "boolean" } } } },
         { name: "activate_model_version", description: "Assign a registered version as active for its modelId only after a passing verification evaluation and explicit confirmation. This updates registry assignment; inference consumers must separately support the modelId.", inputSchema: { type: "object", required: ["modelId","version","confirm"], properties: { modelId: { type: "string" }, version: { type: "integer", minimum: 1 }, confirm: { type: "boolean" } } } },
+        { name: "get_question_details", description: "Fetch full authoring and answer-key details for specific question IDs, including source, explanation, type-specific data, review state and audience. Requires questions:read.", inputSchema: { type: "object", required: ["ids"], properties: { ids: { type: "array", minItems: 1, maxItems: 100, items: { type: "integer", minimum: 1 } } } } },
+        { name: "analyze_question_bank_quality", description: "Audit question-bank quality by subject/topic/status/branch: missing sources or explanations, suspiciously short prompts, normalized duplicate text, difficulty/type distributions and a bounded issue list. Requires questions:read.", inputSchema: { type: "object", properties: { subject: { type: "string", maxLength: 100 }, topic: { type: "string", maxLength: 100 }, reviewStatus: { type: "string", enum: ["DRAFT","APPROVED","REJECTED"] }, targetBranchCode: { type: "string", maxLength: 40 }, limit: { type: "integer", minimum: 1, maximum: 2000 } } } },
+        { name: "get_question_paper_details", description: "Read the exact saved exam version including immutable question snapshots, answer keys, marks, publication state and assignment/submission status counts. Requires papers:read.", inputSchema: { type: "object", required: ["examId"], properties: { examId: { type: "string", minLength: 1 }, version: { type: "integer", minimum: 1 } } } },
+        { name: "analyze_question_paper", description: "Run a paper-level quality audit: total marks, per-subject/topic balance, duplicated prompts, missing answer/explanation, zero or invalid marks, duration estimate and assignment status. Does not modify the paper. Requires papers:read.", inputSchema: { type: "object", required: ["examId"], properties: { examId: { type: "string", minLength: 1 }, version: { type: "integer", minimum: 1 } } } },
         { name: "inspect_exam_assignments", description: "Inspect every published version of an exam and the student assignment, session, and submission status. Use this to diagnose an exam a student says is missing. Requires papers:read.", inputSchema: { type: "object", required: ["examId"], properties: { examId: { type: "string", minLength: 1 }, studentId: { type: "integer", minimum: 1 } } } },
         { name: "get_admin_system_health", description: "Read privacy-safe operational counts for students, question review, exams, assignments, sessions and submissions. Does not expose secrets or raw student answers. Requires activity:read.", inputSchema: { type: "object", properties: {} } },
       ] } });
@@ -269,6 +273,37 @@ export function adminMcpRouter(db: PrismaClient): Router {
           const questions=await db.question.findMany({where:{...(input.subject?{subject:{name:input.subject}}:{}),...(input.topic?{topic:{name:input.topic}}:{}),...(input.reviewStatus?{reviewStatus:input.reviewStatus}:{}),...(input.audienceScope?{audienceScope:input.audienceScope}:{}),...(input.targetBranchCode?{targetBranchCode:input.targetBranchCode}:{}),...(input.targetBranchName?{targetBranchName:input.targetBranchName}:{}),...(input.search?{text:{contains:input.search,mode:"insensitive"}}:{})},take:input.limit,orderBy:{createdAt:"desc"},include:{subject:{select:{name:true}},topic:{select:{name:true}}}});
           output={questions:questions.map(q=>({id:q.id,subject:q.subject.name,topic:q.topic?.name??"General",text:q.text,options:JSON.parse(q.options),correctIndex:q.correctIndex,explanation:q.explanation,source:q.source,difficulty:q.difficulty,reviewStatus:q.reviewStatus,audienceScope:q.audienceScope,targetBranchCode:q.targetBranchCode,targetBranchName:q.targetBranchName}))};summary="searched questions";break;
         }
+        case "get_question_details": {
+          if (!scope(key, "questions:read")) return res.json(rpcError(id, -32003, "Missing questions:read scope."));
+          const input = z.object({ ids: z.array(z.number().int().positive()).min(1).max(100) }).refine(v => new Set(v.ids).size === v.ids.length, { message: "Question IDs must be unique." }).parse(args);
+          const rows = await db.question.findMany({ where: { id: { in: input.ids } }, include: { subject: { select: { name: true } }, topic: { select: { name: true } } } });
+          const byId = new Map(rows.map(q => [q.id, q]));
+          output = { questions: input.ids.map(id => { const q = byId.get(id); return q ? { id: q.id, subject: q.subject.name, topic: q.topic?.name ?? "General", text: q.text, questionType: q.questionType, promptData: JSON.parse(q.promptData), options: JSON.parse(q.options), correctIndex: q.correctIndex, answerData: JSON.parse(q.answerData), explanation: q.explanation, source: q.source, difficulty: q.difficulty, reviewStatus: q.reviewStatus, audienceScope: q.audienceScope, targetCollegeCode: q.targetCollegeCode, targetCollegeName: q.targetCollegeName, targetBranchCode: q.targetBranchCode, targetBranchName: q.targetBranchName, targetStudentIds: JSON.parse(q.targetStudentIdsJson), createdAt: q.createdAt } : { id, missing: true }; }) };
+          summary = "retrieved details for " + rows.length + " questions"; break;
+        }
+        case "analyze_question_bank_quality": {
+          if (!scope(key, "questions:read")) return res.json(rpcError(id, -32003, "Missing questions:read scope."));
+          const input = z.object({ subject: z.string().trim().max(100).optional(), topic: z.string().trim().max(100).optional(), reviewStatus: z.enum(["DRAFT","APPROVED","REJECTED"]).optional(), targetBranchCode: z.string().trim().max(40).optional(), limit: z.number().int().min(1).max(2000).default(1000) }).parse(args);
+          const rows = await db.question.findMany({ where: { ...(input.subject ? { subject: { name: input.subject } } : {}), ...(input.topic ? { topic: { name: input.topic } } : {}), ...(input.reviewStatus ? { reviewStatus: input.reviewStatus } : {}), ...(input.targetBranchCode ? { targetBranchCode: input.targetBranchCode } : {}) }, take: input.limit, orderBy: { id: "asc" }, select: { id: true, text: true, questionType: true, explanation: true, source: true, difficulty: true, reviewStatus: true, subject: { select: { name: true } }, topic: { select: { name: true } } } });
+          const normalize = (value: string) => value.toLocaleLowerCase().normalize("NFKC").replace(/[^\\p{L}\\p{N}]+/gu, " ").trim();
+          const seen = new Map<string, number[]>();
+          const difficulties: Record<string, number> = {}, types: Record<string, number> = {}, subjects: Record<string, number> = {}, topics: Record<string, number> = {};
+          const issues: { id: number; issue: string; text: string }[] = [];
+          let missingSource = 0, missingExplanation = 0, shortPrompt = 0;
+          for (const q of rows) {
+            difficulties[q.difficulty] = (difficulties[q.difficulty] ?? 0) + 1; types[q.questionType] = (types[q.questionType] ?? 0) + 1;
+            subjects[q.subject.name] = (subjects[q.subject.name] ?? 0) + 1; const topic = q.topic?.name ?? "General"; topics[topic] = (topics[topic] ?? 0) + 1;
+            const normalized = normalize(q.text); if (normalized.length >= 12) { const ids = seen.get(normalized) ?? []; ids.push(q.id); seen.set(normalized, ids); }
+            const add = (issue: string) => { if (issues.length < 100) issues.push({ id: q.id, issue, text: q.text.slice(0, 240) }); };
+            if (!q.source.trim() || q.source.trim().toUpperCase() === "NEEDS HUMAN REVIEW") { missingSource++; add("missing_or_placeholder_source"); }
+            if (!q.explanation.trim()) { missingExplanation++; add("missing_explanation"); }
+            if (normalized.length < 25) { shortPrompt++; add("very_short_prompt"); }
+          }
+          const duplicateGroups = [...seen.entries()].filter(([,ids]) => ids.length > 1).map(([normalizedText,ids]) => ({ questionIds: ids, normalizedText: normalizedText.slice(0,240) }));
+          for (const group of duplicateGroups) for (const questionId of group.questionIds) if (issues.length < 100 && !issues.some(issue => issue.id === questionId && issue.issue === "normalized_duplicate_prompt") issues.push({ id: questionId, issue: "normalized_duplicate_prompt", text: group.normalizedText });
+          output = { scanned: rows.length, truncated: rows.length === input.limit, filters: input, metrics: { missingSource, missingExplanation, shortPrompt, duplicateGroups: duplicateGroups.length, duplicateQuestionCount: duplicateGroups.reduce((sum,g)=>sum+g.questionIds.length,0), difficultyDistribution: difficulties, questionTypeDistribution: types, subjectDistribution: subjects, topicDistribution: topics }, duplicateGroups: duplicateGroups.slice(0,100), issues };
+          summary = "audited question bank quality across " + rows.length + " questions"; break;
+        }
         case "create_questions": {
           if(!scope(key,"questions:create"))return res.json(rpcError(id,-32003,"Missing questions:create scope."));
           const audienceInput=z.object({
@@ -350,6 +385,40 @@ export function adminMcpRouter(db: PrismaClient): Router {
           if (new Set(input.ids).size !== input.ids.length) return res.json(rpcError(id, -32602, "Question IDs must be unique."));
           const result = await db.question.updateMany({ where: { id: { in: input.ids }, reviewStatus: "DRAFT" }, data: { reviewStatus: "REJECTED" } });
           output = { rejected: result.count }; summary = "rejected " + result.count + " drafts"; break;
+        }
+        case "get_question_paper_details": {
+          if (!scope(key, "papers:read")) return res.json(rpcError(id, -32003, "Missing papers:read scope."));
+          const input = z.object({ examId: z.string().min(1), version: z.number().int().positive().optional() }).parse(args);
+          const exam = await db.exam.findUnique({ where: { id: input.examId }, include: { versions: { ...(input.version ? { where: { version: input.version } } : {}), orderBy: { version: "desc" }, include: { questions: { orderBy: { position: "asc" } }, _count: { select: { assignments: true } }, assignments: { select: { status: true, submission: { select: { status: true } } } } } } } });
+          if (!exam) return res.json(rpcError(id, -32004, "Exam not found."));
+          output = { exam: { id: exam.id, title: exam.title, description: exam.description, status: exam.status, createdAt: exam.createdAt, versions: exam.versions.map(v => { const assignmentStatuses: Record<string, number> = {}, submissionStatuses: Record<string, number> = {}; for (const a of v.assignments) { assignmentStatuses[a.status] = (assignmentStatuses[a.status] ?? 0) + 1; if (a.submission) submissionStatuses[a.submission.status] = (submissionStatuses[a.submission.status] ?? 0) + 1; } return { id: v.id, version: v.version, publishedAt: v.publishedAt, durationMinutes: v.durationMinutes, instructions: v.instructions, shuffleQuestions: v.shuffleQuestions, shuffleOptions: v.shuffleOptions, integrityLevel: v.integrityLevel, requireSecureClient: v.requireSecureClient, maxViolations: v.maxViolations, autoTerminate: v.autoTerminate, questionCount: v.questions.length, assignmentCount: v._count.assignments, assignmentStatuses, submissionStatuses, questions: v.questions.map(q => ({ id: q.id, sourceQuestionId: q.sourceQuestionId, position: q.position, subject: q.subject, topic: q.topic, text: q.text, options: JSON.parse(q.options), correctIndex: q.correctIndex, explanation: q.explanation, marks: q.marks, negativeMarks: q.negativeMarks })) }; }) } };
+          summary = "retrieved exam paper " + exam.id; break;
+        }
+        case "analyze_question_paper": {
+          if (!scope(key, "papers:read")) return res.json(rpcError(id, -32003, "Missing papers:read scope."));
+          const input = z.object({ examId: z.string().min(1), version: z.number().int().positive().optional() }).parse(args);
+          const exam = await db.exam.findUnique({ where: { id: input.examId }, include: { versions: { ...(input.version ? { where: { version: input.version } } : {}), orderBy: { version: "desc" }, take: 1, include: { questions: { orderBy: { position: "asc" } }, _count: { select: { assignments: true } }, assignments: { select: { status: true, submission: { select: { status: true } } } } } } } });
+          if (!exam) return res.json(rpcError(id, -32004, "Exam not found."));
+          const v = exam.versions[0]; if (!v) return res.json(rpcError(id, -32004, "Requested exam version not found."));
+          const subjectCounts: Record<string, number> = {}, topicCounts: Record<string, number> = {}, issueCounts: Record<string, number> = {};
+          const seen = new Map<string, number[]>(); let totalMarks = 0, maxNegativeMarks = 0, missingExplanation = 0, invalidMarks = 0, shortPrompts = 0;
+          const issues: { position: number; issue: string; text: string }[] = [];
+          const addIssue = (position: number, issue: string, text: string) => { issueCounts[issue] = (issueCounts[issue] ?? 0) + 1; if (issues.length < 100) issues.push({ position, issue, text: text.slice(0,240) }); };
+          for (const q of v.questions) {
+            subjectCounts[q.subject] = (subjectCounts[q.subject] ?? 0) + 1; const topic = q.topic ?? "General"; topicCounts[topic] = (topicCounts[topic] ?? 0) + 1;
+            totalMarks += q.marks; maxNegativeMarks += q.negativeMarks;
+            const normalized = q.text.toLocaleLowerCase().normalize("NFKC").replace(/[^\\p{L}\\p{N}]+/gu," ").trim(); if (normalized.length >= 12) { const ids = seen.get(normalized) ?? []; ids.push(q.position); seen.set(normalized,ids); }
+            if (!q.explanation.trim()) { missingExplanation++; addIssue(q.position,"missing_explanation",q.text); }
+            if (!Number.isFinite(q.marks) || q.marks <= 0 || !Number.isFinite(q.negativeMarks) || q.negativeMarks < 0 || q.negativeMarks > q.marks) { invalidMarks++; addIssue(q.position,"invalid_marks",q.text); }
+            if (normalized.length < 25) { shortPrompts++; addIssue(q.position,"very_short_prompt",q.text); }
+            if (q.correctIndex < 0 || (JSON.parse(q.options) as unknown[]).length > 0 && q.correctIndex >= (JSON.parse(q.options) as unknown[]).length) addIssue(q.position,"invalid_correct_answer_index",q.text);
+          }
+          const duplicateGroups = [...seen.entries()].filter(([,positions])=>positions.length>1).map(([text,positions])=>({positions,normalizedText:text.slice(0,240)}));
+          for (const group of duplicateGroups) for (const position of group.positions) if (issues.length < 100 && !issues.some(issue=>issue.position===position&&issue.issue==="duplicate_prompt")) addIssue(position,"duplicate_prompt",group.normalizedText);
+          const assignmentStatuses: Record<string,number> = {}, submissionStatuses: Record<string,number> = {}; for (const a of v.assignments) { assignmentStatuses[a.status]=(assignmentStatuses[a.status]??0)+1; if(a.submission)submissionStatuses[a.submission.status]=(submissionStatuses[a.submission.status]??0)+1; }
+          const estimatedMinutes = Math.ceil(v.questions.length * 1.5);
+          output = { exam: { id: exam.id, title: exam.title, status: exam.status }, version: { id: v.id, number: v.version, publishedAt: v.publishedAt, durationMinutes: v.durationMinutes, questionCount: v.questions.length }, quality: { totalMarks, totalNegativeMarks: maxNegativeMarks, subjectDistribution: subjectCounts, topicDistribution: topicCounts, missingExplanation, invalidMarks, shortPrompts, duplicatePromptGroups: duplicateGroups.length, estimatedMinutes, durationMayBeTight: estimatedMinutes > v.durationMinutes, issueCounts, issues }, delivery: { assignments: v._count.assignments, assignmentStatuses, submissionStatuses } };
+          summary = "analyzed exam paper " + exam.id + " version " + v.version; break;
         }
         case "create_question_paper": {
           if(!scope(key,"papers:create"))return res.json(rpcError(id,-32003,"Missing papers:create scope."));

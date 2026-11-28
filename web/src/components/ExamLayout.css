@@ -59,3 +59,24 @@
  .exam-layout-submit{min-height:44px}
  .exam-question-navigation{padding:9px}
 }
+
+/* Mobile assigned-exam mode: use the viewport and remove the excess vertical padding. */
+@media(max-width:720px){
+ .exam-layout-fullscreen{gap:9px;padding:calc(8px + env(safe-area-inset-top)) 10px calc(10px + env(safe-area-inset-bottom));}
+ .exam-layout-fullscreen .exam-layout-header{align-items:flex-start;gap:8px;}
+ .exam-layout-fullscreen .exam-layout-heading h1{font-size:clamp(18px,5vw,23px);line-height:1.16;margin:2px 0 3px;}
+ .exam-layout-fullscreen .exam-layout-meta{font-size:11px;line-height:1.35;}
+ .exam-layout-fullscreen .exam-layout-progress{padding:8px 10px;gap:6px;}
+ .exam-layout-fullscreen .exam-layout-progress-copy{font-size:11px;gap:3px 8px;}
+ .exam-layout-fullscreen .exam-layout-question>.assigned-current-question{padding:11px;margin:0;}
+ .exam-layout-fullscreen .assigned-current-question .current-question-heading{gap:7px;}
+ .exam-layout-fullscreen .assigned-current-question .current-question-heading h2{font-size:clamp(15px,4.2vw,18px);line-height:1.4;margin:5px 0 9px;}
+ .exam-layout-fullscreen .assigned-current-question .options{gap:7px;margin-top:9px;}
+ .exam-layout-fullscreen .assigned-current-question .options .option{padding:9px 10px;font-size:12px;line-height:1.4;gap:8px;}
+ .exam-layout-fullscreen .exam-layout-question-navigation{padding:7px 9px;}
+ .exam-layout-fullscreen .exam-question-navigation{gap:7px;padding:7px 9px;}
+ .exam-layout-fullscreen .exam-question-number{min-height:31px;}
+ .exam-layout-fullscreen .exam-layout-footer{gap:6px;padding:7px;}
+ .exam-layout-fullscreen .exam-layout-nav{min-height:36px;padding:6px 8px;font-size:11px;}
+ .exam-layout-fullscreen .exam-layout-submit{min-height:40px;}
+}

@@ -29,7 +29,7 @@ describe("administrator MCP question and exam paper intelligence", () => {
     bearer = "arc_admin_" + randomBytes(32).toString("base64url");
     await server.db.adminMcpKey.create({ data: {
       userId: admin.id, name: "question-paper-tools-test", keyHash: digest(bearer),
-      scopes: ["questions:read", "papers:read"],
+      scopes: ["questions:read", "questions:review", "papers:read"],
     } });
   });
   afterAll(async () => { await server.close(); });
@@ -60,11 +60,31 @@ describe("administrator MCP question and exam paper intelligence", () => {
       body: JSON.stringify({ jsonrpc: "2.0", id: 2, method: "tools/list" }),
     }).then(r => r.json()) as { result?: { tools?: Array<{ name: string }> } };
     const names = listed.result?.tools?.map(t => t.name) ?? [];
-    expect(names).toEqual(expect.arrayContaining(["get_question_details", "analyze_question_bank_quality", "get_question_paper_details", "analyze_question_paper"]));
+    expect(names).toEqual(expect.arrayContaining(["get_question_details", "analyze_question_bank_quality", "get_question_paper_details", "analyze_question_paper", "edit_question", "delete_questions", "restore_questions", "permanently_delete_questions"]));
 
     const detail = await callTool("get_question_details", { ids: [questions[0].id, 99999999] });
     expect(detail.questions[0]).toMatchObject({ id: questions[0].id, subject: subject.name, correctIndex: 0, source: "Computer Networks syllabus, transport layer" });
     expect(detail.questions[1]).toMatchObject({ id: 99999999, missing: true });
+
+    const edited = await callTool("edit_question", { id: questions[0].id, patch: { explanation: "Revised: TCP provides reliable, ordered delivery." } });
+    expect(edited.question).toMatchObject({ id: questions[0].id, reviewStatus: "APPROVED" });
+    await callTool("delete_questions", { ids: [questions[0].id], confirm: true });
+    const trash = await callTool("search_question_bank", { reviewStatus: "DELETED", limit: 10 });
+    expect(trash.questions).toEqual(expect.arrayContaining([expect.objectContaining({ id: questions[0].id, reviewStatus: "DELETED" })]));
+    const restored = await callTool("restore_questions", { ids: [questions[0].id], reviewStatus: "APPROVED", confirm: true });
+    expect(restored).toMatchObject({ restored: 1, reviewStatus: "APPROVED" });
+
+    const disposable = await server.db.question.create({ data: {
+      subjectId: subject.id, topicId: topic.id, text: "Which protocol resolves a domain name into an IP address?",
+      questionType: "mcq", promptData: "{}", answerData: "{}", options: JSON.stringify(["DNS", "DHCP", "ARP", "SMTP"]),
+      correctIndex: 0, explanation: "DNS maps names to IP addresses.", source: "Computer Networks reference",
+      difficulty: "easy", reviewStatus: "DRAFT", audienceScope: "ALL", targetStudentIdsJson: "[]",
+      questionHash: digest("mcp-permanent-delete-fixture"),
+    } });
+    await callTool("delete_questions", { ids: [disposable.id], confirm: true });
+    const permanentlyDeleted = await callTool("permanently_delete_questions", { ids: [disposable.id], confirm: true });
+    expect(permanentlyDeleted).toMatchObject({ permanentlyDeleted: 1 });
+    expect(await server.db.question.findUnique({ where: { id: disposable.id }, select: { id: true } })).toBeNull();
 
     const bankQuality = await callTool("analyze_question_bank_quality", { subject: subject.name, limit: 20 });
     expect(bankQuality).toMatchObject({ scanned: 2, metrics: { missingSource: 1, missingExplanation: 1, duplicateGroups: 1 } });

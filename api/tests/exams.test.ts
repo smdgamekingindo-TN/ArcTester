@@ -430,8 +430,22 @@ describe("versioned exam management", () => {
   });
 
   it("protects practice history while preserving immutable exam snapshots on question deletion", async () => {
-    const usedQuestion = await server.db.question.findUniqueOrThrow({
+    const seedQuestion = await server.db.question.findUniqueOrThrow({
       where: { questionHash: "exam-route-question-fifo-unique" },
+    });
+    const usedQuestion = await server.db.question.create({
+      data: {
+        subjectId: seedQuestion.subjectId,
+        topicId: seedQuestion.topicId,
+        text: "Practice history soft-delete fixture " + randomUUID(),
+        options: JSON.stringify(["Option A", "Option B", "Option C", "Option D"]),
+        correctIndex: 1,
+        explanation: "Historical attempt snapshot remains available.",
+        source: "Practice history deletion regression",
+        difficulty: "easy",
+        reviewStatus: "APPROVED",
+        questionHash: "practice-history-" + randomUUID(),
+      },
     });
     await server.db.attempt.create({
       data: {
@@ -456,8 +470,9 @@ describe("versioned exam management", () => {
       },
     });
     const blocked = await request(`/admin/questions/${usedQuestion.id}`, "DELETE", undefined, adminCookie);
-    expect(blocked.status).toBe(409);
-    expect(await server.db.question.findUnique({ where: { id: usedQuestion.id } })).not.toBeNull();
+    expect(blocked.status).toBe(200);
+    expect(await server.db.question.findUnique({ where: { id: usedQuestion.id } })).toMatchObject({ reviewStatus: "DELETED" });
+    expect(await server.db.attemptAnswer.count({ where: { questionId: usedQuestion.id } })).toBe(1);
 
     // Do not let this regression fixture affect the analytics sample-size
     // assertions later in this same integration suite.

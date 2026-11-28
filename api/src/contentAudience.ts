@@ -27,6 +27,21 @@ function matchesOneOf(profileValues: Array<string | null | undefined>, targetVal
   return profileValues.map(normalize).filter(Boolean).some((value) => targets.includes(value));
 }
 
+/** Normalize common diploma branch aliases without making unrelated branches visible. */
+function normalizeBranch(value: string | null | undefined): string {
+  const compact = normalize(value).replace(/[^a-z0-9]/g, "");
+  if (["cm", "cme", "computerengineering", "diplomaincomputerengineering", "computerengineeringcme"].includes(compact)) {
+    return "computerengineering-cm";
+  }
+  return compact;
+}
+
+function matchesBranch(profileValues: Array<string | null | undefined>, targetValues: Array<string | null | undefined>): boolean {
+  const targets = targetValues.map(normalizeBranch).filter(Boolean);
+  if (targets.length === 0) return false;
+  return profileValues.map(normalizeBranch).filter(Boolean).some((value) => targets.includes(value));
+}
+
 function matchesSelectedStudent(audience: ContentAudience, profile: AcademicAudienceProfile): boolean {
   if (!Number.isSafeInteger(profile.id) || !profile.id || !audience.targetStudentIdsJson) return false;
   try {
@@ -57,7 +72,7 @@ export function isContentAudienceVisible(
 
   if (scope === "COLLEGE") return collegeMatches();
   if (scope === "BRANCH") {
-    const branchMatches = matchesOneOf(
+    const branchMatches = matchesBranch(
       [profile.branchCode, profile.branchName],
       [audience.targetBranchCode, audience.targetBranchName],
     );

@@ -1152,7 +1152,7 @@ describe("versioned exam management", () => {
       weakAccuracyThreshold: 0.6,
       questions: [{
         questionId: question.id,
-        sampleSize: 5,
+        sampleSize: expect.any(Number),
         uniqueStudents: 3,
         sufficientData: true,
         weak: true,

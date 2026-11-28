@@ -211,7 +211,7 @@ describe("versioned exam management", () => {
   });
 
   it("validates paper duplicates, subject blueprint and difficulty balance", async () => {
-    const question = await server.db.question.findFirstOrThrow();
+    const question = await server.db.question.findFirstOrThrow({ where: { text: "Which structure follows FIFO?", reviewStatus: "APPROVED" } });
     const duplicate = await request("/admin/exams/validate-paper", "POST", {
       durationMinutes: 60,
       questions: [
@@ -230,7 +230,7 @@ describe("versioned exam management", () => {
   });
 
   it("rejects a paper where every question has zero marks", async () => {
-    const question = await server.db.question.findFirstOrThrow();
+    const question = await server.db.question.findFirstOrThrow({ where: { text: "Which structure follows FIFO?", reviewStatus: "APPROVED" } });
     const response = await request("/admin/exams", "POST", {
       title: "Zero Mark Paper",
       description: "",
@@ -245,7 +245,7 @@ describe("versioned exam management", () => {
   });
 
   it("rejects a paper where negative marks exceed correct-answer marks", async () => {
-    const question = await server.db.question.findFirstOrThrow();
+    const question = await server.db.question.findFirstOrThrow({ where: { text: "Which structure follows FIFO?", reviewStatus: "APPROVED" } });
     const response = await request("/admin/exams", "POST", {
       title: "Invalid Marking Paper",
       description: "",
@@ -259,7 +259,7 @@ describe("versioned exam management", () => {
   });
 
   it("creates a draft with immutable question snapshots and marking values", async () => {
-    const question = await server.db.question.findFirstOrThrow();
+    const question = await server.db.question.findFirstOrThrow({ where: { text: "Which structure follows FIFO?", reviewStatus: "APPROVED" } });
     const response = await request(
       "/admin/exams",
       "POST",
@@ -520,7 +520,7 @@ describe("versioned exam management", () => {
     let fixture!: { examId: string; assignments: Array<{ id: string; studentId: number }>; studentIds: number[]; cookies: string[]; questionSnapshotId: string; questionId: number; lateAssignmentId?: string };
     const emails = ["lifecycle-a@arctester.test", "lifecycle-b@arctester.test", "lifecycle-c@arctester.test", "lifecycle-d@arctester.test", "lifecycle-race@arctester.test"];
     beforeAll(async () => {
-      const existingQuestion = await server.db.question.findFirstOrThrow();
+      const existingQuestion = await server.db.question.findFirstOrThrow({ where: { text: "Which structure follows FIFO?", reviewStatus: "APPROVED" } });
       const question = await server.db.question.create({ data: {
         subjectId: existingQuestion.subjectId,
         text: "Formal lifecycle isolated FIFO fixture " + randomUUID(),
@@ -1282,7 +1282,7 @@ describe("versioned exam management", () => {
   });
 
   it("releases many held submissions in one audited bulk action", async () => {
-    const question = await server.db.question.findFirstOrThrow();
+    const question = await server.db.question.findFirstOrThrow({ where: { text: "Which structure follows FIFO?", reviewStatus: "APPROVED" } });
     const created = await request(
       "/admin/exams",
       "POST",
@@ -1469,7 +1469,7 @@ describe("versioned exam management", () => {
   });
 
   it("keeps the published version snapshot unchanged when the source bank question changes", async () => {
-    const question = await server.db.question.findFirstOrThrow();
+    const question = await server.db.question.findFirstOrThrow({ where: { text: "Which structure follows FIFO?", reviewStatus: "APPROVED" } });
     await server.db.question.update({
       where: { id: question.id },
       data: { text: "Changed source question text" },

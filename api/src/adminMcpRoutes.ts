@@ -285,7 +285,7 @@ export function adminMcpRouter(db: PrismaClient): Router {
           if (!scope(key, "questions:read")) return res.json(rpcError(id, -32003, "Missing questions:read scope."));
           const input = z.object({ subject: z.string().trim().max(100).optional(), topic: z.string().trim().max(100).optional(), reviewStatus: z.enum(["DRAFT","APPROVED","REJECTED"]).optional(), targetBranchCode: z.string().trim().max(40).optional(), limit: z.number().int().min(1).max(2000).default(1000) }).parse(args);
           const rows = await db.question.findMany({ where: { ...(input.subject ? { subject: { name: input.subject } } : {}), ...(input.topic ? { topic: { name: input.topic } } : {}), ...(input.reviewStatus ? { reviewStatus: input.reviewStatus } : {}), ...(input.targetBranchCode ? { targetBranchCode: input.targetBranchCode } : {}) }, take: input.limit, orderBy: { id: "asc" }, select: { id: true, text: true, questionType: true, explanation: true, source: true, difficulty: true, reviewStatus: true, subject: { select: { name: true } }, topic: { select: { name: true } } } });
-          const normalize = (value: string) => value.toLocaleLowerCase().normalize("NFKC").replace(/[^\\p{L}\\p{N}]+/gu, " ").trim();
+          const normalize = (value: string) => value.toLocaleLowerCase().normalize("NFKC").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
           const seen = new Map<string, number[]>();
           const difficulties: Record<string, number> = {}, types: Record<string, number> = {}, subjects: Record<string, number> = {}, topics: Record<string, number> = {};
           const issues: { id: number; issue: string; text: string }[] = [];
@@ -407,7 +407,7 @@ export function adminMcpRouter(db: PrismaClient): Router {
           for (const q of v.questions) {
             subjectCounts[q.subject] = (subjectCounts[q.subject] ?? 0) + 1; const topic = q.topic ?? "General"; topicCounts[topic] = (topicCounts[topic] ?? 0) + 1;
             totalMarks += q.marks; maxNegativeMarks += q.negativeMarks;
-            const normalized = q.text.toLocaleLowerCase().normalize("NFKC").replace(/[^\\p{L}\\p{N}]+/gu," ").trim(); if (normalized.length >= 12) { const ids = seen.get(normalized) ?? []; ids.push(q.position); seen.set(normalized,ids); }
+            const normalized = q.text.toLocaleLowerCase().normalize("NFKC").replace(/[^\p{L}\p{N}]+/gu," ").trim(); if (normalized.length >= 12) { const ids = seen.get(normalized) ?? []; ids.push(q.position); seen.set(normalized,ids); }
             if (!q.explanation.trim()) { missingExplanation++; addIssue(q.position,"missing_explanation",q.text); }
             if (!Number.isFinite(q.marks) || q.marks <= 0 || !Number.isFinite(q.negativeMarks) || q.negativeMarks < 0 || q.negativeMarks > q.marks) { invalidMarks++; addIssue(q.position,"invalid_marks",q.text); }
             if (normalized.length < 25) { shortPrompts++; addIssue(q.position,"very_short_prompt",q.text); }

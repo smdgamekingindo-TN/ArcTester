@@ -137,6 +137,7 @@ export function questionRouter(db: PrismaClient): Router {
       const topicName = query.topic;
       const difficulty = query.difficulty;
       const where = {
+        reviewStatus: { not: "DELETED" },
         ...(subjectName ? { subject: { name: subjectName } } : {}),
         ...(topicName ? { topic: { name: topicName } } : {}),
         ...(difficulty ? { difficulty } : {}),

@@ -23,6 +23,14 @@ describe("StudentSavedPracticeExams", () => {
     vi.mocked(request).mockResolvedValue({ practiceTests } as never);
   });
 
+  it("renders saved exam cards with a dedicated copy wrapper and action", async () => {
+    render(<StudentSavedPracticeExams />);
+    const card = await screen.findByText("Algebra revision").then((heading) => heading.closest("article"));
+    expect(card).toHaveClass("saved-practice-exam-card");
+    expect(card?.querySelector(".saved-practice-exam-copy")).not.toBeNull();
+    expect(card?.querySelector("button.primary")).not.toBeNull();
+  });
+
   it("shows only the current question and navigates one question at a time", async () => {
     render(<StudentSavedPracticeExams />);
     fireEvent.click(await screen.findByRole("button", { name: "Start exam" }));

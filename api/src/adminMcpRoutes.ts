@@ -445,6 +445,7 @@ export function adminMcpRouter(db: PrismaClient): Router {
           if (students.length !== input.studentIds.length) return res.json(rpcError(id, -32002, "One or more student IDs are not approved students."));
           const assigned = await db.$transaction(async tx => {
             const results: { assignmentId: string; studentId: number }[] = [];
+            const alreadyAssignedStudentIds: number[] = [];
             let skipped = 0;
             for (const studentId of input.studentIds) {
               const existing = await tx.examAssignment.findUnique({ where: { examVersionId_studentId: { examVersionId: version.id, studentId } }, select: { id: true } });
@@ -464,9 +465,9 @@ export function adminMcpRouter(db: PrismaClient): Router {
               }
               results.push({ assignmentId: assignment.id, studentId });
             }
-            return { results, skipped };
+            return { results, skipped, alreadyAssignedStudentIds };
           });
-          output = { created: assigned.results.length, skippedExisting: assigned.skipped, assignments: assigned.results }; summary = "assigned exam to " + assigned.results.length + " students"; break;
+          output = { created: assigned.results.length, skippedExisting: assigned.skipped, alreadyAssignedStudentIds: assigned.alreadyAssignedStudentIds, assignments: assigned.results }; summary = "assigned exam to " + assigned.results.length + " students"; break;
         }
         case "list_exam_results": {
           if(!scope(key,"papers:read"))return res.json(rpcError(id,-32003,"Missing papers:read scope."));

@@ -23,6 +23,13 @@ describe("content audience matching", () => {
     expect(isContentAudienceVisible({ audienceScope: "BRANCH", targetBranchCode: "EC" }, student)).toBe(false);
   });
 
+  it("matches equivalent CME branch codes and normalized diploma branch names", () => {
+    const cmeProfile = { collegeCode: "010", collegeName: "Andhra Polytechnic, Kakinada", branchCode: "CM", branchName: "Computer Engineering (CME)" };
+    expect(isContentAudienceVisible({ audienceScope: "BRANCH", targetBranchCode: "CME", targetBranchName: "Computer Engineering" }, cmeProfile)).toBe(true);
+    expect(isContentAudienceVisible({ audienceScope: "BRANCH", targetBranchName: "Diploma in Computer Engineering" }, cmeProfile)).toBe(true);
+    expect(isContentAudienceVisible({ audienceScope: "BRANCH", targetBranchCode: "CSE", targetBranchName: "Computer Science" }, cmeProfile)).toBe(false);
+  });
+
   it("fails closed for unknown scopes and missing student profile fields", () => {
     expect(isContentAudienceVisible({ audienceScope: "BRANCH", targetBranchCode: "CM" }, {})).toBe(false);
     expect(isContentAudienceVisible({ audienceScope: "COLLEGE", targetCollegeCode: "010" }, {})).toBe(false);

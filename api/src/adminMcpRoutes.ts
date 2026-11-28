@@ -303,7 +303,13 @@ export function adminMcpRouter(db: PrismaClient): Router {
             if (normalized.length < 25) { shortPrompt++; add("very_short_prompt"); }
           }
           const duplicateGroups = [...seen.entries()].filter(([,ids]) => ids.length > 1).map(([normalizedText,ids]) => ({ questionIds: ids, normalizedText: normalizedText.slice(0,240) }));
-          for (const group of duplicateGroups) for (const questionId of group.questionIds) if (issues.length < 100 && !issues.some(issue => issue.id === questionId && issue.issue === "normalized_duplicate_prompt") issues.push({ id: questionId, issue: "normalized_duplicate_prompt", text: group.normalizedText });
+          for (const group of duplicateGroups) {
+            for (const questionId of group.questionIds) {
+              if (issues.length < 100 && !issues.some(issue => issue.id === questionId && issue.issue === "normalized_duplicate_prompt")) {
+                issues.push({ id: questionId, issue: "normalized_duplicate_prompt", text: group.normalizedText });
+              }
+            }
+          }
           output = { scanned: rows.length, truncated: rows.length === input.limit, filters: input, metrics: { missingSource, missingExplanation, shortPrompt, duplicateGroups: duplicateGroups.length, duplicateQuestionCount: duplicateGroups.reduce((sum,g)=>sum+g.questionIds.length,0), difficultyDistribution: difficulties, questionTypeDistribution: types, subjectDistribution: subjects, topicDistribution: topics }, duplicateGroups: duplicateGroups.slice(0,100), issues };
           summary = "audited question bank quality across " + rows.length + " questions"; break;
         }

@@ -324,6 +324,11 @@ describe("versioned exam management", () => {
       where: { studentId },
     });
     assignmentId = assignment.id;
+    const assignmentAudit = await request(`/admin/exams/${examId}/assignments`, "GET", undefined, adminCookie);
+    expect(assignmentAudit.status).toBe(200);
+    const auditExam = assignmentAudit.json.exam as { versions: { version: number; assignments: { id: string; studentId: number; student: { email: string }; submission: unknown }[] }[] };
+    const auditedAssignment = auditExam.versions.flatMap(version => version.assignments).find(item => item.id === assignmentId);
+    expect(auditedAssignment).toMatchObject({ id: assignmentId, studentId, student: { email: "exam-student@arctester.test" }, submission: null });
     const assignmentNotices = await server.db.studentNotification.findMany({
       where: { userId: studentId, kind: "EXAM_ASSIGNMENT" },
     });

@@ -523,13 +523,14 @@ export function adminMcpRouter(db: PrismaClient): Router {
         case "get_admin_system_health": {
           if (!scope(key, "activity:read")) return res.json(rpcError(id, -32003, "Missing activity:read scope."));
           const started = Date.now();
-          const [approvedStudents, pendingStudents, rejectedStudents, approvedQuestions, draftQuestions, rejectedQuestions, exams, assignments, activeSessions, submissions] = await Promise.all([
+          const [approvedStudents, pendingStudents, rejectedStudents, approvedQuestions, draftQuestions, rejectedQuestions, deletedQuestions, exams, assignments, activeSessions, submissions] = await Promise.all([
             db.user.count({ where: { role: "STUDENT", accessStatus: "APPROVED", NOT: { email: { endsWith: ".deleted.invalid" } } } }),
             db.user.count({ where: { role: "STUDENT", accessStatus: "PENDING", NOT: { email: { endsWith: ".deleted.invalid" } } } }),
             db.user.count({ where: { role: "STUDENT", accessStatus: "REJECTED", NOT: { email: { endsWith: ".deleted.invalid" } } } }),
             db.question.count({ where: { reviewStatus: "APPROVED" } }),
             db.question.count({ where: { reviewStatus: "DRAFT" } }),
             db.question.count({ where: { reviewStatus: "REJECTED" } }),
+            db.question.count({ where: { reviewStatus: "DELETED" } }),
             db.exam.count(),
             db.examAssignment.count(),
             db.examSession.count({ where: { status: "ACTIVE" } }),
@@ -538,7 +539,7 @@ export function adminMcpRouter(db: PrismaClient): Router {
           output = {
             status: "ok", checkedAt: new Date().toISOString(), databaseQueryMs: Date.now() - started,
             students: { approved: approvedStudents, pending: pendingStudents, rejected: rejectedStudents },
-            questions: { approved: approvedQuestions, draft: draftQuestions, rejected: rejectedQuestions },
+            questions: { approved: approvedQuestions, draft: draftQuestions, rejected: rejectedQuestions, inTrash: deletedQuestions, activeTotal: approvedQuestions + draftQuestions + rejectedQuestions },
             exams: { total: exams }, assignments: { total: assignments },
             sessions: { active: activeSessions }, submissions: { total: submissions },
             note: "Counts only; no emails, answer content, environment variables, tokens, or secrets are returned.",

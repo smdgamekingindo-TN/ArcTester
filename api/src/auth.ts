@@ -763,7 +763,8 @@ export function authRouter(db: PrismaClient): Router {
     try {
       const input = GoogleCredentialSchema.extend({
         profile: GoogleRegistrationSchema,
-        adultAttestation: z.literal(true),
+        captchaToken: z.string().min(1).max(500),
+        adultAttestation: z.boolean().optional(),
         termsAccepted: z.literal(true),
         privacyConsent: z.literal(true),
         termsVersion: z.literal(TERMS_VERSION),
@@ -771,6 +772,7 @@ export function authRouter(db: PrismaClient): Router {
         consentNoticeVersion: z.literal(CONSENT_NOTICE_VERSION),
         ageGateVersion: z.literal(AGE_GATE_VERSION),
       }).parse(req.body);
+      await verifyRegistrationCaptcha(input.captchaToken, req.ip ?? "unknown");
       const identity = await verifyGoogleCredential(input.credential);
       const existing = await db.user.findUnique({ where: { email: identity.email }, select: { id: true } });
       if (existing) return next(conflict("An account with this Google email already exists. Sign in instead."));
@@ -805,7 +807,7 @@ export function authRouter(db: PrismaClient): Router {
             privacyNoticeVersion: input.privacyNoticeVersion,
             consentNoticeVersion: input.consentNoticeVersion,
             ageGateVersion: input.ageGateVersion,
-            ageAttested: input.adultAttestation,
+            ageAttested: input.adultAttestation === true,
             source: "google-web",
           },
         });

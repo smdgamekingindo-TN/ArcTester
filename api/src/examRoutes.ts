@@ -461,12 +461,13 @@ export function examRouter(db: PrismaClient): Router {
 
       const assignments = await db.$transaction(async (tx) => {
         const results = [];
+        const alreadyAssignedStudentIds: number[] = [];
         for (const studentId of input.studentIds) {
           const existing = await tx.examAssignment.findUnique({
             where: { examVersionId_studentId: { examVersionId: version.id, studentId } },
             select: { id: true },
           });
-          if (existing) continue;
+          if (existing) { alreadyAssignedStudentIds.push(studentId); continue; }
           const assignment = await tx.examAssignment.create({
             data: {
               examVersionId: version.id,
@@ -487,9 +488,9 @@ export function examRouter(db: PrismaClient): Router {
           }
           results.push(assignment);
         }
-        return results;
+        return { createdAssignments: results, alreadyAssignedStudentIds };
       });
-      res.status(201).json({ ok: true, created: assignments.length, assignments });
+      res.status(assignments.createdAssignments.length ? 201 : 200).json({ ok: true, created: assignments.createdAssignments.length, assignments: assignments.createdAssignments, alreadyAssignedStudentIds: assignments.alreadyAssignedStudentIds, alreadyAssigned: assignments.createdAssignments.length === 0 });
     } catch (error) {
       if (
         typeof error === "object" &&

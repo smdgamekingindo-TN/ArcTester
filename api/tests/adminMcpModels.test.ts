@@ -52,12 +52,31 @@ describe("administrator MCP model control", () => {
       userId: admin.id,
       name: "model-control-test",
       keyHash: digest(bearer),
-      scopes: ["questions:read", "questions:create", "models:read", "models:dataset:create", "models:verification:read", "models:train", "models:register", "models:evaluate", "models:activate", "students:read", "students:manage", "students:review"],
+      scopes: ["questions:read", "questions:create", "papers:read", "activity:read", "exams:assign", "models:read", "models:dataset:create", "models:verification:read", "models:train", "models:register", "models:evaluate", "models:activate", "students:read", "students:manage", "students:review"],
     } });
     adminKeyId = key.id;
   });
 
   afterAll(async () => { await server.close(); });
+
+  it("inspects published exam assignment delivery and reports safe system health", async () => {
+    const student = await server.db.user.create({ data: {
+      email: "assignment-inspection@arctester.test", passwordHash: "test-only",
+      fullName: "Assignment Inspection Student", role: "STUDENT", accessStatus: "APPROVED",
+    } });
+    const exam = await server.db.exam.create({ data: { title: "Assignment inspection fixture", description: "", createdById: adminId } });
+    const version = await server.db.examVersion.create({ data: { examId: exam.id, version: 1, durationMinutes: 30, publishedAt: new Date() } });
+    const assignment = await server.db.examAssignment.create({ data: { examVersionId: version.id, studentId: student.id, assignedById: adminId } });
+    const inspected = await callTool("inspect_exam_assignments", { examId: exam.id, studentId: student.id });
+    expect(inspected).toMatchObject({ exam: { id: exam.id, versions: [{ version: 1, assignments: [{ id: assignment.id, studentId: student.id, student: { email: student.email }, submission: null }] }] }, assignmentCount: 1 });
+    const health = await callTool("get_admin_system_health", {});
+    expect(health).toMatchObject({ status: "ok", students: { approved: expect.any(Number) }, questions: { draft: expect.any(Number) }, assignments: { total: expect.any(Number) }, sessions: { active: expect.any(Number) } });
+    expect(JSON.stringify(health)).not.toContain("passwordHash");
+    await server.db.examAssignment.delete({ where: { id: assignment.id } });
+    await server.db.examVersion.delete({ where: { id: version.id } });
+    await server.db.exam.delete({ where: { id: exam.id } });
+    await server.db.user.delete({ where: { id: student.id } });
+  });
 
   it("retrieves student performance evidence and sends a review notification", async () => {
     const student = await server.db.user.create({ data: {

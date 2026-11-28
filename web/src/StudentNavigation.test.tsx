@@ -47,7 +47,7 @@ describe("StudentNavigation", () => {
     expect(setActivePage).toHaveBeenCalledWith("ai-practice");
   });
 
-  it("keeps unfinished learning pages out of More and puts account access there", () => {
+  it("exposes study materials and keeps account access in More", () => {
     const setActivePage = vi.fn();
     const onOpenNotifications = vi.fn();
     render(<StudentNavigation {...props} setActivePage={setActivePage} onOpenNotifications={onOpenNotifications} />);
@@ -65,8 +65,9 @@ describe("StudentNavigation", () => {
     expect(within(menu).queryByRole("button", { name: "Concept library" })).not.toBeInTheDocument();
     fireEvent.click(within(menu).getByRole("button", { name: "Study materials" }));
     expect(setActivePage).toHaveBeenCalledWith("materials");
-    fireEvent.click(more);
-    fireEvent.click(within(menu).getByRole("button", { name: "Account" }));
+    setActivePage.mockClear();
+    if (more.getAttribute("aria-expanded") !== "true") fireEvent.click(more);
+    fireEvent.click(within(mobile).getByRole("menuitem", { name: "Account" }));
     expect(setActivePage).toHaveBeenCalledWith("account");
     expect(more).toHaveAttribute("aria-expanded", "false");
     fireEvent.click(screen.getByRole("button", { name: "Open notifications, 3 unread" }));

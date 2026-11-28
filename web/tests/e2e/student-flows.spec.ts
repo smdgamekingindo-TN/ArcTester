@@ -129,6 +129,11 @@ test.describe("Student Practice Flow", () => {
     expect(await page.locator(".exam-layout-submit").evaluate((element) => element.getBoundingClientRect().height)).toBeGreaterThanOrEqual(40);
     const questionPalette = page.locator(".exam-question-navigation");
     await expect(questionPalette.locator("summary")).toBeVisible();
+    const questionPaletteWrapper = questionPalette.locator("xpath=..");
+    expect(await questionPaletteWrapper.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return { padding: style.padding, borderWidth: style.borderWidth };
+    })).toEqual({ padding: "0px", borderWidth: "0px" });
     await questionPalette.locator("summary").click();
     expect(await page.locator(".exam-question-number").first().evaluate((element) => element.getBoundingClientRect().height)).toBeGreaterThanOrEqual(36);
 

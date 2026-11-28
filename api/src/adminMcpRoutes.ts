@@ -286,7 +286,7 @@ export function adminMcpRouter(db: PrismaClient): Router {
         }
         case "analyze_question_bank_quality": {
           if (!scope(key, "questions:read")) return res.json(rpcError(id, -32003, "Missing questions:read scope."));
-          const input = z.object({ subject: z.string().trim().max(100).optional(), topic: z.string().trim().max(100).optional(), reviewStatus: z.enum(["DRAFT","APPROVED","REJECTED"]).optional(), targetBranchCode: z.string().trim().max(40).optional(), limit: z.number().int().min(1).max(2000).default(1000) }).parse(args);
+          const input = z.object({ subject: z.string().trim().max(100).optional(), topic: z.string().trim().max(100).optional(), reviewStatus: z.enum(["DRAFT","APPROVED","REJECTED","DELETED"]).optional(), targetBranchCode: z.string().trim().max(40).optional(), limit: z.number().int().min(1).max(2000).default(1000) }).parse(args);
           const rows = await db.question.findMany({ where: { ...(input.subject ? { subject: { name: input.subject } } : {}), ...(input.topic ? { topic: { name: input.topic } } : {}), ...(input.reviewStatus ? { reviewStatus: input.reviewStatus } : {}), ...(input.targetBranchCode ? { targetBranchCode: input.targetBranchCode } : {}) }, take: input.limit, orderBy: { id: "asc" }, select: { id: true, text: true, questionType: true, explanation: true, source: true, difficulty: true, reviewStatus: true, subject: { select: { name: true } }, topic: { select: { name: true } } } });
           const normalize = (value: string) => value.toLocaleLowerCase().normalize("NFKC").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
           const seen = new Map<string, number[]>();

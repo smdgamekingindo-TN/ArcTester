@@ -2,7 +2,7 @@ import { Router } from "express";
 import express from "express";
 import { z } from "zod";
 import type { PrismaClient } from "@prisma/client";
-import { badRequest, notFound } from "./errors.js";
+import { badRequest, conflict, notFound } from "./errors.js";
 import { requireAdmin, requireAuth } from "./auth.js";
 import { importFromCsv, importFromJson } from "./importService.js";
 import { QuestionInputSchema, QUESTION_TYPES, encodeOptions, hashQuestion } from "./questions.js";

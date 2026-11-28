@@ -67,7 +67,7 @@ describe("StudentNavigation", () => {
     expect(setActivePage).toHaveBeenCalledWith("materials");
     setActivePage.mockClear();
     if (more.getAttribute("aria-expanded") !== "true") fireEvent.click(more);
-    fireEvent.click(within(mobile).getByRole("menuitem", { name: "Account" }));
+    fireEvent.click(within(mobile).getByRole("button", { name: "Account" }));
     expect(setActivePage).toHaveBeenCalledWith("account");
     expect(more).toHaveAttribute("aria-expanded", "false");
     fireEvent.click(screen.getByRole("button", { name: "Open notifications, 3 unread" }));

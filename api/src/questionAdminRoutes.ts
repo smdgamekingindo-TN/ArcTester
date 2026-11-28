@@ -12,7 +12,7 @@ const ListSchema = z.object({
   subject: z.string().trim().max(120).optional(),
   topic: z.string().trim().max(120).optional(),
   difficulty: z.enum(["easy", "medium", "hard"]).optional(),
-  reviewStatus: z.enum(["DRAFT", "APPROVED", "REJECTED"]).optional(),
+  reviewStatus: z.enum(["DRAFT", "APPROVED", "REJECTED", "DELETED"]).optional(),
   page: z.coerce.number().int().min(1).max(1_000_000).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(25),
 });
@@ -45,24 +45,25 @@ export function questionAdminRouter(db: PrismaClient): Router {
         db.question.groupBy({ by: ["subjectId", "reviewStatus"], _count: { _all: true } }),
       ]);
       const subjectById = new Map(subjects.map((subject) => [subject.id, subject.name]));
-      const counts = new Map<string, { drafted: number; approved: number; rejected: number }>();
+      const counts = new Map<string, { drafted: number; approved: number; rejected: number; deleted: number }>();
       for (const group of groups) {
         const name = subjectById.get(group.subjectId);
         if (!name) continue;
-        const row = counts.get(name) ?? { drafted: 0, approved: 0, rejected: 0 };
+        const row = counts.get(name) ?? { drafted: 0, approved: 0, rejected: 0, deleted: 0 };
         if (group.reviewStatus === "DRAFT") row.drafted = group._count._all;
         if (group.reviewStatus === "APPROVED") row.approved = group._count._all;
         if (group.reviewStatus === "REJECTED") row.rejected = group._count._all;
+        if (group.reviewStatus === "DELETED") row.deleted = group._count._all;
         counts.set(name, row);
       }
       const names = [...new Set([...subjects.map((subject) => subject.name), ...Object.keys(AP_ECET_SUBJECT_QUOTAS)])].sort();
       const progress = names.map((name) => {
-        const row = counts.get(name) ?? { drafted: 0, approved: 0, rejected: 0 };
+        const row = counts.get(name) ?? { drafted: 0, approved: 0, rejected: 0, deleted: 0 };
         const paperQuota = AP_ECET_SUBJECT_QUOTAS[name] ?? 0;
         const requiredQuota = paperQuota * 3;
         return { subject: name, paperQuota, requiredQuota, ...row, remaining: Math.max(0, requiredQuota - row.drafted - row.approved) };
       });
-      const totals = progress.reduce((total, row) => ({ drafted: total.drafted + row.drafted, approved: total.approved + row.approved, rejected: total.rejected + row.rejected, requiredQuota: total.requiredQuota + row.requiredQuota, remaining: total.remaining + row.remaining }), { drafted: 0, approved: 0, rejected: 0, requiredQuota: 0, remaining: 0 });
+      const totals = progress.reduce((total, row) => ({ drafted: total.drafted + row.drafted, approved: total.approved + row.approved, rejected: total.rejected + row.rejected, deleted: total.deleted + row.deleted, requiredQuota: total.requiredQuota + row.requiredQuota, remaining: total.remaining + row.remaining }), { drafted: 0, approved: 0, rejected: 0, deleted: 0, requiredQuota: 0, remaining: 0 });
       res.json({ ok: true, subjects: progress, totals });
     } catch (error) { next(error); }
   });
@@ -153,7 +154,7 @@ export function questionAdminRouter(db: PrismaClient): Router {
         ...(filter.subject ? { subject: { name: filter.subject } } : {}),
         ...(filter.topic ? { topic: { name: filter.topic } } : {}),
         ...(filter.difficulty ? { difficulty: filter.difficulty } : {}),
-        ...(filter.reviewStatus ? { reviewStatus: filter.reviewStatus } : {}),
+        ...(filter.reviewStatus ? { reviewStatus: filter.reviewStatus } : { reviewStatus: { not: "DELETED" } }),
         ...(filter.q ? { OR: [
           { text: { contains: filter.q } },
           { explanation: { contains: filter.q } },
@@ -252,7 +253,7 @@ export function questionAdminRouter(db: PrismaClient): Router {
         correctIndex: merged.correctIndex, questionType: merged.questionType,
         promptData: JSON.stringify(merged.promptData), answerData: JSON.stringify(merged.answerData),
         explanation: merged.explanation, source: merged.source,
-        difficulty: merged.difficulty, reviewStatus: "DRAFT", questionHash: hashQuestion(merged.text),
+        difficulty: merged.difficulty, reviewStatus: existing.reviewStatus, questionHash: hashQuestion(merged.text),
       }, include: { subject: true, topic: true } });
       res.json({ ok: true, question: updated });
     } catch (error) { next(error); }

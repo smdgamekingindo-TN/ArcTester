@@ -39,12 +39,12 @@ function normalizeBranchCode(value: string | null | undefined): string {
 
 function normalizeBranchName(value: string | null | undefined): string {
   return normalize(value)
-    .replace(/\\([^)]*\\)/g, " ")
-    .replace(/\\bdiploma in\\b/g, " ")
-    .replace(/\\bbranch\\b/g, " ")
+    .replace(/\([^)]*\)/g, " ")
+    .replace(/\bdiploma in\b/g, " ")
+    .replace(/\bbranch\b/g, " ")
     .replace(/[^a-z0-9]+/g, " ")
     .trim()
-    .replace(/\\s+/g, " ");
+    .replace(/\s+/g, " ");
 }
 
 function matchesBranch(

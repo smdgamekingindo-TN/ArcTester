@@ -218,8 +218,8 @@ export function questionAdminRouter(db: PrismaClient): Router {
   router.get("/admin/question-catalog", async (_req, res, next) => {
     try {
       const subjects = await db.subject.findMany({ orderBy: { name: "asc" }, include: {
-        topics: { orderBy: { name: "asc" }, select: { id: true, name: true, _count: { select: { questions: true } } } },
-        _count: { select: { questions: true } },
+        topics: { orderBy: { name: "asc" }, select: { id: true, name: true, _count: { select: { questions: { where: { reviewStatus: { not: "DELETED" } } } } } } },
+        _count: { select: { questions: { where: { reviewStatus: { not: "DELETED" } } } } },
       } });
       res.json({ ok: true, subjects: subjects.map(s => ({ id: s.id, name: s.name, count: s._count.questions, topics: s.topics })) });
     } catch (error) { next(error); }

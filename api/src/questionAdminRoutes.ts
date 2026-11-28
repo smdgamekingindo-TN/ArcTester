@@ -253,7 +253,7 @@ export function questionAdminRouter(db: PrismaClient): Router {
         correctIndex: merged.correctIndex, questionType: merged.questionType,
         promptData: JSON.stringify(merged.promptData), answerData: JSON.stringify(merged.answerData),
         explanation: merged.explanation, source: merged.source,
-        difficulty: merged.difficulty, reviewStatus: existing.reviewStatus, questionHash: hashQuestion(merged.text),
+        difficulty: merged.difficulty, reviewStatus: existing.reviewStatus === "APPROVED" ? "DRAFT" : existing.reviewStatus, questionHash: hashQuestion(merged.text),
       }, include: { subject: true, topic: true } });
       res.json({ ok: true, question: updated });
     } catch (error) { next(error); }

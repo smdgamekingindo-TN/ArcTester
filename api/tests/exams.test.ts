@@ -621,7 +621,7 @@ describe("versioned exam management", () => {
       const session = started.json.session as { id: string; startedAt: string; deadline: string };
       expect(Date.parse(session.deadline)).toBe(Date.parse(session.startedAt) + 60_000);
       expect((await request("/exams/assignments/" + assignment.id + "/session/heartbeat", "POST", { event: "HEARTBEAT" }, student)).status).toBe(200);
-      const saved = await request("/exams/assignments/" + assignment.id + "/answers", "PUT", { revision: 0, answers: [{ examQuestionId: fixture.questionSnapshotId, selectedIndex: 1 }] }, student);
+      const saved = await request("/exams/assignments/" + assignment.id + "/answers", "PUT", { revision: 0, answers: [{ examQuestionId: fixture.questionSnapshotId, selectedIndex: 0 }] }, student);
       expect(saved.status).toBe(200); expect(saved.json).toMatchObject({ revision: 1, savedCount: 1 });
     });
     it("holds the server deadline during pause, resumes with the pause duration, and rejects student invigilator actions", async () => {
@@ -649,7 +649,7 @@ describe("versioned exam management", () => {
       const assignment = fixture.assignments[0]; const student = fixture.cookies[0];
       const started = await request("/exams/assignments/" + assignment.id + "/session/start", "POST", {}, student);
       const session = started.json.session as { startedAt: string };
-      const body = { attemptUuid: "c9c79f5b-a1c3-4d65-9c75-0b37d7a98a10", startedAt: session.startedAt, submittedAt: new Date().toISOString(), answers: [{ examQuestionId: fixture.questionSnapshotId, selectedIndex: 1 }] };
+      const body = { attemptUuid: "c9c79f5b-a1c3-4d65-9c75-0b37d7a98a10", startedAt: session.startedAt, submittedAt: new Date().toISOString(), answers: [{ examQuestionId: fixture.questionSnapshotId, selectedIndex: 0 }] };
       const submitted = await request("/exams/assignments/" + assignment.id + "/submission", "POST", body, student);
       expect(submitted.status).toBe(201);
       const submission = submitted.json.submission as { id: string; status: string; score: number; maximumScore: number };
@@ -706,7 +706,7 @@ describe("versioned exam management", () => {
         attemptUuid: "c6b7d74c-4f7f-4dd9-a1f4-f0c1b3a1c5f1",
         startedAt: withinGraceStartedAt.toISOString(),
         submittedAt: new Date().toISOString(),
-        answers: [{ examQuestionId: fixture.questionSnapshotId, selectedIndex: 1 }],
+        answers: [{ examQuestionId: fixture.questionSnapshotId, selectedIndex: 0 }],
       };
       const withinGraceSubmit = await request("/exams/assignments/" + graceAssignment.id + "/submission", "POST", withinGraceBody, graceStudent);
       expect(withinGraceSubmit.status).toBe(201);
@@ -722,7 +722,7 @@ describe("versioned exam management", () => {
       const lateSession = lateStarted.json.session as { id: string; startedAt: string };
       const pastDeadline = new Date(Date.now() - durationMs - 11_000);
       await server.db.examSession.update({ where: { id: lateSession.id }, data: { startedAt: pastDeadline, lastHeartbeatAt: new Date() } });
-      const lateBody = { attemptUuid: "b6b7d74c-4f7f-4dd9-a1f4-f0c1b3a1c5f0", startedAt: pastDeadline.toISOString(), submittedAt: new Date().toISOString(), answers: [{ examQuestionId: fixture.questionSnapshotId, selectedIndex: 1 }] };
+      const lateBody = { attemptUuid: "b6b7d74c-4f7f-4dd9-a1f4-f0c1b3a1c5f0", startedAt: pastDeadline.toISOString(), submittedAt: new Date().toISOString(), answers: [{ examQuestionId: fixture.questionSnapshotId, selectedIndex: 0 }] };
       const lateSubmit = await request("/exams/assignments/" + lateAssignment.id + "/submission", "POST", lateBody, lateCookie);
       expect(lateSubmit.status).toBe(201);
       expect((lateSubmit.json.submission as { status: string }).status).toBe("REVIEW_REQUIRED");

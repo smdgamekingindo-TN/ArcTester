@@ -1779,7 +1779,12 @@ html[data-admin-density="compact"] .bank-question{padding:12px 16px}
 .saved-practice-exams>.section-head{align-items:flex-end;margin:0}
 .saved-practice-exams>.section-head h2{margin:0;font-size:clamp(20px,2.5vw,26px)}
 .saved-practice-exams>.section-head .muted{margin:6px 0 0;max-width:620px;line-height:1.55}
-.saved-practice-exams>.panel{border:1px solid var(--border);border-radius:17px;background:var(--surface);box-shadow:var(--shadow)}
+.saved-practice-exams>.panel{border:1px solid var(--border);border-radius:17px;background:var(--surface);box-shadow:var(--shadow);padding:20px;min-width:0}
+.saved-practice-exams>.panel>.row{align-items:flex-start;gap:16px;min-width:0;flex-wrap:wrap}
+.saved-practice-exams>.panel>.row>div{flex:1 1 220px;min-width:0;overflow-wrap:anywhere}
+.saved-practice-exams .saved-practice-exam-card{display:flex;align-items:center;gap:18px;padding:18px 20px;min-width:0}
+.saved-practice-exams .saved-practice-exam-copy{flex:1 1 240px;min-width:0;overflow-wrap:anywhere}
+.saved-practice-exams .saved-practice-exam-card .primary{flex:0 0 auto;max-width:100%}
 .saved-practice-exams>.stack>div[style*="grid-template-columns"]{align-items:stretch}
 .saved-practice-exams article.panel h3{line-height:1.4}
 .saved-practice-exams article.panel button.primary{min-height:44px;border-radius:12px}
@@ -1879,7 +1884,7 @@ html[data-admin-density="compact"] .bank-question{padding:12px 16px}
 @media(max-width:720px){.question-import-audience{grid-template-columns:1fr;padding:14px}.question-import-audience-fields{grid-template-columns:1fr}.question-import-audience small{grid-column:auto}}
 
 /* Shared exam navigation: compact, in-flow controls rather than floating overlays */
-.exam-layout-question-navigation{display:grid;gap:10px;border:1px solid var(--border);border-radius:12px;padding:12px;background:var(--surface);min-width:0}
+.exam-layout-question-navigation{min-width:0}
 .exam-question-navigation-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px}
 .exam-question-navigation-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(40px,1fr));gap:8px}
 .exam-question-number{position:relative;min-width:0;min-height:38px;padding:5px;border:1px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text);font-size:12px;font-weight:800;cursor:pointer}
@@ -1893,7 +1898,7 @@ html[data-admin-density="compact"] .bank-question{padding:12px 16px}
 .saved-exam-mark-review.is-marked{border-color:#d97706;color:#d97706}
 .saved-exam-status{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
 .saved-exam-status p{margin:0}
-@media(max-width:560px){.exam-layout-question-navigation{padding:9px}.exam-question-navigation-grid{grid-template-columns:repeat(auto-fill,minmax(36px,1fr));gap:6px}.exam-question-number{min-height:35px}.exam-layout-fullscreen{padding-left:10px;padding-right:10px}}
+@media(max-width:560px){.exam-layout-question-navigation{padding:9px}.exam-question-navigation-grid{grid-template-columns:repeat(auto-fill,minmax(36px,1fr));gap:6px}.exam-question-number{min-height:35px}.exam-layout-fullscreen{padding-left:10px;padding-right:10px}.saved-practice-exams>.panel{padding:16px}.saved-practice-exams>.panel>.row{flex-direction:column;align-items:stretch;gap:14px}.saved-practice-exams>.panel>.row>div{flex:1 1 auto;width:100%}.saved-practice-exams>.panel>.row>button{width:100%}.saved-practice-exams .saved-practice-exam-card{flex-direction:column;align-items:stretch;gap:14px;padding:16px}.saved-practice-exams .saved-practice-exam-copy{flex:1 1 auto;width:100%}.saved-practice-exams .saved-practice-exam-card .primary{width:100%}}
 
 /* Registration legal acceptance: clear, readable and keyboard accessible. */
 .auth-legal-consent{display:grid;gap:10px;padding:12px;border:1px solid var(--border);border-radius:12px;background:var(--surface-soft,var(--surface));}

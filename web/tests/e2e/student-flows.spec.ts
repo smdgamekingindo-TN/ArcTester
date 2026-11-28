@@ -108,6 +108,12 @@ test.describe("Student Practice Flow", () => {
     await page.getByRole("navigation", { name: "Student navigation" })
       .getByRole("button", { name: "Practice exams", exact: true }).click();
 
+    const library = page.locator('.saved-practice-exams');
+    await expect(library).toBeVisible();
+    const createCard = library.locator(':scope > article.panel').first();
+    expect(await createCard.evaluate((el) => parseFloat(getComputedStyle(el).paddingLeft))).toBeGreaterThanOrEqual(16);
+    expect(await createCard.locator('.row').evaluate((el) => getComputedStyle(el).flexDirection)).toBe('column');
+
     // Select a seeded subject and request one question so the test does not
     // depend on the size or distribution of the CI starter question bank.
     const subjectChoices = page.locator(".practice-subject-choice");
@@ -129,6 +135,9 @@ test.describe("Student Practice Flow", () => {
     expect(await page.locator(".exam-layout-submit").evaluate((element) => element.getBoundingClientRect().height)).toBeGreaterThanOrEqual(40);
     const questionPalette = page.locator(".exam-question-navigation");
     await expect(questionPalette.locator("summary")).toBeVisible();
+    const questionPaletteWrapper = questionPalette.locator("xpath=..");
+    expect(await questionPaletteWrapper.evaluate((element) => getComputedStyle(element).borderWidth)).toBe("0px");
+    expect(await questionPaletteWrapper.evaluate((element) => parseFloat(getComputedStyle(element).paddingTop))).toBeLessThanOrEqual(12);
     await questionPalette.locator("summary").click();
     expect(await page.locator(".exam-question-number").first().evaluate((element) => element.getBoundingClientRect().height)).toBeGreaterThanOrEqual(36);
 

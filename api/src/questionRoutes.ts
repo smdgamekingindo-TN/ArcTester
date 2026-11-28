@@ -137,6 +137,7 @@ export function questionRouter(db: PrismaClient): Router {
       const topicName = query.topic;
       const difficulty = query.difficulty;
       const where = {
+        reviewStatus: { not: "DELETED" },
         ...(subjectName ? { subject: { name: subjectName } } : {}),
         ...(topicName ? { topic: { name: topicName } } : {}),
         ...(difficulty ? { difficulty } : {}),
@@ -192,7 +193,7 @@ export function questionRouter(db: PrismaClient): Router {
     try {
       const subjects = await db.subject.findMany({
         orderBy: { name: "asc" },
-        include: { _count: { select: { questions: true, topics: true } }, topics: { orderBy: { name: "asc" } } },
+        include: { _count: { select: { questions: { where: { reviewStatus: { not: "DELETED" } } }, topics: true } }, topics: { orderBy: { name: "asc" } } },
       });
       res.json({ ok: true, subjects: subjects.map((subject) => ({
         id: subject.id, name: subject.name, questionCount: subject._count.questions,
@@ -252,20 +253,27 @@ export function questionRouter(db: PrismaClient): Router {
 
   router.delete("/admin/questions/bulk", requireAuth, requireAdmin(db), async (req, res, next) => {
     try {
-      const input = z.object({ ids: z.array(z.number().int().positive()).min(1).max(500) }).parse(req.body);
+      const input = z.object({ ids: z.array(z.number().int().positive()).min(1).max(500), permanent: z.boolean().default(false) }).parse(req.body);
       if (new Set(input.ids).size !== input.ids.length) return next(badRequest("Question IDs must be unique."));
-      const result = await db.question.deleteMany({ where: { id: { in: input.ids } } });
-      res.json({ ok: true, deleted: result.count });
-    } catch (error) {
-      const databaseError = error instanceof Error ? error.message : "";
-      const errorCode = typeof error === "object" && error !== null && "code" in error
-        ? (error as { code?: string }).code
-        : undefined;
-      if (errorCode === "P2003" || /violates RESTRICT setting of foreign key constraint|SQLSTATE 23001|code: "23001"/i.test(databaseError)) {
-        return next(conflict("Some selected questions are already used by attempts or reports and cannot be deleted. Archive or keep those questions instead."));
+      if (input.permanent) {
+        const rows = await db.question.findMany({ where: { id: { in: input.ids }, reviewStatus: "DELETED" }, select: { id: true } });
+        if (rows.length !== input.ids.length) return next(badRequest("Permanent deletion is allowed only for questions already in Trash."));
+        const [answers, snapshots, stats, lessons, pathAnswers, reviews] = await Promise.all([
+          db.attemptAnswer.findMany({ where: { questionId: { in: input.ids } }, select: { questionId: true }, distinct: ["questionId"] }),
+          db.examVersionQuestion.findMany({ where: { sourceQuestionId: { in: input.ids } }, select: { sourceQuestionId: true }, distinct: ["sourceQuestionId"] }),
+          db.stat.findMany({ where: { questionId: { in: input.ids } }, select: { questionId: true }, distinct: ["questionId"] }),
+          db.lessonQuestion.findMany({ where: { questionId: { in: input.ids } }, select: { questionId: true }, distinct: ["questionId"] }),
+          db.pathAnswer.findMany({ where: { questionId: { in: input.ids } }, select: { questionId: true }, distinct: ["questionId"] }),
+          db.userQuestionReview.findMany({ where: { questionId: { in: input.ids } }, select: { questionId: true }, distinct: ["questionId"] }),
+        ]);
+        const referenced = new Set([...answers.map(x=>x.questionId), ...snapshots.map(x=>x.sourceQuestionId), ...stats.map(x=>x.questionId), ...lessons.map(x=>x.questionId), ...pathAnswers.map(x=>x.questionId), ...reviews.map(x=>x.questionId)].filter((x): x is number => x !== null));
+        if (referenced.size) return next(conflict("Permanent deletion blocked because questions are referenced by attempts, exam snapshots, statistics, lessons, learning paths or reviews. Keep them in Trash to preserve history. IDs: " + [...referenced].join(", ") + "."));
+        const result = await db.question.deleteMany({ where: { id: { in: input.ids }, reviewStatus: "DELETED" } });
+        return res.json({ ok: true, deleted: result.count, permanent: true });
       }
-      next(error);
-    }
+      const result = await db.question.updateMany({ where: { id: { in: input.ids }, reviewStatus: { not: "DELETED" } }, data: { reviewStatus: "DELETED" } });
+      res.json({ ok: true, movedToTrash: result.count, permanent: false });
+    } catch (error) { next(error); }
   });
 
   router.patch("/admin/questions/:id", requireAuth, requireAdmin(db), async (req, res, next) => {
@@ -323,10 +331,11 @@ export function questionRouter(db: PrismaClient): Router {
     try {
       const id = Number(req.params.id);
       if (!Number.isInteger(id) || id < 1) return next(badRequest("Invalid question ID."));
-      const question = await db.question.findUnique({ where: { id }, select: { id: true } });
+      const question = await db.question.findUnique({ where: { id }, select: { id: true, reviewStatus: true } });
       if (!question) return next(notFound("Question not found."));
-      await db.question.delete({ where: { id } });
-      res.json({ ok: true, deleted: id });
+      if (question.reviewStatus === "DELETED") return next(conflict("Question is already in Trash."));
+      await db.question.update({ where: { id }, data: { reviewStatus: "DELETED" } });
+      res.json({ ok: true, movedToTrash: id });
     } catch (error) {
       const databaseError = error instanceof Error ? error.message : "";
       const errorCode = typeof error === "object" && error !== null && "code" in error

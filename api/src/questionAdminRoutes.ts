@@ -2,7 +2,7 @@ import { Router } from "express";
 import express from "express";
 import { z } from "zod";
 import type { PrismaClient } from "@prisma/client";
-import { badRequest, notFound } from "./errors.js";
+import { badRequest, conflict, notFound } from "./errors.js";
 import { requireAdmin, requireAuth } from "./auth.js";
 import { importFromCsv, importFromJson } from "./importService.js";
 import { QuestionInputSchema, QUESTION_TYPES, encodeOptions, hashQuestion } from "./questions.js";
@@ -12,7 +12,7 @@ const ListSchema = z.object({
   subject: z.string().trim().max(120).optional(),
   topic: z.string().trim().max(120).optional(),
   difficulty: z.enum(["easy", "medium", "hard"]).optional(),
-  reviewStatus: z.enum(["DRAFT", "APPROVED", "REJECTED"]).optional(),
+  reviewStatus: z.enum(["DRAFT", "APPROVED", "REJECTED", "DELETED"]).optional(),
   page: z.coerce.number().int().min(1).max(1_000_000).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(25),
 });
@@ -29,7 +29,6 @@ const UpdateSchema = z.object({
   promptData: z.record(z.string(), z.unknown()).optional(),
   answerData: z.record(z.string(), z.unknown()).optional(),
 }).refine((value) => Object.keys(value).length > 0);
-const BulkSchema = z.object({ ids: z.array(z.number().int().positive()).min(1).max(500) });
 const ReviewStatusSchema = z.enum(["DRAFT", "APPROVED", "REJECTED"]);
 const AP_ECET_SUBJECT_QUOTAS: Record<string, number> = { Mathematics: 50, Physics: 25, Chemistry: 25, "Digital Electronics": 6, "Software Engineering": 6, "Computer Organisation and Microprocessors": 8, "Data Structures through C": 10, "Computer Networks": 6, "Operating Systems": 10, DBMS: 8, "Java Programming": 10, "Web Technologies": 8, "Big-data & Cloud Computing": 6, "Android Programming": 6, "Internet Of Things(IoT)": 8, "Python Programming": 8 };
 function hasReviewableSource(source: string): boolean { const normalized = source.trim().toUpperCase(); return normalized.length > 0 && normalized !== "NEEDS HUMAN REVIEW"; }
@@ -45,24 +44,25 @@ export function questionAdminRouter(db: PrismaClient): Router {
         db.question.groupBy({ by: ["subjectId", "reviewStatus"], _count: { _all: true } }),
       ]);
       const subjectById = new Map(subjects.map((subject) => [subject.id, subject.name]));
-      const counts = new Map<string, { drafted: number; approved: number; rejected: number }>();
+      const counts = new Map<string, { drafted: number; approved: number; rejected: number; deleted: number }>();
       for (const group of groups) {
         const name = subjectById.get(group.subjectId);
         if (!name) continue;
-        const row = counts.get(name) ?? { drafted: 0, approved: 0, rejected: 0 };
+        const row = counts.get(name) ?? { drafted: 0, approved: 0, rejected: 0, deleted: 0 };
         if (group.reviewStatus === "DRAFT") row.drafted = group._count._all;
         if (group.reviewStatus === "APPROVED") row.approved = group._count._all;
         if (group.reviewStatus === "REJECTED") row.rejected = group._count._all;
+        if (group.reviewStatus === "DELETED") row.deleted = group._count._all;
         counts.set(name, row);
       }
       const names = [...new Set([...subjects.map((subject) => subject.name), ...Object.keys(AP_ECET_SUBJECT_QUOTAS)])].sort();
       const progress = names.map((name) => {
-        const row = counts.get(name) ?? { drafted: 0, approved: 0, rejected: 0 };
+        const row = counts.get(name) ?? { drafted: 0, approved: 0, rejected: 0, deleted: 0 };
         const paperQuota = AP_ECET_SUBJECT_QUOTAS[name] ?? 0;
         const requiredQuota = paperQuota * 3;
         return { subject: name, paperQuota, requiredQuota, ...row, remaining: Math.max(0, requiredQuota - row.drafted - row.approved) };
       });
-      const totals = progress.reduce((total, row) => ({ drafted: total.drafted + row.drafted, approved: total.approved + row.approved, rejected: total.rejected + row.rejected, requiredQuota: total.requiredQuota + row.requiredQuota, remaining: total.remaining + row.remaining }), { drafted: 0, approved: 0, rejected: 0, requiredQuota: 0, remaining: 0 });
+      const totals = progress.reduce((total, row) => ({ drafted: total.drafted + row.drafted, approved: total.approved + row.approved, rejected: total.rejected + row.rejected, deleted: total.deleted + row.deleted, requiredQuota: total.requiredQuota + row.requiredQuota, remaining: total.remaining + row.remaining }), { drafted: 0, approved: 0, rejected: 0, deleted: 0, requiredQuota: 0, remaining: 0 });
       res.json({ ok: true, subjects: progress, totals });
     } catch (error) { next(error); }
   });
@@ -153,7 +153,7 @@ export function questionAdminRouter(db: PrismaClient): Router {
         ...(filter.subject ? { subject: { name: filter.subject } } : {}),
         ...(filter.topic ? { topic: { name: filter.topic } } : {}),
         ...(filter.difficulty ? { difficulty: filter.difficulty } : {}),
-        ...(filter.reviewStatus ? { reviewStatus: filter.reviewStatus } : {}),
+        ...(filter.reviewStatus ? { reviewStatus: filter.reviewStatus } : { reviewStatus: { not: "DELETED" } }),
         ...(filter.q ? { OR: [
           { text: { contains: filter.q } },
           { explanation: { contains: filter.q } },
@@ -217,8 +217,8 @@ export function questionAdminRouter(db: PrismaClient): Router {
   router.get("/admin/question-catalog", async (_req, res, next) => {
     try {
       const subjects = await db.subject.findMany({ orderBy: { name: "asc" }, include: {
-        topics: { orderBy: { name: "asc" }, select: { id: true, name: true, _count: { select: { questions: true } } } },
-        _count: { select: { questions: true } },
+        topics: { orderBy: { name: "asc" }, select: { id: true, name: true, _count: { select: { questions: { where: { reviewStatus: { not: "DELETED" } } } } } } },
+        _count: { select: { questions: { where: { reviewStatus: { not: "DELETED" } } } } },
       } });
       res.json({ ok: true, subjects: subjects.map(s => ({ id: s.id, name: s.name, count: s._count.questions, topics: s.topics })) });
     } catch (error) { next(error); }
@@ -252,7 +252,7 @@ export function questionAdminRouter(db: PrismaClient): Router {
         correctIndex: merged.correctIndex, questionType: merged.questionType,
         promptData: JSON.stringify(merged.promptData), answerData: JSON.stringify(merged.answerData),
         explanation: merged.explanation, source: merged.source,
-        difficulty: merged.difficulty, reviewStatus: "DRAFT", questionHash: hashQuestion(merged.text),
+        difficulty: merged.difficulty, reviewStatus: existing.reviewStatus === "APPROVED" ? "DRAFT" : existing.reviewStatus, questionHash: hashQuestion(merged.text),
       }, include: { subject: true, topic: true } });
       res.json({ ok: true, question: updated });
     } catch (error) { next(error); }
@@ -260,16 +260,26 @@ export function questionAdminRouter(db: PrismaClient): Router {
 
   router.post("/admin/questions/bulk-delete", async (req, res, next) => {
     try {
-      const { ids } = BulkSchema.parse(req.body);
-      const [answers, snapshots, stats] = await Promise.all([
-        db.attemptAnswer.findMany({ where: { questionId: { in: ids } }, select: { questionId: true }, distinct: ["questionId"] }),
-        db.examVersionQuestion.findMany({ where: { sourceQuestionId: { in: ids } }, select: { sourceQuestionId: true }, distinct: ["sourceQuestionId"] }),
-        db.stat.findMany({ where: { questionId: { in: ids } }, select: { questionId: true }, distinct: ["questionId"] }),
-      ]);
-      const blocked = new Set([...answers.map(x => x.questionId), ...stats.map(x => x.questionId), ...snapshots.map(x => x.sourceQuestionId).filter((x): x is number => x !== null)]);
-      const safeIds = ids.filter(id => !blocked.has(id));
-      const deleted = await db.question.deleteMany({ where: { id: { in: safeIds } } });
-      res.json({ ok: true, deleted: deleted.count, blocked: [...blocked] });
+      const input = z.object({ ids: z.array(z.number().int().positive()).min(1).max(500), permanent: z.boolean().default(false) }).parse(req.body);
+      if (new Set(input.ids).size !== input.ids.length) return next(badRequest("Question IDs must be unique."));
+      if (input.permanent) {
+        const rows = await db.question.findMany({ where: { id: { in: input.ids }, reviewStatus: "DELETED" }, select: { id: true } });
+        if (rows.length !== input.ids.length) return next(badRequest("Permanent deletion is allowed only for questions already in Trash."));
+        const [answers, snapshots, stats, lessons, pathAnswers, reviews] = await Promise.all([
+          db.attemptAnswer.findMany({ where: { questionId: { in: input.ids } }, select: { questionId: true }, distinct: ["questionId"] }),
+          db.examVersionQuestion.findMany({ where: { sourceQuestionId: { in: input.ids } }, select: { sourceQuestionId: true }, distinct: ["sourceQuestionId"] }),
+          db.stat.findMany({ where: { questionId: { in: input.ids } }, select: { questionId: true }, distinct: ["questionId"] }),
+          db.lessonQuestion.findMany({ where: { questionId: { in: input.ids } }, select: { questionId: true }, distinct: ["questionId"] }),
+          db.pathAnswer.findMany({ where: { questionId: { in: input.ids } }, select: { questionId: true }, distinct: ["questionId"] }),
+          db.userQuestionReview.findMany({ where: { questionId: { in: input.ids } }, select: { questionId: true }, distinct: ["questionId"] }),
+        ]);
+        const referenced = new Set([...answers.map(x=>x.questionId), ...snapshots.map(x=>x.sourceQuestionId), ...stats.map(x=>x.questionId), ...lessons.map(x=>x.questionId), ...pathAnswers.map(x=>x.questionId), ...reviews.map(x=>x.questionId)].filter((x): x is number => x !== null));
+        if (referenced.size) return next(conflict("Permanent deletion blocked because questions are referenced by attempts, exam snapshots, statistics, lessons, learning paths or reviews. Keep them in Trash to preserve history. IDs: " + [...referenced].join(", ") + "."));
+        const deleted = await db.question.deleteMany({ where: { id: { in: input.ids }, reviewStatus: "DELETED" } });
+        return res.json({ ok: true, deleted: deleted.count, permanent: true, blocked: [] });
+      }
+      const moved = await db.question.updateMany({ where: { id: { in: input.ids }, reviewStatus: { not: "DELETED" } }, data: { reviewStatus: "DELETED" } });
+      res.json({ ok: true, movedToTrash: moved.count, permanent: false, blocked: [] });
     } catch (error) { next(error); }
   });
 

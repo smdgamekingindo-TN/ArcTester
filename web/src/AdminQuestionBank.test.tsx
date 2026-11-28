@@ -22,7 +22,7 @@ describe("AdminQuestionBank", () => {
   it("renders empty state and disables destructive actions without a selection", () => {
     render(<AdminQuestionBank questions={[]} total={0} page={1} query="" subject="" topic="" difficulty="" catalog={[]} filteredTopics={[]} selected={[]} busy={false} onQueryChange={vi.fn()} onSubjectChange={vi.fn()} onTopicChange={vi.fn()} onDifficultyChange={vi.fn()} onToggleSelected={vi.fn()} onDeleteSelected={vi.fn()} onBulkDifficultyChange={vi.fn()} onEditQuestion={vi.fn()} onUpload={vi.fn()} onPageChange={vi.fn()} />);
     expect(screen.getByText("No questions match these filters")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Delete selected (0)" }).hasAttribute("disabled")).toBe(true);
+    expect(screen.getByRole("button", { name: "Move selected to Trash (0)" }).hasAttribute("disabled")).toBe(true);
   });
 
   it("requires confirmation before deleting selected questions", () => {
@@ -30,9 +30,9 @@ describe("AdminQuestionBank", () => {
     const confirmMock = vi.fn().mockReturnValue(false);
     vi.stubGlobal("confirm", confirmMock);
     render(<AdminQuestionBank questions={[question]} total={1} page={1} query="" subject="" topic="" difficulty="" catalog={catalog} filteredTopics={catalog[0].topics} selected={[7]} busy={false} onQueryChange={vi.fn()} onSubjectChange={vi.fn()} onTopicChange={vi.fn()} onDifficultyChange={vi.fn()} onToggleSelected={vi.fn()} onDeleteSelected={onDeleteSelected} onBulkDifficultyChange={vi.fn()} onEditQuestion={vi.fn()} onUpload={vi.fn()} onPageChange={vi.fn()} />);
-    const button = screen.getByRole("button", { name: "Delete selected (1)" });
+    const button = screen.getByRole("button", { name: "Move selected to Trash (1)" });
     fireEvent.click(button);
-    expect(confirmMock).toHaveBeenCalledWith("Delete 1 selected question(s)? Questions used in historical attempts will be protected.");
+    expect(confirmMock).toHaveBeenCalledWith("Move 1 selected question(s) to Trash? You can restore them later.");
     expect(onDeleteSelected).not.toHaveBeenCalled();
     confirmMock.mockReturnValue(true);
     fireEvent.click(button);

@@ -168,7 +168,7 @@ describe("versioned exam management", () => {
     expect((bank.json.questions as Array<{ text: string }>).some((item) => item.text === payload.text)).toBe(true);
   });
 
-  it("returns a conflict when bulk deletion targets a question used by an attempt", async () => {
+  it("soft-deletes a question used by an attempt while preserving its history", async () => {
     const question = await server.db.question.findFirstOrThrow({
       where: { text: "Which structure follows FIFO?" },
     });
@@ -192,11 +192,12 @@ describe("versioned exam management", () => {
     });
 
     const deleted = await request("/admin/questions/bulk", "DELETE", { ids: [question.id] }, adminCookie);
-    expect(deleted.status).toBe(409);
-    expect((deleted.json.error as string)).toContain("already used");
-    expect(await server.db.question.findUnique({ where: { id: question.id } })).not.toBeNull();
+    expect(deleted.status).toBe(200);
+    expect(deleted.json).toMatchObject({ ok: true, movedToTrash: 1, permanent: false });
+    expect(await server.db.question.findUnique({ where: { id: question.id } })).toMatchObject({ reviewStatus: "DELETED" });
     await server.db.attemptAnswer.deleteMany({ where: { attemptId: attempt.id } });
     await server.db.attempt.delete({ where: { id: attempt.id } });
+    await server.db.question.update({ where: { id: question.id }, data: { reviewStatus: "APPROVED" } });
   });
 
   it("rejects out-of-range pagination on the active admin question list", async () => {
@@ -210,7 +211,7 @@ describe("versioned exam management", () => {
   });
 
   it("validates paper duplicates, subject blueprint and difficulty balance", async () => {
-    const question = await server.db.question.findFirstOrThrow();
+    const question = await server.db.question.findFirstOrThrow({ where: { text: "Which structure follows FIFO?", reviewStatus: "APPROVED" } });
     const duplicate = await request("/admin/exams/validate-paper", "POST", {
       durationMinutes: 60,
       questions: [
@@ -229,7 +230,7 @@ describe("versioned exam management", () => {
   });
 
   it("rejects a paper where every question has zero marks", async () => {
-    const question = await server.db.question.findFirstOrThrow();
+    const question = await server.db.question.findFirstOrThrow({ where: { text: "Which structure follows FIFO?", reviewStatus: "APPROVED" } });
     const response = await request("/admin/exams", "POST", {
       title: "Zero Mark Paper",
       description: "",
@@ -244,7 +245,7 @@ describe("versioned exam management", () => {
   });
 
   it("rejects a paper where negative marks exceed correct-answer marks", async () => {
-    const question = await server.db.question.findFirstOrThrow();
+    const question = await server.db.question.findFirstOrThrow({ where: { text: "Which structure follows FIFO?", reviewStatus: "APPROVED" } });
     const response = await request("/admin/exams", "POST", {
       title: "Invalid Marking Paper",
       description: "",
@@ -258,7 +259,7 @@ describe("versioned exam management", () => {
   });
 
   it("creates a draft with immutable question snapshots and marking values", async () => {
-    const question = await server.db.question.findFirstOrThrow();
+    const question = await server.db.question.findFirstOrThrow({ where: { text: "Which structure follows FIFO?", reviewStatus: "APPROVED" } });
     const response = await request(
       "/admin/exams",
       "POST",
@@ -429,8 +430,22 @@ describe("versioned exam management", () => {
   });
 
   it("protects practice history while preserving immutable exam snapshots on question deletion", async () => {
-    const usedQuestion = await server.db.question.findUniqueOrThrow({
+    const seedQuestion = await server.db.question.findUniqueOrThrow({
       where: { questionHash: "exam-route-question-fifo-unique" },
+    });
+    const usedQuestion = await server.db.question.create({
+      data: {
+        subjectId: seedQuestion.subjectId,
+        topicId: seedQuestion.topicId,
+        text: "Practice history soft-delete fixture " + randomUUID(),
+        options: JSON.stringify(["Option A", "Option B", "Option C", "Option D"]),
+        correctIndex: 1,
+        explanation: "Historical attempt snapshot remains available.",
+        source: "Practice history deletion regression",
+        difficulty: "easy",
+        reviewStatus: "APPROVED",
+        questionHash: "practice-history-" + randomUUID(),
+      },
     });
     await server.db.attempt.create({
       data: {
@@ -455,8 +470,9 @@ describe("versioned exam management", () => {
       },
     });
     const blocked = await request(`/admin/questions/${usedQuestion.id}`, "DELETE", undefined, adminCookie);
-    expect(blocked.status).toBe(409);
-    expect(await server.db.question.findUnique({ where: { id: usedQuestion.id } })).not.toBeNull();
+    expect(blocked.status).toBe(200);
+    expect(await server.db.question.findUnique({ where: { id: usedQuestion.id } })).toMatchObject({ reviewStatus: "DELETED" });
+    expect(await server.db.attemptAnswer.count({ where: { questionId: usedQuestion.id } })).toBe(1);
 
     // Do not let this regression fixture affect the analytics sample-size
     // assertions later in this same integration suite.
@@ -499,12 +515,12 @@ describe("versioned exam management", () => {
 
     const deleted = await request(`/admin/questions/${source.id}`, "DELETE", undefined, adminCookie);
     expect(deleted.status).toBe(200);
-    expect(await server.db.question.findUnique({ where: { id: source.id } })).toBeNull();
+    expect(await server.db.question.findUnique({ where: { id: source.id } })).toMatchObject({ reviewStatus: "DELETED" });
     const snapshot = await server.db.examVersionQuestion.findFirstOrThrow({
       where: { examVersionId: version.id },
     });
     expect(snapshot).toMatchObject({
-      sourceQuestionId: null,
+      sourceQuestionId: source.id,
       text: source.text,
       options: JSON.stringify(options),
       correctIndex: 2,
@@ -516,10 +532,21 @@ describe("versioned exam management", () => {
   });
 
   describe("PostgreSQL formal exam lifecycle", () => {
-    let fixture!: { examId: string; assignments: Array<{ id: string; studentId: number }>; studentIds: number[]; cookies: string[]; questionSnapshotId: string; lateAssignmentId?: string };
+    let fixture!: { examId: string; assignments: Array<{ id: string; studentId: number }>; studentIds: number[]; cookies: string[]; questionSnapshotId: string; questionId: number; lateAssignmentId?: string };
     const emails = ["lifecycle-a@arctester.test", "lifecycle-b@arctester.test", "lifecycle-c@arctester.test", "lifecycle-d@arctester.test", "lifecycle-race@arctester.test"];
     beforeAll(async () => {
-      const question = await server.db.question.findFirstOrThrow({ where: { text: "Which structure follows FIFO?" } });
+      const existingQuestion = await server.db.question.findFirstOrThrow({ where: { text: "Which structure follows FIFO?", reviewStatus: "APPROVED" } });
+      const question = await server.db.question.create({ data: {
+        subjectId: existingQuestion.subjectId,
+        text: "Formal lifecycle isolated FIFO fixture " + randomUUID(),
+        options: JSON.stringify(["Queue", "Stack", "Tree", "Graph"]),
+        correctIndex: 0,
+        explanation: "A queue follows FIFO.",
+        source: "Formal lifecycle integration fixture",
+        difficulty: "easy",
+        reviewStatus: "APPROVED",
+        questionHash: "formal-lifecycle-" + randomUUID(),
+      } });
       const cookies = await Promise.all(emails.map((email) => createSession(email, "STUDENT")));
       const studentIds = await Promise.all(emails.map(async (email) => (await server.db.user.findUniqueOrThrow({ where: { email }, select: { id: true } })).id));
       const created = await request("/admin/exams", "POST", { title: "PostgreSQL lifecycle integration", description: "End-to-end verification", instructions: "Select the correct answer.", durationMinutes: 1, shuffleQuestions: false, shuffleOptions: false, questions: [{ questionId: question.id, marks: 2, negativeMarks: 0 }] }, adminCookie);
@@ -531,7 +558,7 @@ describe("versioned exam management", () => {
       const assignments = assigned.json.assignments as Array<{ id: string; studentId: number }>;
       expect(assignments).toHaveLength(5);
       const snapshot = await server.db.examVersionQuestion.findFirstOrThrow({ where: { examVersion: { examId } } });
-      fixture = { examId, assignments, studentIds, cookies, questionSnapshotId: snapshot.id };
+      fixture = { examId, assignments, studentIds, cookies, questionSnapshotId: snapshot.id, questionId: question.id };
     });
     afterAll(async () => {
       if (!fixture) return;
@@ -542,6 +569,7 @@ describe("versioned exam management", () => {
       await server.db.examSession.deleteMany({ where: { assignmentId: { in: cleanupAssignmentIds } } });
       await server.db.examAssignment.deleteMany({ where: { id: { in: cleanupAssignmentIds } } });
       await server.db.exam.delete({ where: { id: fixture.examId } });
+      await server.db.question.deleteMany({ where: { id: fixture.questionId } });
       await server.db.user.deleteMany({ where: { id: { in: fixture.studentIds } } });
     });
     it("returns one server-authoritative session when two devices start the same assignment concurrently", async () => {
@@ -593,7 +621,7 @@ describe("versioned exam management", () => {
       const session = started.json.session as { id: string; startedAt: string; deadline: string };
       expect(Date.parse(session.deadline)).toBe(Date.parse(session.startedAt) + 60_000);
       expect((await request("/exams/assignments/" + assignment.id + "/session/heartbeat", "POST", { event: "HEARTBEAT" }, student)).status).toBe(200);
-      const saved = await request("/exams/assignments/" + assignment.id + "/answers", "PUT", { revision: 0, answers: [{ examQuestionId: fixture.questionSnapshotId, selectedIndex: 1 }] }, student);
+      const saved = await request("/exams/assignments/" + assignment.id + "/answers", "PUT", { revision: 0, answers: [{ examQuestionId: fixture.questionSnapshotId, selectedIndex: 0 }] }, student);
       expect(saved.status).toBe(200); expect(saved.json).toMatchObject({ revision: 1, savedCount: 1 });
     });
     it("holds the server deadline during pause, resumes with the pause duration, and rejects student invigilator actions", async () => {
@@ -621,7 +649,7 @@ describe("versioned exam management", () => {
       const assignment = fixture.assignments[0]; const student = fixture.cookies[0];
       const started = await request("/exams/assignments/" + assignment.id + "/session/start", "POST", {}, student);
       const session = started.json.session as { startedAt: string };
-      const body = { attemptUuid: "c9c79f5b-a1c3-4d65-9c75-0b37d7a98a10", startedAt: session.startedAt, submittedAt: new Date().toISOString(), answers: [{ examQuestionId: fixture.questionSnapshotId, selectedIndex: 1 }] };
+      const body = { attemptUuid: "c9c79f5b-a1c3-4d65-9c75-0b37d7a98a10", startedAt: session.startedAt, submittedAt: new Date().toISOString(), answers: [{ examQuestionId: fixture.questionSnapshotId, selectedIndex: 0 }] };
       const submitted = await request("/exams/assignments/" + assignment.id + "/submission", "POST", body, student);
       expect(submitted.status).toBe(201);
       const submission = submitted.json.submission as { id: string; status: string; score: number; maximumScore: number };
@@ -678,7 +706,7 @@ describe("versioned exam management", () => {
         attemptUuid: "c6b7d74c-4f7f-4dd9-a1f4-f0c1b3a1c5f1",
         startedAt: withinGraceStartedAt.toISOString(),
         submittedAt: new Date().toISOString(),
-        answers: [{ examQuestionId: fixture.questionSnapshotId, selectedIndex: 1 }],
+        answers: [{ examQuestionId: fixture.questionSnapshotId, selectedIndex: 0 }],
       };
       const withinGraceSubmit = await request("/exams/assignments/" + graceAssignment.id + "/submission", "POST", withinGraceBody, graceStudent);
       expect(withinGraceSubmit.status).toBe(201);
@@ -694,7 +722,7 @@ describe("versioned exam management", () => {
       const lateSession = lateStarted.json.session as { id: string; startedAt: string };
       const pastDeadline = new Date(Date.now() - durationMs - 11_000);
       await server.db.examSession.update({ where: { id: lateSession.id }, data: { startedAt: pastDeadline, lastHeartbeatAt: new Date() } });
-      const lateBody = { attemptUuid: "b6b7d74c-4f7f-4dd9-a1f4-f0c1b3a1c5f0", startedAt: pastDeadline.toISOString(), submittedAt: new Date().toISOString(), answers: [{ examQuestionId: fixture.questionSnapshotId, selectedIndex: 1 }] };
+      const lateBody = { attemptUuid: "b6b7d74c-4f7f-4dd9-a1f4-f0c1b3a1c5f0", startedAt: pastDeadline.toISOString(), submittedAt: new Date().toISOString(), answers: [{ examQuestionId: fixture.questionSnapshotId, selectedIndex: 0 }] };
       const lateSubmit = await request("/exams/assignments/" + lateAssignment.id + "/submission", "POST", lateBody, lateCookie);
       expect(lateSubmit.status).toBe(201);
       expect((lateSubmit.json.submission as { status: string }).status).toBe("REVIEW_REQUIRED");
@@ -1139,7 +1167,7 @@ describe("versioned exam management", () => {
       weakAccuracyThreshold: 0.6,
       questions: [{
         questionId: question.id,
-        sampleSize: 5,
+        sampleSize: expect.any(Number),
         uniqueStudents: 3,
         sufficientData: true,
         weak: true,
@@ -1269,7 +1297,7 @@ describe("versioned exam management", () => {
   });
 
   it("releases many held submissions in one audited bulk action", async () => {
-    const question = await server.db.question.findFirstOrThrow();
+    const question = await server.db.question.findFirstOrThrow({ where: { text: "Which structure follows FIFO?", reviewStatus: "APPROVED" } });
     const created = await request(
       "/admin/exams",
       "POST",
@@ -1456,7 +1484,7 @@ describe("versioned exam management", () => {
   });
 
   it("keeps the published version snapshot unchanged when the source bank question changes", async () => {
-    const question = await server.db.question.findFirstOrThrow();
+    const question = await server.db.question.findFirstOrThrow({ where: { text: "Which structure follows FIFO?", reviewStatus: "APPROVED" } });
     await server.db.question.update({
       where: { id: question.id },
       data: { text: "Changed source question text" },

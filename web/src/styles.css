@@ -1938,3 +1938,14 @@ html[data-admin-density="compact"] .bank-question{padding:12px 16px}
 .assignment-audit-panel li span{font-size:13px;font-weight:750}
 .assignment-audit-panel li small{font-size:11px;line-height:1.4;color:var(--muted)}
 .assignment-audit-panel p{margin:0;font-size:12px;color:var(--muted)}
+
+/* Google student profile completion: theme-safe, scrollable on small mobile screens. */
+.google-profile-overlay{overflow-y:auto!important;align-items:start!important;padding:max(12px,env(safe-area-inset-top)) 12px max(12px,env(safe-area-inset-bottom))!important;}
+.google-profile-dialog{background:var(--surface,#fff)!important;color:var(--ink,#172033)!important;width:min(100%,560px)!important;max-height:calc(100dvh - 24px)!important;margin:auto!important;overscroll-behavior:contain;}
+.google-profile-dialog h2,.google-profile-dialog label,.google-profile-dialog p,.google-profile-dialog strong,.google-profile-dialog span{color:inherit;}
+.google-profile-dialog .muted,.google-profile-dialog .auth-field-hint{color:var(--muted)!important;}
+.google-profile-dialog input:not([type=checkbox]){background:var(--surface)!important;color:var(--ink)!important;border-color:var(--border)!important;}
+.google-profile-dialog .auth-legal-check{align-items:flex-start;gap:10px;line-height:1.5;}
+.google-profile-dialog .auth-legal-check input[type=checkbox]{flex:0 0 auto;margin-top:4px;}
+.google-profile-dialog .auth-submit{margin-bottom:8px;}
+@media(max-width:520px){.google-profile-dialog{padding:20px 16px!important;border-radius:16px!important;max-height:calc(100dvh - 24px)!important;}.google-profile-dialog h2{font-size:clamp(22px,6vw,28px);line-height:1.2;padding-right:24px;}.google-profile-dialog .auth-svg-captcha-row{flex-wrap:wrap;}}

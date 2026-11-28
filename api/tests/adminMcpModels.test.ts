@@ -65,7 +65,7 @@ describe("administrator MCP model control", () => {
       fullName: "Assignment Inspection Student", role: "STUDENT", accessStatus: "APPROVED",
     } });
     const exam = await server.db.exam.create({ data: { title: "Assignment inspection fixture", description: "", createdById: adminId } });
-    const version = await server.db.examVersion.create({ data: { examId: exam.id, version: 1, durationMinutes: 30, publishedAt: new Date() } });
+    const version = await server.db.examVersion.create({ data: { examId: exam.id, version: 1, durationMinutes: 30, sebKeys: [], publishedAt: new Date() } });
     const assignment = await server.db.examAssignment.create({ data: { examVersionId: version.id, studentId: student.id, assignedById: adminId } });
     const inspected = await callTool("inspect_exam_assignments", { examId: exam.id, studentId: student.id });
     expect(inspected).toMatchObject({ exam: { id: exam.id, versions: [{ version: 1, assignments: [{ id: assignment.id, studentId: student.id, student: { email: student.email }, submission: null }] }] }, assignmentCount: 1 });

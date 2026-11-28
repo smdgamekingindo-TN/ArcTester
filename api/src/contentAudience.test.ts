@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { isContentAudienceVisible } from "./contentAudience.js";
+import { filterBranchSubjectQuestions } from "./branchSubjectVisibility.js";
 
 describe("content audience matching", () => {
   const student = { collegeCode: "010", collegeName: "Andhra Polytechnic, Kakinada", branchCode: "CM", branchName: "Diploma in Computer Engineering" };
@@ -21,6 +22,23 @@ describe("content audience matching", () => {
     expect(isContentAudienceVisible({ audienceScope: "BRANCH", targetBranchCode: "CM", targetCollegeCode: "010" }, student)).toBe(true);
     expect(isContentAudienceVisible({ audienceScope: "BRANCH", targetBranchCode: "CM", targetCollegeCode: "011" }, student)).toBe(false);
     expect(isContentAudienceVisible({ audienceScope: "BRANCH", targetBranchCode: "EC" }, student)).toBe(false);
+  });
+
+  it("matches equivalent CME branch codes and normalized diploma branch names", () => {
+    const cmeProfile = { collegeCode: "010", collegeName: "Andhra Polytechnic, Kakinada", branchCode: "CM", branchName: "Computer Engineering (CME)" };
+    expect(isContentAudienceVisible({ audienceScope: "BRANCH", targetBranchCode: "CME", targetBranchName: "Computer Engineering" }, cmeProfile)).toBe(true);
+    expect(isContentAudienceVisible({ audienceScope: "BRANCH", targetBranchName: "Diploma in Computer Engineering" }, cmeProfile)).toBe(true);
+    expect(isContentAudienceVisible({ audienceScope: "BRANCH", targetBranchCode: "CSE", targetBranchName: "Computer Science" }, cmeProfile)).toBe(false);
+  });
+
+  it("keeps CME core questions in the student bank for CM profiles without leaking CSE questions", () => {
+    const cmeProfile = { id: 10, collegeCode: "010", collegeName: "Andhra Polytechnic, Kakinada", branchCode: "CM", branchName: "Computer Engineering (CME)" };
+    const subjectNames = new Map([[1, "Programming in C"]]);
+    const rows = [
+      { id: 101, subjectId: 1, audienceScope: "BRANCH", targetBranchCode: "CME", targetBranchName: "Computer Engineering", targetCollegeCode: null, targetCollegeName: null, targetStudentIdsJson: null },
+      { id: 102, subjectId: 1, audienceScope: "BRANCH", targetBranchCode: "CSE", targetBranchName: "Computer Science", targetCollegeCode: null, targetCollegeName: null, targetStudentIdsJson: null },
+    ];
+    expect(filterBranchSubjectQuestions(rows, subjectNames, cmeProfile).map((question) => question.id)).toEqual([101]);
   });
 
   it("fails closed for unknown scopes and missing student profile fields", () => {

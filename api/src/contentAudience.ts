@@ -27,6 +27,39 @@ function matchesOneOf(profileValues: Array<string | null | undefined>, targetVal
   return profileValues.map(normalize).filter(Boolean).some((value) => targets.includes(value));
 }
 
+function normalizeBranchCode(value: string | null | undefined): string {
+  const code = (value ?? "").normalize("NFKC").trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (["CM", "CME"].includes(code)) return "CME";
+  if (["CS", "CSE"].includes(code)) return "CSE";
+  if (["M", "ME", "MEC", "DME"].includes(code)) return "MEC";
+  if (["EC", "ECE"].includes(code)) return "ECE";
+  if (["EE", "EEE"].includes(code)) return "EEE";
+  return code;
+}
+
+function normalizeBranchName(value: string | null | undefined): string {
+  return normalize(value)
+    .replace(/\([^)]*\)/g, " ")
+    .replace(/\bdiploma in\b/g, " ")
+    .replace(/\bbranch\b/g, " ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+function matchesBranch(
+  profile: AcademicAudienceProfile,
+  audience: ContentAudience,
+): boolean {
+  const profileCode = normalizeBranchCode(profile.branchCode);
+  const targetCode = normalizeBranchCode(audience.targetBranchCode);
+  if (profileCode && targetCode && profileCode === targetCode) return true;
+
+  const profileName = normalizeBranchName(profile.branchName);
+  const targetName = normalizeBranchName(audience.targetBranchName);
+  return Boolean(profileName && targetName && profileName === targetName);
+}
+
 function matchesSelectedStudent(audience: ContentAudience, profile: AcademicAudienceProfile): boolean {
   if (!Number.isSafeInteger(profile.id) || !profile.id || !audience.targetStudentIdsJson) return false;
   try {
@@ -57,10 +90,7 @@ export function isContentAudienceVisible(
 
   if (scope === "COLLEGE") return collegeMatches();
   if (scope === "BRANCH") {
-    const branchMatches = matchesOneOf(
-      [profile.branchCode, profile.branchName],
-      [audience.targetBranchCode, audience.targetBranchName],
-    );
+    const branchMatches = matchesBranch(profile, audience);
     const hasCollegeTarget = Boolean(normalize(audience.targetCollegeCode) || normalize(audience.targetCollegeName));
     return branchMatches && (!hasCollegeTarget || collegeMatches());
   }

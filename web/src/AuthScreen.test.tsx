@@ -51,22 +51,23 @@ describe("AuthScreen",()=>{
   expect(screen.getByText(/Google sign-in is being configured/i)).toBeTruthy();
  });
 
- it("submits Google student registration with CAPTCHA and optional age attestation",async()=>{
+ it("submits Google student registration without CAPTCHA and with optional age attestation",async()=>{
   const props=renderAuth({
    googleProfileCompletion:true,
    googleCredential:"google-credential",
    academicProfile:{fullName:"Test Student",collegeName:"Andhra Polytechnic, Kakinada",collegeCode:"010",registrationNumber:"24010-CM-053",branchName:"Computer Engineering (CME)",branchCode:"CM"},
-   onCaptchaLoad:vi.fn(async()=>({svg:"<svg></svg>",token:"captcha-challenge"})),
+   onCaptchaLoad:vi.fn(async()=>({svg:"<svg></svg>",token:"unused-captcha"})),
    onGoogleRegister:vi.fn(),
   });
-  await waitFor(()=>expect(props.onCaptchaLoad).toHaveBeenCalled());
-  fireEvent.change(screen.getByRole("textbox",{name:"Google registration CAPTCHA characters"}),{target:{value:"ABCDE"}});
+  expect(props.onCaptchaLoad).not.toHaveBeenCalled();
+  expect(screen.queryByRole("textbox",{name:"Google registration CAPTCHA characters"})).toBeNull();
+  expect(screen.queryByText(/I confirm I am 18 or older/i)).toBeNull();
   fireEvent.click(screen.getByRole("checkbox",{name:/I agree to the Terms/i}));
   fireEvent.click(screen.getByRole("checkbox",{name:/I consent to data processing/i}));
   fireEvent.submit(screen.getByRole("button",{name:"Submit student details"}).closest("form")!);
   await waitFor(()=>expect(props.onGoogleRegister).toHaveBeenCalledWith("google-credential",props.academicProfile,{
    termsAccepted:true,privacyConsent:true,termsVersion:"2026-11-27-v3",privacyNoticeVersion:"2026-11-27-v3",
-   consentNoticeVersion:"2026-11-27-v3",ageGateVersion:"2026-11-27-v3",adultAttestation:false,captchaToken:"captcha-challenge:ABCDE",
+   consentNoticeVersion:"2026-11-27-v3",ageGateVersion:"2026-11-27-v3",
   }));
  });
 });

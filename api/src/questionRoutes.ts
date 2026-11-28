@@ -193,7 +193,7 @@ export function questionRouter(db: PrismaClient): Router {
     try {
       const subjects = await db.subject.findMany({
         orderBy: { name: "asc" },
-        include: { _count: { select: { questions: true, topics: true } }, topics: { orderBy: { name: "asc" } } },
+        include: { _count: { select: { questions: { where: { reviewStatus: { not: "DELETED" } } }, topics: true } }, topics: { orderBy: { name: "asc" } } },
       });
       res.json({ ok: true, subjects: subjects.map((subject) => ({
         id: subject.id, name: subject.name, questionCount: subject._count.questions,

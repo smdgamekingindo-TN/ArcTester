@@ -29,7 +29,6 @@ const UpdateSchema = z.object({
   promptData: z.record(z.string(), z.unknown()).optional(),
   answerData: z.record(z.string(), z.unknown()).optional(),
 }).refine((value) => Object.keys(value).length > 0);
-const BulkSchema = z.object({ ids: z.array(z.number().int().positive()).min(1).max(500) });
 const ReviewStatusSchema = z.enum(["DRAFT", "APPROVED", "REJECTED"]);
 const AP_ECET_SUBJECT_QUOTAS: Record<string, number> = { Mathematics: 50, Physics: 25, Chemistry: 25, "Digital Electronics": 6, "Software Engineering": 6, "Computer Organisation and Microprocessors": 8, "Data Structures through C": 10, "Computer Networks": 6, "Operating Systems": 10, DBMS: 8, "Java Programming": 10, "Web Technologies": 8, "Big-data & Cloud Computing": 6, "Android Programming": 6, "Internet Of Things(IoT)": 8, "Python Programming": 8 };
 function hasReviewableSource(source: string): boolean { const normalized = source.trim().toUpperCase(); return normalized.length > 0 && normalized !== "NEEDS HUMAN REVIEW"; }

@@ -136,10 +136,7 @@ test.describe("Student Practice Flow", () => {
     const questionPalette = page.locator(".exam-question-navigation");
     await expect(questionPalette.locator("summary")).toBeVisible();
     const questionPaletteWrapper = questionPalette.locator("xpath=..");
-    expect(await questionPaletteWrapper.evaluate((element) => {
-      const style = getComputedStyle(element);
-      return { padding: parseFloat(style.paddingTop), borderWidth: style.borderWidth };
-    })).toEqual({ padding: expect.any(Number), borderWidth: "0px" });
+    expect(await questionPaletteWrapper.evaluate((element) => getComputedStyle(element).borderWidth)).toBe("0px");
     expect(await questionPaletteWrapper.evaluate((element) => parseFloat(getComputedStyle(element).paddingTop))).toBeLessThanOrEqual(12);
     await questionPalette.locator("summary").click();
     expect(await page.locator(".exam-question-number").first().evaluate((element) => element.getBoundingClientRect().height)).toBeGreaterThanOrEqual(36);

@@ -272,7 +272,7 @@ export function adminMcpRouter(db: PrismaClient): Router {
         }
         case "search_question_bank": {
           if (!scope(key,"questions:read")) return res.json(rpcError(id,-32003,"Missing questions:read scope."));
-          const input=z.object({search:z.string().max(200).optional(),subject:z.string().max(100).optional(),topic:z.string().max(100).optional(),reviewStatus:z.enum(["DRAFT","APPROVED","REJECTED"]).optional(),audienceScope:z.enum(["ALL","COLLEGE","BRANCH","STUDENTS"]).optional(),targetBranchCode:z.string().max(40).optional(),targetBranchName:z.string().max(160).optional(),limit:z.number().int().min(1).max(100).default(50)}).parse(args);
+          const input=z.object({search:z.string().max(200).optional(),subject:z.string().max(100).optional(),topic:z.string().max(100).optional(),reviewStatus:z.enum(["DRAFT","APPROVED","REJECTED","DELETED"]).optional(),audienceScope:z.enum(["ALL","COLLEGE","BRANCH","STUDENTS"]).optional(),targetBranchCode:z.string().max(40).optional(),targetBranchName:z.string().max(160).optional(),limit:z.number().int().min(1).max(100).default(50)}).parse(args);
           const questions=await db.question.findMany({where:{...(input.subject?{subject:{name:input.subject}}:{}),...(input.topic?{topic:{name:input.topic}}:{}),...(input.reviewStatus?{reviewStatus:input.reviewStatus}:{reviewStatus:{not:"DELETED"}}),...(input.audienceScope?{audienceScope:input.audienceScope}:{}),...(input.targetBranchCode?{targetBranchCode:input.targetBranchCode}:{}),...(input.targetBranchName?{targetBranchName:input.targetBranchName}:{}),...(input.search?{text:{contains:input.search,mode:"insensitive"}}:{})},take:input.limit,orderBy:{createdAt:"desc"},include:{subject:{select:{name:true}},topic:{select:{name:true}}}});
           output={questions:questions.map(q=>({id:q.id,subject:q.subject.name,topic:q.topic?.name??"General",text:q.text,options:JSON.parse(q.options),correctIndex:q.correctIndex,explanation:q.explanation,source:q.source,difficulty:q.difficulty,reviewStatus:q.reviewStatus,audienceScope:q.audienceScope,targetBranchCode:q.targetBranchCode,targetBranchName:q.targetBranchName}))};summary="searched questions";break;
         }
@@ -539,7 +539,7 @@ export function adminMcpRouter(db: PrismaClient): Router {
           output = {
             status: "ok", checkedAt: new Date().toISOString(), databaseQueryMs: Date.now() - started,
             students: { approved: approvedStudents, pending: pendingStudents, rejected: rejectedStudents },
-            questions: { approved: approvedQuestions, draft: draftQuestions, rejected: rejectedQuestions, inTrash: deletedQuestions, activeTotal: approvedQuestions + draftQuestions + rejectedQuestions },
+            questions: { approved: approvedQuestions, draft: draftQuestions, rejected: rejectedQuestions, inTrash: deletedQuestions, bankTotal: approvedQuestions + draftQuestions + rejectedQuestions },
             exams: { total: exams }, assignments: { total: assignments },
             sessions: { active: activeSessions }, submissions: { total: submissions },
             note: "Counts only; no emails, answer content, environment variables, tokens, or secrets are returned.",

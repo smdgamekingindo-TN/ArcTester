@@ -61,12 +61,13 @@ describe("AuthScreen",()=>{
   });
   expect(props.onCaptchaLoad).not.toHaveBeenCalled();
   expect(screen.queryByRole("textbox",{name:"Google registration CAPTCHA characters"})).toBeNull();
+  expect(screen.queryByText(/I confirm I am 18 or older/i)).toBeNull();
   fireEvent.click(screen.getByRole("checkbox",{name:/I agree to the Terms/i}));
   fireEvent.click(screen.getByRole("checkbox",{name:/I consent to data processing/i}));
   fireEvent.submit(screen.getByRole("button",{name:"Submit student details"}).closest("form")!);
   await waitFor(()=>expect(props.onGoogleRegister).toHaveBeenCalledWith("google-credential",props.academicProfile,{
    termsAccepted:true,privacyConsent:true,termsVersion:"2026-11-27-v3",privacyNoticeVersion:"2026-11-27-v3",
-   consentNoticeVersion:"2026-11-27-v3",ageGateVersion:"2026-11-27-v3",adultAttestation:false,
+   consentNoticeVersion:"2026-11-27-v3",ageGateVersion:"2026-11-27-v3",
   }));
  });
 });

@@ -213,9 +213,9 @@ describe("question administration route contracts", () => {
       ids: [safeQuestion.id, questionId],
     }, adminCookie);
     expect(deleted.status).toBe(200);
-    expect(deleted.json).toMatchObject({ ok: true, deleted: 1, blocked: [questionId] });
-    expect(await server.db.question.findUnique({ where: { id: safeQuestion.id } })).toBeNull();
-    expect(await server.db.question.findUnique({ where: { id: questionId } })).not.toBeNull();
+    expect(deleted.json).toMatchObject({ ok: true, movedToTrash: 2, permanent: false, blocked: [] });
+    expect(await server.db.question.findUnique({ where: { id: safeQuestion.id } })).toMatchObject({ reviewStatus: "DELETED" });
+    expect(await server.db.question.findUnique({ where: { id: questionId } })).toMatchObject({ reviewStatus: "DELETED" });
     expect((await postJson(`${server.baseUrl}/admin/questions/bulk-delete`, { ids: [questionId] }, studentCookie)).status).toBe(403);
   });
 
@@ -225,7 +225,7 @@ describe("question administration route contracts", () => {
     expect((subjects.json as { subjects: Array<{ name: string; questionCount: number; topics: Array<{ name: string }> }> }).subjects)
       .toEqual(expect.arrayContaining([expect.objectContaining({
         name: "Question Admin Systems",
-        questionCount: 1,
+        questionCount: 0,
         topics: expect.arrayContaining([expect.objectContaining({ name: "Route Contracts" })]),
       })]));
 

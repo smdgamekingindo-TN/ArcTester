@@ -1928,3 +1928,13 @@ html[data-admin-density="compact"] .bank-question{padding:12px 16px}
 .auth-otp-boxes input:focus{border-color:var(--accent);outline:3px solid color-mix(in srgb,var(--accent) 20%,transparent);outline-offset:1px}
 .auth-resend-code{margin:0 auto}
 @media(max-width:430px){.auth-otp-boxes{gap:6px}.auth-otp-boxes input{height:50px;font-size:22px;border-radius:10px}}
+
+/* Admin exam assignment verification panel */
+.assignment-audit-panel{display:grid;gap:12px;margin-top:14px;padding:14px;border:1px solid var(--border);border-radius:12px;background:var(--surface);min-width:0}
+.assignment-audit-panel>strong{font-size:14px}
+.assignment-audit-panel section{display:grid;gap:8px}
+.assignment-audit-panel ul{display:grid;gap:8px;list-style:none;padding:0;margin:0}
+.assignment-audit-panel li{display:grid;gap:3px;padding:10px;border:1px solid var(--border);border-radius:9px;background:var(--bg);overflow-wrap:anywhere}
+.assignment-audit-panel li span{font-size:13px;font-weight:750}
+.assignment-audit-panel li small{font-size:11px;line-height:1.4;color:var(--muted)}
+.assignment-audit-panel p{margin:0;font-size:12px;color:var(--muted)}
